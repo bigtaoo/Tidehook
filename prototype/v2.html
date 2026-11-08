@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>钩子矿井 原型2</title>
+<style>
+:root{color-scheme:dark}
+html,body{margin:0;height:100%;background:#120e0a;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+body{display:flex;align-items:center;justify-content:center}
+canvas{display:block;touch-action:none}
+</style></head><body><canvas id="c"></canvas><script>
+'use strict';
+// ===== 原型2：钩子是唯一的动作 =====
+// 点击/空格 = 出钩；手里有石头时 = 甩石头。
+// A 重量即血量：怪的数字 = 血量 = 重量；数字 ≤ 握力 才钩得上来，否则弹开。
+// B 金子即诱饵：矿里的金子会把怪吸过去停下来啃；捡走换钱，还是留着拖住怪？
+const W=480,H=800,OX=240,OY=74,TOP=112;
+const FONT='system-ui,"Microsoft YaHei","PingFang SC",sans-serif';
+const cv=document.getElementById('c'),cx=cv.getContext('2d');
+const DPR=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);
+function fit(){const s=Math.min(innerWidth/W,innerHeight/H);cv.style.width=W*s+'px';cv.style.height=H*s+'px';}
+addEventListener('resize',fit);fit();
+
+let seed=(Date.now()%1e9)|0;
+function R(){seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}
+const rr=(a,b)=>a+R()*(b-a);
+
+// 经济：钱只来自金子。怪不掉钱，碾碎只是保命；贪吃虫吃下的金子死后会吐出来。
+const MT={
+  grunt:{name:'小鼠',hp:2,spd:36,r:13,dmg:1,col:'#78c850'},
+  bat:{name:'蝙蝠',hp:1,spd:62,r:11,dmg:1,col:'#e0607e',fly:1},
+  tank:{name:'甲虫',hp:6,spd:21,r:19,dmg:3,col:'#9a7bd1'},
+  greedy:{name:'贪吃虫',hp:3,spd:30,r:15,dmg:2,col:'#e3a43a'},
+};
+const DEBUT={
+  grunt:'小鼠：数字=血量=重量，绿框=能直接钩上来碾碎。怪不掉钱，钱只能靠挖金子',
+  bat:'蝙蝠：飞得快、绕着飞、不吃金子，钩中就死',
+  tank:'甲虫：红框=太重，钩它只会弹开。先钩块石头，再点一下甩过去砸轻！',
+  greedy:'贪吃虫：专找金子吃，越吃越重。碾碎它，吃下去的金子全吐给你',
+};
+const BOMB_MAX=3;
+const UPS=[
+  {id:'grip',name:'握力 +1',desc:'能直接钩起更重的怪',base:20,max:8,k:1.7,ap:u=>u.grip++},
+  {id:'rock',name:'重石 +2',desc:'甩出的石头伤害 +2',base:14,max:10,ap:u=>u.rockDmg+=2},
+  {id:'winch',name:'绞盘 +25%',desc:'收钩更快，拖重物时尤其明显',base:14,max:4,ap:u=>u.winch*=1.25},
+  {id:'speed',name:'快钩 +25%',desc:'钩子飞出去更快',base:12,max:4,ap:u=>u.speed*=1.25},
+  {id:'barb',name:'倒刺 +1',desc:'钩不动的重怪，每次多扎掉 1 血',base:20,max:4,ap:u=>u.hookDmg++},
+  {id:'pierce',name:'穿透石',desc:'石头命中后继续飞，多穿 1 只怪',base:26,max:3,ap:u=>u.pierce++},
+  {id:'blast',name:'爆裂石',desc:'石头命中时炸伤周围的怪（半数伤害）',base:28,max:3,ap:u=>u.blast++},
+  {id:'lure',name:'香金',desc:'金子吸引范围 +40，怪啃得更久',base:12,max:3,ap:u=>{u.lure+=40;u.chew*=1.35;}},
+  {id:'swing',name:'大摆幅',desc:'钩子摆动范围 +10°',base:14,max:2,ap:u=>{u.swing+=.17;}},
+  {id:'armor',name:'加固 +3',desc:'钻机耐久上限 +3，并恢复 3 点',base:16,max:5,ap:(u,S)=>{S.maxHp+=3;S.hp+=3;}},
+  {id:'multi',name:'串钩',desc:'抓到东西后钩子继续往前飞，一次多串 1 样',base:40,max:2,k:2,abil:1,ap:u=>u.multi++},
+  {id:'magnet',name:'磁钩',desc:'收钩时把沿途的金子一起吸回来',base:30,max:3,k:1.8,abil:1,ap:u=>u.magnet++},
+  {id:'vein',name:'深矿',desc:'金子价值 +30%，每波多补 2 块金子',base:35,max:3,k:1.8,abil:1,ap:u=>u.vein++},
+];
+
+let S;
+function newState(){return{
+  phase:'title',t:0,gold:0,hp:10,maxHp:10,wave:0,items:[],mons:[],shots:[],fx:[],
+  hook:{st:'swing',ang:0,len:0,grabs:[],sw:0},held:null,bombs:0,
+  up:{grip:2,winch:1,speed:1,hookDmg:1,rockDmg:3,pierce:0,blast:0,lure:110,chew:1,swing:1.15,multi:0,magnet:0,vein:0},
+  lv:{},queue:[],spawnT:0,gap:3,clearT:0,cards:[],rerolls:0,btns:[],seen:{},banner:null,bq:[],shake:0,fired:false,overT:0,
+  st:{kills:0,crush:0,leak:0,mined:0,spat:0,eaten:0,spent:0,hooks:0,throws:0,bounce:0,rockKills:0,bombs:0}};}
+function reset(){S=newState();restock(9,6);}
+
+// ---------- 物件 ----------
+// 越深越值钱；随波次和「深矿」升值
+function goldVal(big,y){
+  const d=Math.max(0,Math.min(1,(y-TOP-70)/(H-TOP-120)));
+  const m=(1+.08*Math.max(0,S.wave-1))*(1+.3*S.up.vein);
+  return Math.round((big?20+30*d:6+12*d)*m);
+}
+function addItem(kind){
+  for(let k=0;k<60;k++){
+    const big=kind==='gold'&&R()<.25,r=kind==='rock'?17:big?19:11;
+    const x=rr(24+r,W-24-r),y=rr(TOP+70,H-24-r);
+    if(S.items.some(o=>Math.hypot(o.x-x,o.y-y)<o.r+r+18))continue;
+    S.items.push({kind,x,y,r,big,val:kind==='gold'?goldVal(big,y):0,w:kind==='rock'?2:big?4:1});return true;
+  }return false;
+}
+function goldCap(){return 10+2*S.up.vein;}
+function restock(nG,nR){
+  let g=S.items.filter(o=>o.kind==='gold').length,r=S.items.length-g;
+  while(g<nG&&addItem('gold'))g++;while(r<nR&&addItem('rock'))r++;
+}
+
+// ---------- 波次 ----------
+function waveComp(w){return{grunt:3+w,bat:w>=2?Math.floor(w/2):0,tank:w>=3?Math.floor((w-1)/2):0,greedy:w>=4?Math.floor((w-1)/3):0};}
+function startGame(){reset();startWave();}
+function startWave(){
+  S.wave++;S.phase='wave';S.clearT=0;
+  const c=waveComp(S.wave),L=[];
+  for(const k in c)for(let i=0;i<c[k];i++)L.push(k);
+  for(let i=L.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[L[i],L[j]]=[L[j],L[i]];}
+  for(const k in c)if(c[k]&&!S.seen[k]){S.seen[k]=1;banner(DEBUT[k]);
+    const i=L.indexOf(k);L.splice(i,1);L.splice(Math.min(2,L.length),0,k);} // 新怪尽早单独出场
+  S.queue=L;S.spawnT=1.2;S.gap=Math.max(.8,3-.11*S.wave);
+}
+function spawn(type){
+  const d=MT[type],w=S.wave,hp=Math.max(1,Math.round(d.hp*(1+.1*(w-1))));
+  let x,y;
+  if(d.fly||(w>=3&&R()<.25)){const left=R()<.5;x=left?-14:W+14;y=rr(380,740);}else{x=rr(40,W-40);y=H+16;}
+  S.mons.push({type,x,y,hp,r:d.r,spd:d.spd*(1+.02*(w-1)),stun:0,eat:null,eatT:0,full:0,ate:0,ph:R()*6,
+    flash:0,grab:false,dead:false});
+}
+function endWave(){
+  const g=S.items.filter(o=>o.kind==='gold').length,r=S.items.length-g;
+  restock(Math.min(goldCap(),g+4+2*S.up.vein),Math.min(7,r+2));
+  S.phase='shop';S.rerolls=0;rollShop();
+}
+
+// ---------- 商店 ----------
+// 卡牌：属性/能力（随机 3 张）；固定栏：修钻机、补炸药（永远能花钱）
+function price(u){return Math.round(u.base*Math.pow(u.k||1.55,S.lv[u.id]||0));}
+function repairCost(){return 6+2*S.wave;}
+function bombCost(){return 10+2*S.wave;}
+const bombDmg=()=>5+Math.round(S.wave*.6);
+function buyFix(k){
+  if(S.phase!=='shop')return false;
+  if(k==='repair'){const p=repairCost();if(S.hp>=S.maxHp||S.gold<p)return false;S.gold-=p;S.st.spent+=p;S.hp=Math.min(S.maxHp,S.hp+3);return true;}
+  if(k==='bomb'){const p=bombCost();if(S.bombs>=BOMB_MAX||S.gold<p)return false;S.gold-=p;S.st.spent+=p;S.bombs++;return true;}
+  return false;
+}
+function rollShop(){
+  const pool=UPS.filter(u=>(S.lv[u.id]||0)<u.max);
+  S.cards=[];
+  const core=pool.filter(u=>u.id==='grip'||u.id==='rock'||u.id==='barb');
+  if(core.length){const u=core[Math.floor(R()*core.length)];S.cards.push({u,bought:false});pool.splice(pool.indexOf(u),1);} // 每次至少一张核心卡
+  while(S.cards.length<3&&pool.length){const i=Math.floor(R()*pool.length);S.cards.push({u:pool[i],bought:false});pool.splice(i,1);}
+}
+function buy(i){
+  const c=S.cards[i];if(!c||c.bought)return false;const p=price(c.u);if(S.gold<p)return false;
+  S.gold-=p;S.st.spent+=p;S.lv[c.u.id]=(S.lv[c.u.id]||0)+1;c.u.ap(S.up,S);c.bought=true;return true;
+}
+function rerollCost(){return 4+3*S.rerolls;}
+function reroll(){const p=rerollCost();if(S.gold<p)return false;S.gold-=p;S.st.spent+=p;S.rerolls++;rollShop();return true;}
+
+// ---------- 钩子 ----------
+const grabbable=m=>m.hp<=S.up.grip;
+function hitAt(x,y,r,monsOnly,skip){
+  let best=null,bd=0;
+  for(const m of S.mons){if(m.grab||(skip&&skip.has(m)))continue;const d=Math.hypot(m.x-x,m.y-y)-m.r-r;if(d<bd){bd=d;best=m;}}
+  if(!monsOnly)for(const o of S.items){const d=Math.hypot(o.x-x,o.y-y)-o.r-r;if(d<bd){bd=d;best=o;}}
+  return best;
+}
+function fire(){
+  const h=S.hook;if(S.phase!=='wave'||h.st!=='swing')return false;
+  S.fired=true;const sx=Math.sin(h.ang),sy=Math.cos(h.ang);
+  if(S.held){S.shots.push({x:OX+sx*22,y:OY+sy*22,vx:sx*800,vy:sy*800,r:15,pierce:S.up.pierce,hit:new Set()});S.held=null;S.st.throws++;}
+  else{h.st='out';h.len=16;h.grabs=[];S.st.hooks++;}
+  return true;
+}
+const grabWt=g=>g.kind?g.w:g.hp;
+function placeGrabs(h,sx,sy){
+  const x=OX+sx*h.len,y=OY+sy*h.len;
+  h.grabs.forEach((g,i)=>{const o=i?(i%2?1:-1)*Math.ceil(i/2)*12:0;g.x=x+sx*g.r*.7-sy*o;g.y=y+sy*g.r*.7+sx*o;});
+}
+function updHook(dt){
+  const h=S.hook;
+  if(h.st==='swing'){h.sw+=dt;h.ang=S.up.swing*Math.sin(h.sw*1.7);return;}
+  const sx=Math.sin(h.ang),sy=Math.cos(h.ang);
+  if(h.st==='out'){
+    let mv=680*S.up.speed*dt;
+    while(mv>0){
+      const s=Math.min(6,mv);mv-=s;h.len+=s;
+      const x=OX+sx*h.len,y=OY+sy*h.len;
+      if(x<-6||x>W+6||y>H+6){h.st='back';break;}
+      const o=hitAt(x,y,7);
+      if(o&&!hookHit(o,sx,sy))break;
+    }
+  }else{
+    const wt=h.grabs.reduce((a,g)=>a+grabWt(g),0);
+    h.len-=560*S.up.winch/(1+.32*wt)*dt;
+    if(S.up.magnet&&h.len>30){
+      const x=OX+sx*h.len,y=OY+sy*h.len,rad=22+22*S.up.magnet;
+      for(const o of S.items.slice())if(o.kind==='gold'&&Math.hypot(o.x-x,o.y-y)<rad+o.r){
+        S.items.splice(S.items.indexOf(o),1);h.grabs.push(o);txt(o.x,o.y-14,'吸!','#9fd8ff');}
+    }
+    if(h.len<=14){h.st='swing';h.len=0;const gs=h.grabs;h.grabs=[];for(const g of gs)deliver(g);return;}
+  }
+  placeGrabs(h,sx,sy);
+}
+// 返回 true = 钩子继续往前飞（串钩）
+function hookHit(o,sx,sy){
+  const h=S.hook;
+  if(o.kind){S.items.splice(S.items.indexOf(o),1);h.grabs.push(o);}
+  else if(o.hp<=S.up.grip){o.grab=true;o.eat=null;h.grabs.push(o);}
+  else{
+    h.st='back';
+    if(S.bombs>0){bomb(o);return false;}
+    dmgMon(o,S.up.hookDmg);S.st.bounce++;
+    if(!o.dead){o.stun=.5;knock(o,sx,sy,26);txt(o.x,o.y-24,'太重!','#ff6b6b');}
+    return false;
+  }
+  if(h.grabs.length>=1+S.up.multi){h.st='back';return false;}
+  return true;
+}
+// 炸药：钩到太重的怪时自动引爆，范围伤害
+function bomb(o){
+  S.bombs--;S.st.bombs++;const d=bombDmg(),cx0=o.x,cy0=o.y,rad=95;
+  burst(cx0,cy0,'#ff9a3a',26);burst(cx0,cy0,'#ffe36b',14);S.shake=16;txt(cx0,cy0-30,'轰!','#ffb36b');
+  for(const m of S.mons.slice())if(!m.grab&&!m.dead&&Math.hypot(m.x-cx0,m.y-cy0)<rad+m.r){
+    m.eat=null;const dx=m.x-cx0,dy=m.y-cy0,L=Math.hypot(dx,dy)||1;dmgMon(m,d,true);if(!m.dead){m.stun=.9;knock(m,dx/L,dy/L,40);}}
+}
+function deliver(g){
+  if(!g)return;
+  if(g.kind==='gold'){S.gold+=g.val;S.st.mined+=g.val;txt(OX,OY+40,'+'+g.val,'#ffd54a');}
+  else if(g.kind==='rock'){
+    if(S.held){g.x=rr(60,W-60);g.y=rr(TOP+90,H-60);S.items.push(g);return;} // 手里只能拿一块，多的丢回矿里
+    S.held=g;if(!S.seen.rock){S.seen.rock=1;banner('拿着石头！再点一下：沿瞄准线甩出去砸怪');}}
+  else killMon(g,true);
+}
+function updShots(dt){
+  for(let i=S.shots.length-1;i>=0;i--){
+    const s=S.shots[i];let mv=800*dt,gone=false;
+    while(mv>0&&!gone){
+      const st=Math.min(8,mv);mv-=st;const L=Math.hypot(s.vx,s.vy);s.x+=s.vx/L*st;s.y+=s.vy/L*st;
+      if(s.x<-20||s.x>W+20||s.y>H+20||s.y<TOP-30){gone=true;break;}
+      const m=hitAt(s.x,s.y,s.r,true,s.hit);
+      if(m){
+        s.hit.add(m);const d=S.up.rockDmg,ux=s.vx/L,uy=s.vy/L;
+        m.eat=null;dmgMon(m,d,true);if(!m.dead){m.stun=.6;knock(m,ux,uy,45);}
+        if(S.up.blast){const rad=50+S.up.blast*15;burst(m.x,m.y,'#ffb36b',14);
+          for(const o of S.mons.slice())if(o!==m&&!o.grab&&Math.hypot(o.x-m.x,o.y-m.y)<rad)dmgMon(o,Math.ceil(d/2),true);}
+        S.shake=6;
+        if(--s.pierce<0)gone=true;
+      }
+    }
+    if(gone)S.shots.splice(i,1);
+  }
+}
+
+// ---------- 怪 ----------
+function knock(m,ux,uy,k){m.x=Math.max(m.r,Math.min(W-m.r,m.x+ux*k));m.y=Math.min(H+10,m.y+uy*k);}
+function dmgMon(m,d,rock){m.hp-=d;m.flash=.12;txt(m.x+8,m.y-m.r-6,'-'+d,'#fff');if(m.hp<=0){if(rock)S.st.rockKills++;killMon(m,false);}}
+function killMon(m,crush){
+  if(m.dead)return;m.dead=true;const i=S.mons.indexOf(m);if(i>=0)S.mons.splice(i,1);
+  S.st.kills++;if(crush)S.st.crush++;
+  burst(m.x,m.y,MT[m.type].col,crush?16:10);
+  if(m.ate){
+    if(crush){S.gold+=m.ate;S.st.spat+=m.ate;txt(OX,OY+40,'吐出 +'+m.ate,'#ffd54a');burst(OX,OY+10,'#f2c230',14);}
+    else{ // 砸死/炸死在矿里：金子掉回地上，还得去钩
+      const big=m.ate>=15,r=big?19:11;
+      S.items.push({kind:'gold',x:Math.max(24+r,Math.min(W-24-r,m.x)),y:Math.max(TOP+70,Math.min(H-24-r,m.y)),r,big,val:m.ate,w:big?4:1});
+      txt(m.x,m.y-16,'金子掉出来了','#ffd54a');
+    }
+  }else if(crush)txt(m.x,m.y-16,'碾碎!','#ddd');
+}
+function updMons(dt){
+  for(const m of S.mons.slice()){
+    if(m.grab||m.dead)continue;
+    m.flash-=dt;
+    if(m.stun>0){m.stun-=dt;continue;}
+    const d=MT[m.type];
+    if(m.eat){
+      if(!S.items.includes(m.eat)){m.eat=null;}
+      else{
+        m.eatT-=dt;
+        if(m.eatT<=0){
+          const it=m.eat;S.items.splice(S.items.indexOf(it),1);S.st.eaten+=it.val;m.eat=null;m.full++;
+          for(const o of S.mons)if(o.eat===it)o.eat=null;
+          if(m.type==='greedy'){m.hp+=it.big?2:1;m.ate+=it.val;m.r=Math.min(24,m.r+2);txt(m.x,m.y-24,'变重了!','#ffb36b');}
+          else txt(m.x,m.y-24,'金子被啃光','#c9a46a');
+        }
+        continue;
+      }
+    }
+    let tx=OX,ty=OY+6;
+    if(!d.fly&&(m.type==='greedy'||m.full<1)){
+      let best=null,bd=m.type==='greedy'?S.up.lure+110:S.up.lure;
+      for(const it of S.items)if(it.kind==='gold'){const dd=Math.hypot(it.x-m.x,it.y-m.y);if(dd<bd){bd=dd;best=it;}}
+      if(best){
+        if(bd<m.r+best.r+2){m.eat=best;m.eatT=(best.big?3.5:2.2)*S.up.chew;
+          if(!S.seen.eat){S.seen.eat=1;banner('怪被金子吸住、停下来啃——趁现在钩它！（啃完金子就没了）');}continue;}
+        tx=best.x;ty=best.y;
+      }
+    }
+    const dx=tx-m.x,dy=ty-m.y,L=Math.hypot(dx,dy)||1;let vx=dx/L,vy=dy/L;
+    if(d.fly){const wb=Math.sin(S.t*2.6+m.ph)*.9;const px=-vy,py=vx;vx+=px*wb;vy+=py*wb;const n=Math.hypot(vx,vy);vx/=n;vy/=n;}
+    m.x+=vx*m.spd*dt;m.y+=vy*m.spd*dt;
+    if(Math.hypot(m.x-OX,m.y-OY)<26+m.r){
+      S.mons.splice(S.mons.indexOf(m),1);m.dead=true;S.hp-=d.dmg;S.st.leak++;S.shake=12;
+      txt(OX,OY+30,'-'+d.dmg+' 耐久','#ff5a5a');burst(OX,OY,'#ff5a5a',14);
+      if(S.hp<=0){gameOver();return;}
+    }
+  }
+}
+function gameOver(){
+  S.hp=0;S.phase='over';S.overT=S.t;
+  try{const b=+localStorage.getItem('hd2_best')||0;S.best=Math.max(b,S.wave);localStorage.setItem('hd2_best',S.best);}catch(e){S.best=S.wave;}
+}
+
+// ---------- 主循环 ----------
+function update(dt){
+  S.t+=dt;
+  for(let i=S.fx.length-1;i>=0;i--){const f=S.fx[i];f.t-=dt;
+    if(f.vx!==undefined){f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=320*dt;}else f.y-=26*dt;
+    if(f.t<=0)S.fx.splice(i,1);}
+  if(S.shake>0)S.shake=Math.max(0,S.shake-dt*30);
+  if(S.banner){S.banner.t-=dt;if(S.banner.t<=0)S.banner=S.bq.shift()||null;}
+  if(S.phase!=='wave')return;
+  updHook(dt);updShots(dt);updMons(dt);
+  if(S.phase!=='wave')return;
+  if(S.queue.length){S.spawnT-=dt;if(S.spawnT<=0){spawn(S.queue.shift());S.spawnT=S.gap*rr(.6,1.4);}}
+  else if(!S.mons.length&&S.hook.st==='swing'&&!S.shots.length){S.clearT+=dt;if(S.clearT>1)endWave();}
+}
+function txt(x,y,s,c){S.fx.push({x,y,s,c,t:1});}
+function burst(x,y,c,n){for(let i=0;i<n;i++){const a=R()*6.28,v=rr(60,180);S.fx.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-80,c,t:rr(.3,.6),p:1});}}
+function banner(s){const b={text:s,t:5};if(!S.banner)S.banner=b;else S.bq.push(b);}
+
+// ---------- 绘制 ----------
+const bg=document.createElement('canvas');bg.width=W*DPR;bg.height=(H-TOP)*DPR;
+(function(){const g=bg.getContext('2d');g.scale(DPR,DPR);
+  const gr=g.createLinearGradient(0,0,0,H-TOP);gr.addColorStop(0,'#4d3523');gr.addColorStop(1,'#20150d');
+  g.fillStyle=gr;g.fillRect(0,0,W,H-TOP);let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  for(let i=0;i<6;i++){g.strokeStyle='rgba(0,0,0,.12)';g.lineWidth=2;g.beginPath();const y0=80+i*110+r()*30;g.moveTo(0,y0);
+    for(let x=0;x<=W;x+=40)g.lineTo(x,y0+Math.sin(x*.02+i)*10);g.stroke();}
+  for(let i=0;i<600;i++){g.fillStyle=r()<.5?`rgba(0,0,0,${r()*.15})`:`rgba(255,220,180,${r()*.07})`;const z=1+r()*4;g.fillRect(r()*W,r()*(H-TOP),z,z);}
+})();
+function rrect(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath();}
+function T(s,x,y,size,col,align,bold){cx.font=(bold?'bold ':'')+size+'px '+FONT;cx.textAlign=align||'left';cx.fillStyle=col;cx.fillText(s,x,y);}
+function TS(s,x,y,size,col,align){cx.font='bold '+size+'px '+FONT;cx.textAlign=align||'center';cx.lineWidth=3;cx.strokeStyle='rgba(0,0,0,.85)';cx.strokeText(s,x,y);cx.fillStyle=col;cx.fillText(s,x,y);}
+function wrap(s,x,y,maxW,lh,size,col){cx.font=size+'px '+FONT;cx.textAlign='center';cx.fillStyle=col;let line='';
+  for(const ch of s){if(cx.measureText(line+ch).width>maxW){cx.fillText(line,x,y);y+=lh;line=ch;}else line+=ch;}if(line)cx.fillText(line,x,y);return y;}
+
+function drawItem(o){
+  cx.save();cx.translate(o.x,o.y);
+  if(o.kind==='gold'){rrect(-o.r,-o.r*.8,o.r*2,o.r*1.6,4);cx.fillStyle='#f2c230';cx.fill();cx.strokeStyle='#8a6410';cx.lineWidth=2;cx.stroke();
+    cx.fillStyle='rgba(255,255,255,.55)';cx.fillRect(-o.r+4,-o.r*.8+3,o.r*.6,3);
+    T(String(o.val),0,o.big?6:4,o.big?14:11,'#5a3d00','center',true);}
+  else{rrect(-o.r,-o.r,o.r*2,o.r*2,6);cx.fillStyle='#7d7f86';cx.fill();cx.strokeStyle='#45474d';cx.lineWidth=2;cx.stroke();
+    cx.fillStyle='rgba(0,0,0,.2)';cx.fillRect(-o.r+5,2,o.r,4);}
+  cx.restore();
+}
+function drawMon(m){
+  const d=MT[m.type],ok=grabbable(m);cx.save();cx.translate(m.x,m.y);
+  if(m.type==='bat'){const f=Math.sin(S.t*18+m.ph)*6;cx.beginPath();cx.moveTo(-m.r-9,-f);cx.lineTo(0,-m.r*.7);cx.lineTo(m.r+9,-f);cx.lineTo(0,m.r);cx.closePath();}
+  else rrect(-m.r,-m.r,2*m.r,2*m.r,m.type==='greedy'?m.r:5);
+  cx.fillStyle=d.col;cx.fill();cx.lineWidth=3;cx.strokeStyle=ok?'#7dff8a':'#ff4d4d';cx.stroke();
+  if(m.flash>0){cx.fillStyle='rgba(255,255,255,.7)';cx.fill();}
+  TS(String(m.hp),0,7,m.r>16?20:17,'#fff');
+  if(m.stun>0)TS('✶',0,-m.r-6,14,'#ffe36b');
+  if(m.eat){const k=Math.floor(S.t*6)%2;TS(k?'啃':'啃 ',0,-m.r-6,13,'#ffd54a');}
+  else if(m.ate)TS('◆'+m.ate,0,m.r+14,12,'#ffd54a');
+  cx.restore();
+}
+function draw(){
+  cx.save();cx.setTransform(DPR,0,0,DPR,0,0);
+  if(S.shake)cx.translate(rr(-1,1)*S.shake*.5,rr(-1,1)*S.shake*.5);
+  cx.fillStyle='#1b2838';cx.fillRect(-10,-10,W+20,TOP+10);
+  cx.drawImage(bg,0,TOP,W,H-TOP);
+  cx.fillStyle='#5b4330';cx.fillRect(0,TOP-6,W,8);
+  for(const o of S.items)drawItem(o);
+  const h=S.hook,sx=Math.sin(h.ang),sy=Math.cos(h.ang);
+  if(S.phase==='wave'&&h.st==='swing'){
+    cx.setLineDash([8,8]);cx.lineWidth=2;cx.strokeStyle=S.held?'rgba(255,160,70,.85)':'rgba(255,255,255,.35)';
+    const L=S.held?900:150;cx.beginPath();cx.moveTo(OX,OY);cx.lineTo(OX+sx*L,OY+sy*L);cx.stroke();cx.setLineDash([]);
+  }
+  const hl=h.st==='swing'?16:h.len,tx=OX+sx*hl,ty=OY+sy*hl;
+  cx.strokeStyle='#c9c2b4';cx.lineWidth=2;cx.beginPath();cx.moveTo(OX,OY);cx.lineTo(tx,ty);cx.stroke();
+  for(const g of h.grabs)if(g.kind)drawItem(g);
+  for(const m of S.mons)drawMon(m);
+  cx.save();cx.translate(tx,ty);cx.rotate(-h.ang);cx.strokeStyle='#e8e2d6';cx.lineWidth=3;
+  cx.beginPath();cx.arc(-6,4,7,-.3,Math.PI*.9);cx.stroke();cx.beginPath();cx.arc(6,4,7,Math.PI*.1,Math.PI*1.3,true);cx.stroke();cx.restore();
+  for(const s of S.shots){cx.beginPath();cx.arc(s.x,s.y,s.r,0,6.28);cx.fillStyle='#8e9098';cx.fill();cx.strokeStyle='#ffb36b';cx.lineWidth=2;cx.stroke();}
+  // 钻机
+  rrect(OX-34,OY-50,68,36,6);cx.fillStyle='#6d7480';cx.fill();cx.strokeStyle='#2c3038';cx.lineWidth=2;cx.stroke();
+  cx.fillStyle='#3a3f48';cx.fillRect(OX-6,OY-16,12,16);
+  cx.beginPath();cx.arc(OX,OY,7,0,6.28);cx.fillStyle='#d8d2c4';cx.fill();
+  if(S.held){const o=S.held;cx.save();cx.translate(OX+48,OY-30);cx.scale(.8,.8);drawItem({...o,x:0,y:0});cx.restore();TS('甩!',OX+48,OY-2,13,'#ffb36b');}
+  for(let i=0;i<S.bombs;i++){const bx=OX-50-i*16,by=OY-34;cx.fillStyle='#c0392b';cx.fillRect(bx-5,by-9,10,18);cx.strokeStyle='#ffd54a';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(bx,by-9);cx.lineTo(bx+3,by-14);cx.stroke();}
+  if(S.bombs)TS('炸药',OX-50-(S.bombs-1)*8,OY-2,12,'#ff9a6a');
+  // 特效
+  for(const f of S.fx){cx.globalAlpha=Math.min(1,f.t*2);
+    if(f.p){cx.fillStyle=f.c;cx.fillRect(f.x-2,f.y-2,4,4);}else TS(f.s,f.x,f.y,15,f.c);}
+  cx.globalAlpha=1;
+  drawHud();
+  if(S.phase==='shop')drawShop();
+  if(S.phase==='title')drawTitle();
+  if(S.phase==='over')drawOver();
+  cx.restore();
+}
+function drawHud(){
+  T('第 '+Math.max(1,S.wave)+' 波',14,30,20,'#fff','left',true);
+  if(S.phase==='wave')T('剩余 '+(S.queue.length+S.mons.length),14,54,14,'#b9c3cf');
+  T('◆ '+S.gold,W-14,30,20,'#ffd54a','right',true);
+  T('握力 '+S.up.grip+'  石伤 '+S.up.rockDmg,W-14,54,14,'#b9c3cf','right');
+  const n=S.maxHp,bw=Math.min(9,150/n);
+  for(let i=0;i<n;i++){cx.fillStyle=i<S.hp?'#e85a5a':'#3a2a2a';cx.fillRect(OX-n*bw/2+i*bw,8,bw-2,8);}
+  if(S.phase==='wave'&&S.wave===1&&!S.fired){const a=.6+.4*Math.sin(S.t*4);cx.globalAlpha=a;TS('点击屏幕 / 空格：出钩',W/2,H-40,20,'#fff');cx.globalAlpha=1;}
+  if(S.banner&&S.phase==='wave'){cx.font='15px '+FONT;rrect(14,TOP+8,W-28,58,10);cx.fillStyle='rgba(15,12,8,.85)';cx.fill();
+    cx.strokeStyle='#ffd54a';cx.lineWidth=1.5;cx.stroke();wrap(S.banner.text,W/2,TOP+32,W-60,22,15,'#fff3c4');}
+}
+function btn(x,y,w,h,label,fn,on,col){rrect(x,y,w,h,10);cx.fillStyle=on?(col||'#3d5a3a'):'#2a2622';cx.fill();cx.strokeStyle=on?'#9fe08a':'#4a443c';cx.lineWidth=2;cx.stroke();
+  T(label,x+w/2,y+h/2+7,19,on?'#fff':'#777','center',true);S.btns.push({x,y,w,h,fn});}
+function drawShop(){
+  S.btns=[];cx.fillStyle='rgba(10,8,6,.88)';cx.fillRect(0,0,W,H);
+  T('第 '+S.wave+' 波 守住了！',W/2,104,28,'#fff','center',true);
+  T('◆ '+S.gold+'　钱只来自挖到的金子',W/2,138,16,'#ffd54a','center');
+  S.cards.forEach((c,i)=>{const y=160+i*112,p=price(c.u),can=!c.bought&&S.gold>=p;
+    rrect(40,y,400,100,12);cx.fillStyle=c.bought?'#1f2a1d':can?'#2e2a24':'#221f1b';cx.fill();cx.strokeStyle=can?'#ffd54a':'#4a443c';cx.lineWidth=2;cx.stroke();
+    if(c.u.abil){rrect(60,y+14,44,20,6);cx.fillStyle='#2d4a66';cx.fill();T('能力',82,y+29,12,'#bfe3ff','center',true);}
+    T(c.u.name,c.u.abil?112:60,y+34,22,c.bought?'#8fbf7f':'#fff','left',true);
+    T(c.u.desc,60,y+66,15,'#b9b0a2','left');
+    const lv=S.lv[c.u.id]||0;if(lv)T('已有 '+lv+' 级',60,y+88,12,'#8a8174','left');
+    T(c.bought?'已购':'◆ '+p,420,y+40,22,c.bought?'#8fbf7f':S.gold>=p?'#ffd54a':'#a05050','right',true);
+    if(!c.bought)S.btns.push({x:40,y,w:400,h:100,fn:()=>buy(i)});
+  });
+  // 固定栏：修钻机 / 补炸药
+  const rc=repairCost(),bc=bombCost(),canR=S.hp<S.maxHp&&S.gold>=rc,canB=S.bombs<BOMB_MAX&&S.gold>=bc;
+  const fix=(x,label,sub,p,on,fn)=>{rrect(x,500,192,72,12);cx.fillStyle=on?'#2e2a24':'#221f1b';cx.fill();cx.strokeStyle=on?'#ffd54a':'#4a443c';cx.lineWidth=2;cx.stroke();
+    T(label,x+14,528,18,on?'#fff':'#8a8174','left',true);T(sub,x+14,555,13,'#9a9184','left');T(p,x+178,528,18,on?'#ffd54a':'#a05050','right',true);S.btns.push({x,y:500,w:192,h:72,fn});};
+  fix(40,'修钻机 +3','耐久 '+S.hp+'/'+S.maxHp,S.hp>=S.maxHp?'满':'◆ '+rc,canR,()=>buyFix('repair'));
+  fix(248,'炸药 +1','有 '+S.bombs+'/'+BOMB_MAX+' · 钩到重怪自动炸',S.bombs>=BOMB_MAX?'满':'◆ '+bc,canB,()=>buyFix('bomb'));
+  btn(40,588,150,58,'换一批 ◆'+rerollCost(),reroll,S.gold>=rerollCost(),'#3a3550');
+  btn(206,588,234,58,'开始第 '+(S.wave+1)+' 波 ▶',startWave,true);
+  const c=waveComp(S.wave+1),parts=[];for(const k in c)if(c[k])parts.push(MT[k].name+'×'+c[k]);
+  T('下一波：'+parts.join('  '),W/2,676,15,'#d8cfc0','center');
+  T('握力 '+S.up.grip+' · 倒刺 '+S.up.hookDmg+' · 石伤 '+S.up.rockDmg+' · 炸药伤害 '+bombDmg(),W/2,702,14,'#9a9184','center');
+  T('键盘：1/2/3 买卡，4 修理，5 炸药，R 换一批，Enter 开始',W/2,750,13,'#6f685e','center');
+}
+function drawTitle(){
+  cx.fillStyle='rgba(10,8,6,.86)';cx.fillRect(0,0,W,H);
+  T('钩子矿井',W/2,190,44,'#ffd54a','center',true);
+  T('原型 2 · 一个按键',W/2,226,16,'#b9b0a2','center');
+  const lines=[['点击 / 空格','钩子摆到哪就往哪出钩，抓到第一样东西就拉回来'],
+    ['怪的数字','= 血量 = 重量。绿框钩上来碾碎——只为保命，不掉钱'],
+    ['红框太重','钩它只会弹开。钩块石头回来，再点一下甩过去砸轻'],
+    ['金子','唯一的钱，越深越值钱；也会把怪吸过去停下来啃'],
+    ['波次之间','花金子买能力、修钻机、补炸药']];
+  lines.forEach(([a,b],i)=>{const y=290+i*70;T(a,60,y,18,'#fff','left',true);cx.font='15px '+FONT;cx.textAlign='left';cx.fillStyle='#cfc6b8';cx.fillText(b,60,y+26);});
+  const a=.6+.4*Math.sin(S.t*4);cx.globalAlpha=a;T('点击开始',W/2,690,24,'#fff','center',true);cx.globalAlpha=1;
+}
+function drawOver(){
+  cx.fillStyle='rgba(10,8,6,.88)';cx.fillRect(0,0,W,H);
+  T('钻机被毁',W/2,200,36,'#ff6b6b','center',true);
+  T('撑到第 '+S.wave+' 波　最佳 '+(S.best||S.wave),W/2,250,20,'#fff','center',true);
+  const s=S.st,rows=[['击杀',s.kills+'（碾碎 '+s.crush+'，石头砸死 '+s.rockKills+'）'],['钩子出手',s.hooks+' 次，被弹开 '+s.bounce+' 次'],
+    ['甩石头 / 炸药',s.throws+' 次 / '+s.bombs+' 次'],['挖到金子',s.mined+(s.spat?'（贪吃虫吐回 '+s.spat+'）':'')],['被怪啃掉的金子',s.eaten]];
+  rows.forEach(([a,b],i)=>{T(a,90,310+i*34,16,'#b9b0a2','left');T(String(b),390,310+i*34,16,'#fff','right',true);});
+  let tip='握力、石伤、倒刺三者一起决定你能对付多重的怪';
+  if(s.mined<S.wave*25)tip='钱只能靠挖：怪离得远的空档就出钩挖金子，深处的更值钱';
+  else if(s.bounce>s.hooks*.25)tip='常被“太重”弹开：先甩石头把怪砸成绿框，再钩；或者备几根炸药';
+  else if(s.throws<S.wave)tip='石头很少用：钩回石头再点一下，是对付重怪的主要手段';
+  else if(s.eaten>s.mined*.5)tip='金子被啃了不少：贪吃虫碾碎能吐回来，别的怪啃掉就没了';
+  wrap('提示：'+tip,W/2,520,380,24,16,'#ffd54a');
+  if(S.t-S.overT>1){const a=.6+.4*Math.sin(S.t*4);cx.globalAlpha=a;T('点击重来',W/2,640,22,'#fff','center',true);cx.globalAlpha=1;}
+}
+
+// ---------- 输入 ----------
+function tap(px,py){
+  if(S.phase==='title'){startGame();return;}
+  if(S.phase==='over'){if(S.t-S.overT>1)startGame();return;}
+  if(S.phase==='shop'){for(const b of S.btns)if(px>=b.x&&px<=b.x+b.w&&py>=b.y&&py<=b.y+b.h){b.fn();return;}return;}
+  fire();
+}
+addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();const r=cv.getBoundingClientRect();tap((e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height);},{passive:false});
+addEventListener('keydown',e=>{
+  if(e.repeat)return;
+  if(S.phase==='shop'){if(e.key>='1'&&e.key<='3')buy(+e.key-1);else if(e.key==='4')buyFix('repair');else if(e.key==='5')buyFix('bomb');else if(e.key==='r'||e.key==='R')reroll();else if(e.code==='Enter')startWave();return;}
+  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();if(S.phase==='title')startGame();else if(S.phase==='over'){if(S.t-S.overT>1)startGame();}else fire();}
+});
+
+reset();
+let last=0;
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;update(dt);draw();requestAnimationFrame(frame);}
+requestAnimationFrame(frame);
+
+// 调试/模拟用
+window.HD={get S(){return S;},update,fire,startGame,startWave,buy,buyFix,repairCost,bombCost,reroll,price,rerollCost,grabbable,hitAt,waveComp,MT,UPS,OX,OY,W,H,TOP,
+  seed:n=>{seed=n|0;},rayFirst(ang,monsOnly){const sx=Math.sin(ang),sy=Math.cos(ang);for(let l=16;l<1200;l+=6){const x=OX+sx*l,y=OY+sy*l;if(x<-6||x>W+6||y>H+6)return null;const o=hitAt(x,y,monsOnly?15:7,monsOnly);if(o)return{o,len:l};}return null;}};
+</script></body></html>
