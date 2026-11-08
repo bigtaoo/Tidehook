@@ -36,6 +36,15 @@ export function muldiv(a: number, b: number, d: number): number {
   return Math.trunc((a * b) / d);
 }
 
+/** a / b rounded half up, for a >= 0 and b > 0 (Math.round of the true quotient). */
+export function roundDiv(a: number, b: number): number {
+  return Math.floor((2 * a + b) / (2 * b));
+}
+
+export function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
 /** A multiplier or chance in permille, for configuration values. */
 export function pm(x: number): number {
   return Math.round(x * 1000);

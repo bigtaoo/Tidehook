@@ -24,8 +24,9 @@ The gameplay reference is `prototype/v2.html` with its balance sim `prototype/to
 
 ## Checks
 
-`npm run check` = typecheck + file length + tests + build + bundle size (≤ 5 MB). Run it before
-every commit. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
+`npm run check` = typecheck + file length + tests + balance guard + build + bundle size (≤ 5 MB).
+Run it before every commit. The balance guard (`npm run check:balance`, scripts/guard/) plays the
+bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
 
 URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`; `?seed`, `?speed`,
 `?autoplay` arrive with the sim.
