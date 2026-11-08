@@ -131,27 +131,48 @@ export interface GameResult {
   shops: ShopVisit[];
 }
 
+/** A persona at the controls of a live world: the view's ?autoplay and playGame both drive it.
+ *  Call `tick` once before each step. */
+export class Pilot {
+  readonly p: Persona;
+  private readonly rng: Prng;
+  private cd = 0;
+
+  constructor(seed: number, name: string) {
+    this.p = persona(name);
+    this.rng = new Prng(seed * 7 + 5);
+  }
+
+  /** Shops and starts the next wave in the shop; in a wave, looks along the aim and maybe taps. */
+  tick(w: World): void {
+    if (w.phase === 'shop') {
+      shop(w, this.p);
+      return;
+    }
+    if (w.phase !== 'wave') return;
+    this.cd--;
+    if (w.hook.st === 'swing' && this.cd <= 0) {
+      this.cd = this.p.react;
+      const ang = w.hook.ang + this.rng.range(-this.p.err, this.p.err);
+      if (decide(w, this.p, ang, this.rng)) fire(w);
+    }
+  }
+}
+
 /** Plays one game to the end (or `maxWave`, or `maxSecs` of game time). */
 export function playGame(seed: number, name: string, maxWave = 30, maxSecs = 3600): GameResult {
-  const p = persona(name);
+  const pilot = new Pilot(seed, name);
   const w = startGame(seed);
-  const rng = new Prng(seed * 7 + 5);
   const shops: ShopVisit[] = [];
-  let cd = 0;
   let t = 0;
   while (t < maxSecs * TICK_RATE) {
     if (w.phase === 'over' || w.wave > maxWave) break;
     if (w.phase === 'shop') {
       shops.push({ wave: w.wave, hp: w.hp, coins: w.coins });
-      shop(w, p);
+      pilot.tick(w);
       continue;
     }
-    cd--;
-    if (w.hook.st === 'swing' && cd <= 0) {
-      cd = p.react;
-      const ang = w.hook.ang + rng.range(-p.err, p.err);
-      if (decide(w, p, ang, rng)) fire(w);
-    }
+    pilot.tick(w);
     step(w);
     t++;
   }

@@ -33,3 +33,18 @@ export const SEA = {
 
 /** The words' outline on the field: dark enough to read over every band. */
 export const TEXT_STROKE = 0x0d1b26;
+
+/** The monsters, cold and readable over every band; never a warm colour. */
+export const MON = {
+  grunt: 0x8fe0b0,
+  darter: 0xc9b6ff,
+  brute: 0x6c7fd8,
+  glutton: 0x9fe6f0,
+} as const;
+
+/** The catch: fish and chests are the money (warm), junk is grey. */
+export const CATCH = {
+  fish: 0xf2c14e,
+  chest: 0xe08a2e,
+  junk: 0x9aa3a8,
+} as const;

@@ -22,7 +22,7 @@ describe('i18n', () => {
 
   it('fills placeholders and leaves a missing one visible', () => {
     expect(t('hud.wave', { n: 3 })).toBe('Wave 3');
-    expect(t('hud.gold')).toBe('{n} gold');
+    expect(t('hud.mines')).toBe('Mines {n}');
   });
 
   it('switches to Chinese once its table is loaded', async () => {
