@@ -27,7 +27,7 @@ flat junk_log junk_log_e1
 flat junk_anchor junk_anchor_e1
 flat junk_barrel junk_barrel_e1
 flat mine mine_e1
-flat crane crane_e2
+flat winch winch_e1
 flat hook hook_e1
 flat captain captain_e1
 

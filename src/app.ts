@@ -6,8 +6,9 @@ import { WebAudioOut } from './audio/engine';
 import { Sound } from './audio/sound';
 import { FIRST_SEED } from './game/guide/firstSeed';
 import { Guide } from './game/guide/guide';
-import { bindKeys } from './game/input';
-import { Session, type SessionOptions } from './game/session';
+import { bindKeys, eventAge } from './game/input';
+import { startRecording } from './game/rec/wire';
+import { SEEN_MS, Session, type SessionOptions } from './game/session';
 import { urlSwitches } from './game/switches';
 import { detectLocale, loadLocale, setLocale } from './i18n';
 import type { Platform } from './platform/types';
@@ -20,15 +21,17 @@ import { waitForSize } from './view/waitForSize';
 /** The player's language pick, in the platform's storage. */
 export const LANG_KEY = 'tidehook.lang';
 
-/** ?seed, ?speed and ?autoplay (dev builds only; urlSwitches drops them in a release). */
+/** ?seed, ?speed, ?autoplay and ?lag (dev builds only; urlSwitches drops them in a release). */
 export function sessionOptions(params: URLSearchParams, now: number): SessionOptions {
   const seed = Number.parseInt(params.get('seed') ?? '', 10);
   const speed = Number.parseFloat(params.get('speed') ?? '');
   const auto = params.get('autoplay');
+  const lag = Number.parseFloat(params.get('lag') ?? '');
   return {
     seed: Number.isSafeInteger(seed) ? seed : now % 1_000_000,
     speed: speed > 0 && speed <= 20 ? speed : 1,
     autoplay: auto === null ? null : auto || 'good',
+    lagMs: lag >= 0 && lag <= 150 ? lag : SEEN_MS,
   };
 }
 
@@ -64,7 +67,10 @@ export async function boot(platform: Platform): Promise<Application> {
   // a tap anywhere that no button took casts (or starts, or resumes)
   app.stage.eventMode = 'static';
   app.stage.hitArea = app.screen;
-  app.stage.on('pointerdown', () => session.tap());
+  app.stage.on('pointerdown', (e) => {
+    const n = e.nativeEvent;
+    session.tap(eventAge('timeStamp' in n ? n.timeStamp : performance.now()));
+  });
   const out = new WebAudioOut();
   out.listen(window);
   const sound = new Sound(out, platform.storage);
@@ -92,10 +98,15 @@ export async function boot(platform: Platform): Promise<Application> {
   layout();
   app.renderer.on('resize', layout);
 
+  const record = startRecording(params, session, () => {
+    const { width: w, height: h } = app.screen;
+    return { w, h, wide: fitDesign(w, h).wide };
+  }, __TH_BUILD__, opts.lagMs);
   let playing = false;
   app.ticker.add((tk) => {
     session.update(tk.deltaMS);
     const events = scene?.draw(tk.deltaMS) ?? session.drain();
+    record?.(tk.deltaMS, events);
     const now = session.mode === 'play' && !session.paused;
     const ms = performance.now();
     sound.setPaused(session.mode === 'play' && session.paused);

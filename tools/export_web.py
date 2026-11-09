@@ -3,7 +3,7 @@ write them to art/web, the sources tools/to_webp.py turns into public/art.
 usage: python tools/export_web.py
 A monster or a catch is at most ~140 design units across (a brute, r 19, on a 1080-wide portrait
 lane at 2.25 units per world unit), ~50 css px on a phone, so 192 px on the long side is sharp at a
-device pixel ratio of 3. The crane and the captain are drawn bigger.
+device pixel ratio of 3. The winch and the captain are drawn bigger.
 Also writes src/view/artFit.json: each sprite's size and the radius of a circle with its opaque
 area, in its own pixels, so the view sizes a sprite by area (docs/00-art-direction.md section 6)."""
 import json
@@ -15,7 +15,7 @@ from PIL import Image
 
 ROOT = Path(__file__).parent.parent
 SRC, OUT = ROOT / "art/cut", ROOT / "art/web"
-LONG = {"crane": 320, "captain": 480}
+LONG = {"winch": 320, "captain": 480}
 OUT.mkdir(exist_ok=True)
 fit = {}
 for f in sorted(SRC.glob("*.png")):

@@ -49,3 +49,7 @@ export const CATCH = {
   chest: 0xe08a2e,
   junk: 0x9aa3a8,
 } as const;
+
+/** A hit point the hook's grip cannot lift: cold steel, drawn square (art direction section 3:
+ *  colour is never the only cue). */
+export const HEAVY = 0x8a9bb0;

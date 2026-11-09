@@ -71,3 +71,14 @@ export function step(m: Monster, d: number): Step {
       return { up: hop * 0.14, rot: Math.cos(s) * 0.09, sx: 1, sy: 0.95 + hop * 0.06 };
   }
 }
+
+/** At most this many hit point pips under a monster. */
+const MAX_PIPS = 12;
+
+/** The pips under a monster of `hp` hit points: how many, and how many of the last ones are over
+ *  the hook's grip. While any are, a cast bounces off it (monsters.ts liftable); hits knock the
+ *  heavy ones off first, and a Grip card turns them light. */
+export function pips(hp: number, grip: number): { n: number; heavy: number } {
+  const n = Math.min(hp, MAX_PIPS);
+  return { n, heavy: Math.min(n, Math.max(0, hp - grip)) };
+}

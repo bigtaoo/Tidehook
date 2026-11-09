@@ -15,13 +15,22 @@ import { mineBlast, throwJunk } from './throw';
 import type { Grab, World } from './world';
 
 const H = B.hook;
+/** The most swing a tap can look back over, ticks (Session.tap: the screen and the finger lag). */
+const BACK_TICKS = 5;
 
-/** The player's one action: cast the hook, or throw the junk in hand. False when not ready. */
-export function fire(w: World): boolean {
+/** The player's one action: cast the hook, or throw the junk in hand. False when not ready.
+ *  `back` (brads of swing phase, at most BACK_TICKS' worth) aims where the hook was that long ago:
+ *  the angle the player saw when they tapped, as the screen and the touch run a little behind. */
+export function fire(w: World, back = 0): boolean {
   const h = w.hook;
   if (w.phase !== 'wave' || h.st !== 'swing') return false;
-  if (w.held) throwJunk(w);
+  const ph = normBrad(h.ph - Math.min(Math.max(back, 0), H.swingRate * BACK_TICKS));
+  const ang = muldiv(w.up.swing, sinB(ph), 1000);
+  if (w.held) throwJunk(w, ang);
   else {
+    // the swing picks up from here when the hook is back, so it does not jump
+    h.ph = ph;
+    h.ang = ang;
     h.st = 'out';
     h.len = H.startLen;
     h.grabs = [];

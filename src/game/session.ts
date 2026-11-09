@@ -4,7 +4,10 @@
 // No Pixi: the view reads `world`, `prev` and the drained events to draw.
 
 import { Pilot } from '../sim/bot/bot';
+import { B } from '../sim/balance';
 import type { SimEvent } from '../sim/events';
+import { TICK_RATE } from '../sim/math/fixed';
+import { BRAD_FULL } from '../sim/math/trig';
 import { buyCard, buyMine, buyRepair, fire, nextWave, reroll, startGame, step } from '../sim/step';
 import type { World } from '../sim/world';
 import { FixedStep } from '../view/fixedStep';
@@ -20,6 +23,32 @@ export interface SessionOptions {
   autoplay: string | null;
   /** The first game's seed, when it differs from `seed` (a new player's, guide/firstSeed.ts). */
   firstSeed?: number;
+  /** How long a tap comes after the picture it answers was drawn, ms (SEEN_MS; ?lag). Unset (the
+   *  headless tests and bots): a tap casts along the aim as it is in the sim. */
+  lagMs?: number;
+}
+
+/** How much further back than the drawn aim a tap looks, ms, for the time the screen takes to show
+ *  a frame and report a finger. 0: the tap recorder (src/game/rec/) showed players tapping right
+ *  on the aim as drawn, their eye's lead on a swinging line making up the screen's lag; at 50 ms
+ *  casts went some 5 degrees behind it and half as many hit. What stays is the part of a tick
+ *  the view draws behind the sim and the time the event waited (Session.lookBack). */
+export const SEEN_MS = 0;
+
+/** One tap in a game, for the dev tap recorder (recorder.ts). Angles in brads. */
+export interface TapInfo {
+  /** Whether it cast or threw (false: the hook was out, or not in a wave). */
+  fired: boolean;
+  ageMs: number;
+  alpha: number;
+  /** The aim as drawn on the last frame, the sim's before the tap, and the cast's. */
+  shown: number;
+  sim: number;
+  cast: number;
+  back: number;
+  /** Which way the swing was going: 1 to +w, -1 to -w. */
+  dir: number;
+  threw: boolean;
 }
 
 /** A lane point a tick ago, FP. */
@@ -41,6 +70,8 @@ export class Session {
   /** Every monster's and item's position before the last step, by id; the hook's aim and rope. */
   readonly prev = new Map<number, Was>();
   prevHook = { ang: 0, len: 0 };
+  /** Hears every tap in a game (the dev tap recorder), or null. */
+  tapWatch: ((t: TapInfo) => void) | null = null;
   /** How many games have started. */
   games = 0;
   private readonly fixed = new FixedStep();
@@ -118,15 +149,44 @@ export class Session {
     return out;
   }
 
-  /** A tap on the lane or Space: start, resume, or cast. */
-  tap(): void {
+  /** A tap on the lane or Space: start, resume, or cast. `ageMs`: how long the input waited before
+   *  it got here (the event's own time stamp). */
+  tap(ageMs = 0): void {
     if (this.mode === 'over' && this.overMs < OVER_LOCK_MS) return;
     if (this.mode !== 'play') this.start();
     else if (this.paused) this.paused = false;
     else if (!this.pilot) {
-      if (fire(this.world)) this.guide?.tap();
+      const h = this.world.hook;
+      const before = { ang: h.ang, prev: this.prevHook.ang, alpha: this.alpha, threw: !!this.world.held };
+      const back = this.lookBack(ageMs);
+      const fired = fire(this.world, back);
+      if (fired) {
+        this.guide?.tap();
+        // the rope starts on the cast's own angle, not swept from last tick's
+        this.prevHook = { ...this.prevHook, ang: h.ang };
+      }
+      this.tapWatch?.({
+        fired,
+        ageMs,
+        alpha: before.alpha,
+        shown: before.prev + (before.ang - before.prev) * before.alpha,
+        sim: before.ang,
+        cast: !fired ? before.ang : before.threw ? shotAng(this.world) : h.ang,
+        back,
+        dir: Math.sign(before.ang - before.prev) || 1,
+        threw: fired && before.threw,
+      });
       this.collect();
     }
+  }
+
+  /** The swing between the aim the player saw and the sim's, brads of phase: the part of a tick the
+   *  view drew behind the sim (it draws `alpha` of the way from the last tick), plus the lag. */
+  private lookBack(ageMs: number): number {
+    const lag = this.opts.lagMs;
+    if (lag === undefined) return 0;
+    const ticks = 1 - this.alpha + ((lag + ageMs) * TICK_RATE * this.opts.speed) / 1000;
+    return Math.round(ticks * B.hook.swingRate);
   }
 
   togglePause(): void {
@@ -187,4 +247,10 @@ export class Session {
     for (const g of w.hook.grabs) if (g.t === 'item') this.prev.set(g.item.id, { d: g.item.d, w: g.item.w });
     this.prevHook = { ang: w.hook.ang, len: w.hook.len };
   }
+}
+
+/** The newest thrown junk's heading, brads. */
+function shotAng(w: World): number {
+  const sh = w.shots[w.shots.length - 1];
+  return Math.round((Math.atan2(sh.uw, sh.ud) / (2 * Math.PI)) * BRAD_FULL);
 }

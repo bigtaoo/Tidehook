@@ -160,7 +160,7 @@ export function updateMonsters(w: World): void {
     }
     if (w.calm === 2 && m.d <= CALM_D) continue;
     step(w, m, td, tw, spec.swims);
-    if (dist(m.d - B.crane.d, m.w - B.crane.w) < B.crane.reach + m.r) {
+    if (reached(m, spec.swims)) {
       w.mons.splice(w.mons.indexOf(m), 1);
       w.hp -= spec.dmg;
       w.st.leak++;
@@ -173,8 +173,17 @@ export function updateMonsters(w: World): void {
   }
 }
 
-/** One tick of crawling toward (td, tw); a swimmer weaves across its path as it goes. */
+/** Whether `m` has reached the dock: a walker climbs on and goes for the crane; a swimmer stays in
+ *  the water and bites the dock's edge wherever it meets it. */
+function reached(m: Monster, swims: boolean): boolean {
+  if (swims) return m.d - m.r <= B.dock.edge;
+  return dist(m.d - B.crane.d, m.w - B.crane.w) < B.crane.reach + m.r;
+}
+
+/** One tick of crawling toward (td, tw); a swimmer weaves across its path as it goes, and once in
+ *  the lane its weave never carries it back out over a side. */
 function step(w: World, m: Monster, td: number, tw: number, swims: boolean): void {
+  const inLane = m.w >= m.r && m.w <= LANE_WIDTH_FP - m.r;
   const dd = td - m.d;
   const dw = tw - m.w;
   const len = dist(dd, dw) || 1;
@@ -193,4 +202,5 @@ function step(w: World, m: Monster, td: number, tw: number, swims: boolean): voi
   }
   m.d += muldiv(vd, m.speed, 1000);
   m.w += muldiv(vw, m.speed, 1000);
+  if (swims && inLane) m.w = clamp(m.w, m.r, LANE_WIDTH_FP - m.r);
 }

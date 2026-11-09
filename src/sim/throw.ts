@@ -15,10 +15,10 @@ import type { Monster, World } from './world';
 
 const T = B.throw;
 
-/** Throws the junk in the crane's hand along the current aim. */
-export function throwJunk(w: World): void {
-  const ud = cosB(w.hook.ang);
-  const uw = sinB(w.hook.ang);
+/** Throws the junk in the crane's hand along `ang` (brads; the current aim by default). */
+export function throwJunk(w: World, ang = w.hook.ang): void {
+  const ud = cosB(ang);
+  const uw = sinB(ang);
   w.shots.push({
     d: B.crane.d + muldiv(ud, T.offset, 1000),
     w: B.crane.w + muldiv(uw, T.offset, 1000),

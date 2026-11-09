@@ -28,5 +28,7 @@ The gameplay reference is `prototype/v2.html` with its balance sim `prototype/to
 Run it before every commit. The balance guard (`npm run check:balance`, scripts/guard/) plays the
 bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
 
-URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`; `?seed`, `?speed`,
-`?autoplay` arrive with the sim.
+URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`, `?seed`, `?speed`,
+`?autoplay`, `?lag` (ms a tap looks back, default 0; see docs/01-tech-plan.md section 5),
+`?rec=0` (turns off the tap recorder, on by default in dev: it writes recordings/*.ndjson, read with
+`node scripts/rec/analyze.mjs`).

@@ -5,3 +5,4 @@ tidehook-*.zip
 *.local
 coverage/
 art/raw/*.log
+recordings/

@@ -12,17 +12,23 @@ export function bindKeys(
 ): () => void {
   const onKey = (e: KeyboardEvent) => {
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (handleKey(s, e.key) || extra(e.key.toLowerCase())) e.preventDefault();
+    if (handleKey(s, e.key, eventAge(e.timeStamp)) || extra(e.key.toLowerCase())) e.preventDefault();
   };
   target.addEventListener('keydown', onKey);
   return () => target.removeEventListener('keydown', onKey);
 }
 
-/** Runs the key's command; false for a key the game does not use. */
-export function handleKey(s: Session, key: string): boolean {
+/** How long ago an input event happened, ms, from its time stamp (capped: a stamp from a busy
+ *  or suspended page says nothing about what the player saw). */
+export function eventAge(timeStamp: number, now = performance.now()): number {
+  return Math.min(Math.max(now - timeStamp, 0), 100);
+}
+
+/** Runs the key's command; false for a key the game does not use. `ageMs`: see Session.tap. */
+export function handleKey(s: Session, key: string, ageMs = 0): boolean {
   switch (key.toLowerCase()) {
     case ' ':
-      s.tap();
+      s.tap(ageMs);
       return true;
     case 'enter':
       if (!s.nextWave()) s.tap();
