@@ -8,6 +8,7 @@ import type { SimEvent } from '../sim/events';
 import { buyCard, buyMine, buyRepair, fire, nextWave, reroll, startGame, step } from '../sim/step';
 import type { World } from '../sim/world';
 import { FixedStep } from '../view/fixedStep';
+import type { Guide } from './guide/guide';
 
 export type Mode = 'title' | 'play' | 'over';
 
@@ -17,6 +18,8 @@ export interface SessionOptions {
   speed: number;
   /** A bot persona (bot.ts) that plays instead of the player, or null. */
   autoplay: string | null;
+  /** The first game's seed, when it differs from `seed` (a new player's, guide/firstSeed.ts). */
+  firstSeed?: number;
 }
 
 /** A lane point a tick ago, FP. */
@@ -46,8 +49,12 @@ export class Session {
   private events: SimEvent[] = [];
   private overMs = 0;
 
-  constructor(readonly opts: SessionOptions) {
-    this.world = startGame(opts.seed);
+  /** The tutorial; null for the bot and in tests that do not ask for it. */
+  constructor(
+    readonly opts: SessionOptions,
+    readonly guide: Guide | null = null,
+  ) {
+    this.world = startGame(opts.firstSeed ?? opts.seed);
   }
 
   /** How far into the next tick to draw, 0 to 1. */
@@ -63,12 +70,20 @@ export class Session {
     this.paused = false;
     this.pilot = this.opts.autoplay ? new Pilot(this.world.seed, this.opts.autoplay) : null;
     this.shopWait = 0;
+    this.guide?.begin();
+    this.guide?.update(this.world, true, 0);
     this.snapshot();
     this.collect();
   }
 
   /** Runs the ticks `frameMs` of real time is worth; returns how many ran. */
   update(frameMs: number): number {
+    const n = this.run(frameMs);
+    this.guide?.update(this.world, this.mode === 'play' && !this.paused, frameMs);
+    return n;
+  }
+
+  private run(frameMs: number): number {
     if (this.mode === 'over') this.overMs += frameMs;
     if (this.mode !== 'play' || this.paused) return 0;
     const n = this.fixed.advance(frameMs, this.opts.speed);
@@ -86,7 +101,7 @@ export class Session {
       this.pilot?.tick(w);
       this.collect();
       step(w);
-      this.events.push(...w.events);
+      this.take(w.events);
       if (w.phase === 'over') {
         this.mode = 'over';
         this.overMs = 0;
@@ -109,7 +124,7 @@ export class Session {
     if (this.mode !== 'play') this.start();
     else if (this.paused) this.paused = false;
     else if (!this.pilot) {
-      fire(this.world);
+      if (fire(this.world)) this.guide?.tap();
       this.collect();
     }
   }
@@ -155,8 +170,13 @@ export class Session {
   /** Takes the events a command raised outside a step (a cast, a throw, the wave starting), which
    *  the next step would otherwise clear unseen. */
   private collect(): void {
-    this.events.push(...this.world.events);
+    this.take(this.world.events);
     this.world.events = [];
+  }
+
+  private take(events: SimEvent[]): void {
+    this.events.push(...events);
+    this.guide?.observe(events, this.world);
   }
 
   private snapshot(): void {

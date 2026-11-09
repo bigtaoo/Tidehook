@@ -54,6 +54,7 @@ export function startWave(w: World): void {
 /** Spawns the queue on its timer, and ends the wave once the lane has been clear a moment. */
 export function updateWave(w: World): void {
   if (w.queue.length) {
+    if (w.calm === 1 || (w.calm === 2 && w.mons.length)) return;
     if (--w.spawnT <= 0) {
       spawn(w, w.queue.shift() as MonsterKind);
       const jitter = V.jitterMin + w.rng.spawn.int(V.jitterMax - V.jitterMin);

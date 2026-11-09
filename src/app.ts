@@ -4,6 +4,8 @@
 import { Application } from 'pixi.js';
 import { WebAudioOut } from './audio/engine';
 import { Sound } from './audio/sound';
+import { FIRST_SEED } from './game/guide/firstSeed';
+import { Guide } from './game/guide/guide';
 import { bindKeys } from './game/input';
 import { Session, type SessionOptions } from './game/session';
 import { urlSwitches } from './game/switches';
@@ -52,7 +54,13 @@ export async function boot(platform: Platform): Promise<Application> {
   if (await table) setLocale(want);
   await art;
 
-  const session = new Session(sessionOptions(params, Date.now()));
+  const opts = sessionOptions(params, Date.now());
+  // the tutorial (docs/02-onboarding.md): a new player's first game starts at once, on the seed
+  // picked for it, with no title to tap through
+  const guide = opts.autoplay ? null : new Guide(platform.storage);
+  if (guide?.fresh && !params.has('seed')) opts.firstSeed = FIRST_SEED;
+  const session = new Session(opts, guide);
+  if (guide?.fresh) session.start();
   // a tap anywhere that no button took casts (or starts, or resumes)
   app.stage.eventMode = 'static';
   app.stage.hitArea = app.screen;

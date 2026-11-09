@@ -1,10 +1,12 @@
 // Everything that moves on the lane: the catch, the monsters with their hit points as pips, the
 // hook on its rope with what it carries (and a mine riding the rope while one is stocked), thrown
-// junk, the crane with the junk in its hand and, at rest, the aim. Bodies are sprites (art.ts);
+// junk, the crane with the junk in its hand and, at rest, the aim (gold when the tutorial's step
+// would be met by a tap now). Bodies are sprites (art.ts);
 // a sprite that is not loaded falls back to its grey-box shape. Positions are drawn `alpha` of
 // the way from where they were a tick ago (Session.prev) to where they are.
 
 import { Container, Graphics } from 'pixi.js';
+import { aimFinds } from '../../game/guide/guide';
 import type { Session } from '../../game/session';
 import { B } from '../../sim/balance';
 import { FP } from '../../sim/math/fixed';
@@ -77,7 +79,10 @@ export class Actors extends Container {
     const hub = toDesign(f, CRANE_D, CRANE_W);
     if (h.st === 'swing') {
       const end = toDesign(f, CRANE_D + Math.cos(ang) * AIM_LEN, CRANE_W + Math.sin(ang) * AIM_LEN);
-      g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color: w.held ? P.red : P.cream, width: 4 * k, alpha: 0.45 });
+      // the tutorial lights it gold while a tap now would get what its step asks for
+      const gold = aimFinds(w, s.guide?.cue?.want ?? null);
+      const color = gold ? P.brassLight : w.held ? P.red : P.cream;
+      g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color, width: (gold ? 7 : 4) * k, alpha: gold ? 0.95 : 0.45 });
     } else {
       const tip = toDesign(f, CRANE_D + Math.cos(ang) * len, CRANE_W + Math.sin(ang) * len);
       g.moveTo(hub.x, hub.y).lineTo(tip.x, tip.y).stroke({ color: P.rope, width: 4 * k });

@@ -9,6 +9,9 @@ import type { SimEvent } from '../../sim/events';
 import { frameFor, type Frame } from '../hud/frame';
 import { Hud } from '../hud/hud';
 import { Overlay } from '../hud/overlay';
+import { Pointer } from '../hud/pointer';
+import { topCard } from '../../game/guide/shopPick';
+import { t } from '../../i18n';
 import { ShopPanel } from '../hud/shop';
 import type { Fit } from '../viewport';
 import { Actors } from './actors';
@@ -30,6 +33,7 @@ export class Scene extends Container {
   readonly hud: Hud;
   readonly shop: ShopPanel;
   readonly overlay: Overlay;
+  readonly pointer: Pointer;
   private readonly actors: Actors;
   private readonly fx: Fx;
   private games = -1;
@@ -53,7 +57,8 @@ export class Scene extends Container {
       denied: () => ui.shop(false),
     });
     this.overlay = new Overlay(fr);
-    this.addChild(drawField(fr.field), this.actors, this.fx, this.hud, this.shop, this.overlay);
+    this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());
+    this.addChild(drawField(fr.field), this.actors, this.fx, this.hud, this.shop, this.pointer, this.overlay);
     this.scale.set(fit.scale);
     this.position.set(fit.x, fit.y);
   }
@@ -73,8 +78,13 @@ export class Scene extends Container {
     this.fx.update(s.paused ? 0 : frameMs);
     this.hud.update(w, this.ui.soundOn());
     const shop = s.mode === 'play' && w.phase === 'shop' && !s.paused;
-    this.shop.update(w, shop, s.shopping());
-    this.overlay.update(s.mode, s.paused, shop, w.wave, events, frameMs);
+    const g = s.guide;
+    this.shop.update(w, shop, s.shopping(), g?.tagOn && s.shopping() ? topCard(w) : null);
+    this.pointer.update(s, frameMs);
+    // while the tutorial still has the throw to teach, it says so itself, not the banner
+    const hints = g && !g.done.has('throw') ? events.filter((e) => e.e !== 'held') : events;
+    const lesson = g?.lesson ? t(g.lesson) : null;
+    this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson);
     return events;
   }
 }

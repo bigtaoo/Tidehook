@@ -5,11 +5,14 @@ import { B, type MonsterKind } from './balance';
 import { emit } from './events';
 import { dropFish } from './items';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from './lane';
-import { clamp, dist, muldiv, roundDiv, times } from './math/fixed';
+import { clamp, dist, muldiv, roundDiv, times, toFp } from './math/fixed';
 import { BRAD_FULL, sinB } from './math/trig';
 import { nextId, type Item, type Monster, type World } from './world';
 
 const M = B.monster;
+/** Under the tutorial's hold (World.calm 2) monsters halt this far down the lane, FP: well in
+ *  reach of the hook, where the aim crosses a crab for longest short of crowding the dock. */
+export const CALM_D = toFp(300);
 
 export function spawn(w: World, kind: MonsterKind): Monster {
   const spec = B.monsters[kind];
@@ -155,6 +158,7 @@ export function updateMonsters(w: World): void {
         tw = near.it.w;
       }
     }
+    if (w.calm === 2 && m.d <= CALM_D) continue;
     step(w, m, td, tw, spec.swims);
     if (dist(m.d - B.crane.d, m.w - B.crane.w) < B.crane.reach + m.r) {
       w.mons.splice(w.mons.indexOf(m), 1);
