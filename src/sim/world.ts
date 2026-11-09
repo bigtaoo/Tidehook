@@ -7,6 +7,7 @@ import type { SimEvent } from './events';
 import { Prng } from './math/prng';
 
 export type Phase = 'wave' | 'shop' | 'over';
+export type Calm = 0 | 1 | 2;
 
 /** Something in the water the hook can catch: a fish, a chest (a big fish) or junk to throw. */
 export interface Item {
@@ -122,6 +123,9 @@ export interface World {
   rerolls: number;
   /** Monster kinds already introduced. */
   seen: MonsterKind[];
+  /** The tutorial's hold (docs/02-onboarding.md): 0 none; 1 no spawns; 2 one monster at a time,
+   *  and it halts at CALM_D. Set from outside the step by the guide, never by the sim itself. */
+  calm: Calm;
   nextId: number;
   st: Tally;
   /** One stream per concern, so a change in one does not shift the others. */
@@ -158,6 +162,7 @@ export function newWorld(seed: number): World {
     cards: [],
     rerolls: 0,
     seen: [],
+    calm: 0,
     nextId: 1,
     st: newTally(),
     rng: { spawn: new Prng(seed * 3 + 1), catch: new Prng(seed * 3 + 2), shop: new Prng(seed * 3 + 3) },

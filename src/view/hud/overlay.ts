@@ -22,6 +22,7 @@ type Cover = 'title' | 'paused' | 'over' | null;
 export class Overlay extends Container {
   private cover: Cover = null;
   private wave = 0;
+  private lesson: string | null = null;
   private readonly banner = new Container();
   private readonly queue: string[] = [];
   private bannerMs = 0;
@@ -44,12 +45,14 @@ export class Overlay extends Container {
     this.banner.removeChildren().forEach((c) => c.destroy());
   }
 
-  /** `shop`: the shop is open; the banner waits behind it (in landscape they share the top). */
-  update(mode: Mode, paused: boolean, shop: boolean, wave: number, events: readonly SimEvent[], frameMs: number): void {
+  /** `shop`: the shop is open; the banner waits behind it (in landscape they share the top), and
+   *  behind the tutorial's words while `quiet`. `lesson`: a line for the game over card. */
+  update(mode: Mode, paused: boolean, shop: boolean, wave: number, events: readonly SimEvent[], frameMs: number, quiet = false, lesson: string | null = null): void {
     const cover: Cover = mode === 'title' ? 'title' : mode === 'over' ? 'over' : paused ? 'paused' : null;
-    if (cover !== this.cover || (cover === 'over' && wave !== this.wave)) {
+    if (cover !== this.cover || (cover === 'over' && (wave !== this.wave || lesson !== this.lesson))) {
       this.cover = cover;
       this.wave = wave;
+      this.lesson = lesson;
       this.drawCover();
     }
     for (const ev of events) {
@@ -57,8 +60,8 @@ export class Overlay extends Container {
       else if (ev.e === 'held') this.hint('held', t('hints.held'));
       else if (ev.e === 'eatStart') this.hint('eat', t('hints.eat'));
     }
-    this.banner.visible = !shop;
-    if (mode !== 'play' || shop) return;
+    this.banner.visible = !shop && !quiet;
+    if (mode !== 'play' || shop || quiet) return;
     if (!paused) this.bannerMs -= frameMs;
     if (this.bannerMs <= 0) {
       const next = this.queue.shift();
@@ -106,7 +109,12 @@ export class Overlay extends Container {
         ? [[t('title'), 120, P.brassLight], [t('boot.tapToStart'), 60, P.cream]]
         : this.cover === 'paused'
           ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream]]
-          : [[t('overlay.over'), 96, P.red], [t('overlay.reached', { n: this.wave }), 60, P.cream], [t('overlay.again'), 56, P.cream]];
+          : [
+              [t('overlay.over'), 96, P.red],
+              [t('overlay.reached', { n: this.wave }), 60, P.cream],
+              ...(this.lesson ? [[this.lesson, 52, P.brassLight] as [string, number, number]] : []),
+              [t('overlay.again'), 56, P.cream],
+            ];
     const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
     let maxW = Math.min(f.w, fit.w) - 80;
     let y = mid.y - (lines.length - 1) * 70;

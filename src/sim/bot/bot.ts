@@ -1,14 +1,13 @@
 // Scripted players for the balance guard, ported from prototype/tools/sim2.js: they look along
-// the current aim (a ray like the prototype's rayFirst), decide whether to tap, and shop by a
+// the current aim (ray.ts, the prototype's rayFirst), decide whether to tap, and shop by a
 // fixed priority list. Deterministic: their reaction time is in ticks and their aim error comes
 // from their own Prng, so a seed always plays the same game.
 
 import { B, radToBrad, type Stats } from '../balance';
-import { hitAt, type Target } from '../collide';
 import { liftable } from '../monsters';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from '../lane';
+import { rayFirst } from '../ray';
 import { dist, TICK_RATE, toFp } from '../math/fixed';
-import { cosB, sinB } from '../math/trig';
 import { Prng } from '../math/prng';
 import { buyCard, buyMine, buyRepair, mineCost, repairCost, reroll } from '../shop';
 import { fire, nextWave, startGame, step } from '../step';
@@ -50,12 +49,8 @@ export function persona(name: string): Persona {
 }
 
 /** Upgrade ids in the order the bot buys them. */
-const PRIO = ['grip', 'heft', 'barb', 'magnet', 'winch', 'grounds', 'multi', 'cast', 'pierce', 'blast', 'planks', 'swing', 'bait'];
+export const PRIO = ['grip', 'heft', 'barb', 'magnet', 'winch', 'grounds', 'multi', 'cast', 'pierce', 'blast', 'planks', 'swing', 'bait'];
 
-const RAY_START = toFp(16);
-const RAY_END = toFp(1200);
-const RAY_STEP = toFp(6);
-const RAY_MON = toFp(15);
 const NEAR = toFp(300);
 const SEEN_BEYOND = toFp(20);
 const SEEN_SIDE = toFp(5);
@@ -63,20 +58,6 @@ const CLOSE_JUNK = toFp(200);
 const CLOSE_MON = toFp(220);
 const REROLL_ABOVE = 60;
 const SPAM_CHANCE = 300;
-
-/** The first thing along aim `ang` (brads), and how far out; the prototype's rayFirst. */
-export function rayFirst(w: World, ang: number, monsOnly: boolean): { o: Target; len: number } | null {
-  const ud = cosB(ang);
-  const uw = sinB(ang);
-  for (let len = RAY_START; len < RAY_END; len += RAY_STEP) {
-    const d = B.crane.d + Math.trunc((ud * len) / 1000);
-    const pw = B.crane.w + Math.trunc((uw * len) / 1000);
-    if (pw < -B.hook.margin || pw > LANE_WIDTH_FP + B.hook.margin || d > LANE_LEN_FP + B.hook.margin) return null;
-    const o = hitAt(w, d, pw, monsOnly ? RAY_MON : B.hook.tip, monsOnly);
-    if (o) return { o, len };
-  }
-  return null;
-}
 
 function shop(w: World, p: Persona): void {
   while (w.hp <= w.maxHp - 3 && buyRepair(w));

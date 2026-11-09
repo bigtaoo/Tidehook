@@ -51,6 +51,21 @@ export const zh: Table = {
     held: '手里有破烂！再点一下，沿瞄准线扔出去。',
     eat: '怪会停下来啃鱼：趁它啃的时候钩它！',
   },
+  guide: {
+    cast: '瞄准线发光时点击',
+    crab: '钩住螃蟹！',
+    throw: '点击扔出破烂',
+    junk: '钩破烂砸乌龟',
+    skip: '跳过教程',
+    skipSure: '再点一次跳过',
+    topPick: '首选',
+    lesson: {
+      junk: '下次试试：拿破烂砸乌龟。',
+      cards: '下次试试：每波之间买卡。',
+      fish: '下次试试：先把鱼钓走，别让怪物吃掉。',
+      near: '下次试试：先钩离码头最近的怪物。',
+    },
+  },
   fx: { coins: '+{n}' },
   overlay: {
     paused: '暂停中',

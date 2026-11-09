@@ -51,6 +51,21 @@ export const en = {
     held: 'Junk in hand! Tap again to throw it along the aim.',
     eat: 'Monsters stop to eat fish: hook them while they chew!',
   },
+  guide: {
+    cast: 'Tap when the line glows',
+    crab: 'Hook the crab!',
+    throw: 'Tap to throw the junk',
+    junk: 'Hook junk for the turtle',
+    skip: 'Skip tutorial',
+    skipSure: 'Tap again to skip',
+    topPick: 'Top pick',
+    lesson: {
+      junk: 'Next time: throw junk at turtles.',
+      cards: 'Next time: buy cards between waves.',
+      fish: 'Next time: catch the fish before monsters eat them.',
+      near: 'Next time: hook the closest monster first.',
+    },
+  },
   fx: { coins: '+{n}' },
   overlay: {
     paused: 'Paused',
