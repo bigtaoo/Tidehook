@@ -6,12 +6,21 @@ import type { MonsterKind } from '../../sim/balance';
 import { fishValue } from '../../sim/items';
 import { FP } from '../../sim/math/fixed';
 import type { Item, Monster, World } from '../../sim/world';
-import type { ArtName } from '../art';
+import { acrossHalf, type ArtName } from '../art';
 import { BANDS } from './field';
 
 /** The sprite's opaque area is a circle this many times the thing's hit radius: a little bigger
  *  than the hit circle, so claws and fins can stick out of it. */
 export const LOOK_SCALE = 1.5;
+/** A sprite never reaches further across the lane than this many hit radii, so a wide one (the
+ *  turtle head-on, a log lying across) does not look touched where the hook cannot catch it. */
+export const ACROSS_MAX = 2;
+
+/** The opaque-area radius to draw sprite `n` at for a thing of hit radius `r` (any unit):
+ *  LOOK_SCALE times it, cut down for a sprite wider across the lane than ACROSS_MAX allows. */
+export function lookRadius(n: ArtName, r: number, wide: boolean): number {
+  return r * Math.min(LOOK_SCALE, ACROSS_MAX / acrossHalf(n, wide));
+}
 
 const FISH: readonly ArtName[] = ['fish_coral', 'fish_orange', 'fish_gold'];
 const JUNK: readonly ArtName[] = ['junk_log', 'junk_anchor', 'junk_barrel'];

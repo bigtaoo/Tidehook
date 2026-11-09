@@ -36,6 +36,13 @@ export function areaScale(n: ArtName, radius: number): number {
   return radius / FIT[n].r;
 }
 
+/** How far sprite `n` reaches across the lane from its middle, per unit of opaque-area radius:
+ *  its half-width in portrait (the lane runs up the screen), its half-height in landscape. */
+export function acrossHalf(n: ArtName, wide: boolean): number {
+  const f = FIT[n];
+  return (wide ? f.h : f.w) / 2 / f.r;
+}
+
 /** Sprite `n` scaled to `height` design units with its anchor at (ax, ay); null when it is not
  *  loaded, and the caller leaves the space empty. For the HUD's pictures (the captain). */
 export function artSprite(n: ArtName, height: number, ax = 0.5, ay = 0.5): Sprite | null {

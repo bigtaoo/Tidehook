@@ -14,7 +14,8 @@ import { BRAD_FULL } from '../../sim/math/trig';
 import type { Item, Monster } from '../../sim/world';
 import { CATCH, MON, P } from '../kit/palette';
 import { toDesign, type Field } from '../orient';
-import { fishArt, LOOK_SCALE, monsterArt, step } from './look';
+import { areaScale, tex } from '../art';
+import { fishArt, lookRadius, monsterArt, step } from './look';
 import { SpritePool } from './sprites';
 
 const CRANE_D = B.crane.d / FP;
@@ -24,6 +25,10 @@ const AIM_LEN = 260;
 /** The crane's and the hook's drawn size, world units of area radius. */
 const CRANE_R = 36;
 const HOOK_R = 9;
+/** Where the hook sprite's mouth (inside its J) and its ring are, as a share of its height. The
+ *  mouth sits on the sim's tip, where it catches; the rope ends at the ring. */
+const HOOK_MOUTH = 0.72;
+const HOOK_RING = 0.13;
 const MINE_R = 9;
 const HELD_R = 11;
 const TAU = Math.PI * 2;
@@ -62,9 +67,10 @@ export class Actors extends Container {
     const time = (w.tick + a) / 30;
     const item = (it: Item, p: Pt) => {
       const bob = Math.sin(time * 2.2 + it.id) * 0.06;
-      const r = (it.r / FP) * k * LOOK_SCALE;
+      const art = fishArt(w, it);
+      const r = lookRadius(art, (it.r / FP) * k, f.wide);
       const pose = { rot: it.kind === 'junk' ? 0 : bob, flip: it.kind === 'fish' && !it.chest && it.id % 2 === 1 };
-      if (!bodies.put(fishArt(w, it), p.x, p.y, r, pose)) drawItemShape(g, it, p, k);
+      if (!bodies.put(art, p.x, p.y, r, pose)) drawItemShape(g, it, p, k);
     };
 
     for (const it of w.items) item(it, at(it.id, it.d, it.w));
@@ -85,14 +91,17 @@ export class Actors extends Container {
       g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color, width: (gold ? 7 : 4) * k, alpha: gold ? 0.95 : 0.45 });
     } else {
       const tip = toDesign(f, CRANE_D + Math.cos(ang) * len, CRANE_W + Math.sin(ang) * len);
-      g.moveTo(hub.x, hub.y).lineTo(tip.x, tip.y).stroke({ color: P.rope, width: 4 * k });
       const dir = Math.atan2(tip.y - hub.y, tip.x - hub.x);
-      if (w.mines > 0 && len > 30) {
+      // the hook hangs along the rope with its mouth on the tip, so it catches where it looks to
+      const hook = tex('hook');
+      const ring = hook ? (HOOK_MOUTH - HOOK_RING) * hook.height * areaScale('hook', HOOK_R * k) : 0;
+      const end = { x: tip.x - Math.cos(dir) * ring, y: tip.y - Math.sin(dir) * ring };
+      g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color: P.rope, width: 4 * k });
+      if (w.mines > 0 && len > 30 + ring / k) {
         const back = 24 * k;
-        bodies.put('mine', tip.x - Math.cos(dir) * back, tip.y - Math.sin(dir) * back, MINE_R * k);
+        bodies.put('mine', end.x - Math.cos(dir) * back, end.y - Math.sin(dir) * back, MINE_R * k);
       }
-      // the hook hangs along the rope, its ring on the rope's end
-      if (!bodies.put('hook', tip.x, tip.y, HOOK_R * k, { rot: dir - Math.PI / 2, ay: 0.12 })) {
+      if (!bodies.put('hook', tip.x, tip.y, HOOK_R * k, { rot: dir - Math.PI / 2, ay: HOOK_MOUTH })) {
         g.circle(tip.x, tip.y, 7 * k).fill(P.brassDark).stroke({ color: P.line, width: 2.5 * k });
       }
       for (const gr of h.grabs) if (gr.t === 'item') item(gr.item, at(gr.item.id, gr.item.d, gr.item.w));
@@ -101,7 +110,7 @@ export class Actors extends Container {
     for (const sh of w.shots) {
       const p = toDesign(f, sh.d / FP, sh.w / FP);
       const r = (B.catch.junkRadius / FP) * k;
-      if (!bodies.put('junk_barrel', p.x, p.y, r * LOOK_SCALE, { rot: (sh.d + sh.w) / FP / 12 })) {
+      if (!bodies.put('junk_barrel', p.x, p.y, lookRadius('junk_barrel', r, f.wide), { rot: (sh.d + sh.w) / FP / 12 })) {
         g.roundRect(p.x - r, p.y - r, r * 2, r * 2, r / 3).fill(CATCH.junk).stroke({ color: P.line, width: 2.5 * k });
       }
     }
@@ -126,7 +135,8 @@ export class Actors extends Container {
     const r = (m.r / FP) * k;
     const stunned = m.stun > 0;
     const st = stunned || m.grab ? { up: 0, rot: 0, sx: 1, sy: 1 } : step(m, p.d);
-    const drawn = bodies.put(monsterArt(m.kind, f.wide), p.x, p.y - st.up * r, r * LOOK_SCALE, {
+    const art = monsterArt(m.kind, f.wide);
+    const drawn = bodies.put(art, p.x, p.y - st.up * r, lookRadius(art, r, f.wide), {
       rot: st.rot + (m.grab ? Math.sin(p.x * 0.05) * 0.2 : 0),
       sx: st.sx,
       sy: st.sy,

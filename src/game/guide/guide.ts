@@ -232,10 +232,12 @@ export class Guide {
   }
 }
 
-/** Whether a cast (or throw) along the aim now would find what the cue wants. */
+/** Whether a cast (or throw) along the aim now would find what the cue wants: tested with the
+ *  radius that really hits (the hook's tip, or the thrown junk's), so the gold line never promises
+ *  a catch the hook would miss. */
 export function aimFinds(w: World, want: Want | null): boolean {
   if (!want || w.hook.st !== 'swing' || w.phase !== 'wave') return false;
-  const r = rayFirst(w, w.hook.ang, want === 'mon');
+  const r = rayFirst(w, w.hook.ang, want === 'mon', w.held ? B.throw.radius : B.hook.tip);
   if (!r) return false;
   if (want === 'mon') return r.o.t === 'mon';
   return r.o.t === 'item' && r.o.item.kind === want;
