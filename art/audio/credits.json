@@ -1,0 +1,433 @@
+{
+ "note": "Licence and provenance of every file in public/audio/. Written by tools/build_audio.py; edit that, not this.",
+ "license": "CC0-1.0 for every source; attribution is not required. The authors are listed anyway.",
+ "packs": {
+  "freepd": {
+   "name": "FreePD (archive.org item 'freepd')",
+   "author": "Bryan Teoh",
+   "url": "https://archive.org/details/freepd",
+   "license": "CC0-1.0",
+   "license_text": "licenses/freepd-LICENSE.txt"
+  },
+  "impact-sounds": {
+   "name": "Impact Sounds 1.0",
+   "author": "Kenney",
+   "url": "https://kenney.nl/assets/impact-sounds",
+   "license": "CC0-1.0",
+   "license_text": "licenses/impact-sounds-LICENSE.txt"
+  },
+  "interface-sounds": {
+   "name": "Interface Sounds 1.0",
+   "author": "Kenney",
+   "url": "https://kenney.nl/assets/interface-sounds",
+   "license": "CC0-1.0",
+   "license_text": "licenses/interface-sounds-LICENSE.txt"
+  },
+  "music-jingles": {
+   "name": "Music Jingles",
+   "author": "Kenney",
+   "url": "https://kenney.nl/assets/music-jingles",
+   "license": "CC0-1.0",
+   "license_text": "licenses/music-jingles-LICENSE.txt"
+  },
+  "sci-fi-sounds": {
+   "name": "Sci-fi Sounds 1.0",
+   "author": "Kenney",
+   "url": "https://kenney.nl/assets/sci-fi-sounds",
+   "license": "CC0-1.0",
+   "license_text": "licenses/sci-fi-sounds-LICENSE.txt"
+  }
+ },
+ "cues": [
+  {
+   "cue": "cast",
+   "why": "the winch's ratchet paying the rope out",
+   "files": [
+    {
+     "file": "audio/cast_0.mp3",
+     "source": "interface-sounds/scroll_001.ogg",
+     "gain_db": -8.1,
+     "duration_ms": 320.0,
+     "bytes": 4344
+    },
+    {
+     "file": "audio/cast_1.mp3",
+     "source": "interface-sounds/scroll_003.ogg",
+     "gain_db": -8.1,
+     "duration_ms": 320.0,
+     "bytes": 3822
+    }
+   ]
+  },
+  {
+   "cue": "reel",
+   "why": "one click of the winch reeling in; repeated slower and lower under weight",
+   "files": [
+    {
+     "file": "audio/reel_0.mp3",
+     "source": "interface-sounds/tick_001.ogg",
+     "gain_db": -13.2,
+     "duration_ms": 7.0,
+     "bytes": 1061
+    },
+    {
+     "file": "audio/reel_1.mp3",
+     "source": "interface-sounds/tick_002.ogg",
+     "gain_db": -12.8,
+     "duration_ms": 20.3,
+     "bytes": 1139
+    }
+   ]
+  },
+  {
+   "cue": "throw",
+   "why": "the junk leaving the crane",
+   "files": [
+    {
+     "file": "audio/throw_0.mp3",
+     "source": "impact-sounds/impactSoft_medium_000.ogg",
+     "gain_db": -7.0,
+     "duration_ms": 115.1,
+     "bytes": 1424
+    },
+    {
+     "file": "audio/throw_1.mp3",
+     "source": "impact-sounds/impactSoft_medium_002.ogg",
+     "gain_db": -7.0,
+     "duration_ms": 132.1,
+     "bytes": 1528
+    }
+   ]
+  },
+  {
+   "cue": "grabFish",
+   "why": "a wet bloop as the hook takes a fish",
+   "files": [
+    {
+     "file": "audio/grabFish_0.mp3",
+     "source": "interface-sounds/drop_002.ogg",
+     "gain_db": -6.9,
+     "duration_ms": 188.2,
+     "bytes": 1736
+    },
+    {
+     "file": "audio/grabFish_1.mp3",
+     "source": "interface-sounds/drop_003.ogg",
+     "gain_db": -6.9,
+     "duration_ms": 188.2,
+     "bytes": 1762
+    },
+    {
+     "file": "audio/grabFish_2.mp3",
+     "source": "interface-sounds/drop_004.ogg",
+     "gain_db": -7.1,
+     "duration_ms": 125.7,
+     "bytes": 1424
+    }
+   ]
+  },
+  {
+   "cue": "grabJunk",
+   "why": "the hook knocking on wood",
+   "files": [
+    {
+     "file": "audio/grabJunk_0.mp3",
+     "source": "impact-sounds/impactWood_light_000.ogg",
+     "gain_db": -6.9,
+     "duration_ms": 80.8,
+     "bytes": 1320
+    },
+    {
+     "file": "audio/grabJunk_1.mp3",
+     "source": "impact-sounds/impactWood_light_002.ogg",
+     "gain_db": -6.9,
+     "duration_ms": 95.9,
+     "bytes": 1346
+    }
+   ]
+  },
+  {
+   "cue": "grabMonster",
+   "why": "the hook biting a monster",
+   "files": [
+    {
+     "file": "audio/grabMonster_0.mp3",
+     "source": "impact-sounds/impactPunch_medium_000.ogg",
+     "gain_db": -4.9,
+     "duration_ms": 226.6,
+     "bytes": 2283
+    },
+    {
+     "file": "audio/grabMonster_1.mp3",
+     "source": "impact-sounds/impactPunch_medium_001.ogg",
+     "gain_db": -4.9,
+     "duration_ms": 213.2,
+     "bytes": 2570
+    }
+   ]
+  },
+  {
+   "cue": "hit",
+   "why": "thrown junk landing on a monster",
+   "files": [
+    {
+     "file": "audio/hit_0.mp3",
+     "source": "impact-sounds/impactPlank_medium_000.ogg",
+     "gain_db": -4.8,
+     "duration_ms": 170.7,
+     "bytes": 2050
+    },
+    {
+     "file": "audio/hit_1.mp3",
+     "source": "impact-sounds/impactPlank_medium_002.ogg",
+     "gain_db": -5.0,
+     "duration_ms": 379.9,
+     "bytes": 2830
+    },
+    {
+     "file": "audio/hit_2.mp3",
+     "source": "impact-sounds/impactPlank_medium_004.ogg",
+     "gain_db": -5.1,
+     "duration_ms": 148.8,
+     "bytes": 1868
+    }
+   ]
+  },
+  {
+   "cue": "bounce",
+   "why": "junk glancing off",
+   "files": [
+    {
+     "file": "audio/bounce_0.mp3",
+     "source": "impact-sounds/impactMetal_light_002.ogg",
+     "gain_db": -7.6,
+     "duration_ms": 125.4,
+     "bytes": 1555
+    },
+    {
+     "file": "audio/bounce_1.mp3",
+     "source": "impact-sounds/impactMetal_light_004.ogg",
+     "gain_db": -7.7,
+     "duration_ms": 122.0,
+     "bytes": 1529
+    }
+   ]
+  },
+  {
+   "cue": "kill",
+   "why": "a monster beaten",
+   "files": [
+    {
+     "file": "audio/kill_0.mp3",
+     "source": "impact-sounds/impactPunch_heavy_000.ogg",
+     "gain_db": -3.0,
+     "duration_ms": 440.4,
+     "bytes": 3453
+    },
+    {
+     "file": "audio/kill_1.mp3",
+     "source": "impact-sounds/impactPunch_heavy_002.ogg",
+     "gain_db": -3.0,
+     "duration_ms": 316.6,
+     "bytes": 2699
+    }
+   ]
+  },
+  {
+   "cue": "blast",
+   "why": "a barrel bursting",
+   "files": [
+    {
+     "file": "audio/blast_0.mp3",
+     "source": "sci-fi-sounds/explosionCrunch_000.ogg",
+     "gain_db": -4.0,
+     "duration_ms": 748.4,
+     "bytes": 7256
+    }
+   ]
+  },
+  {
+   "cue": "mine",
+   "why": "the mine going off",
+   "files": [
+    {
+     "file": "audio/mine_0.mp3",
+     "source": "sci-fi-sounds/lowFrequency_explosion_001.ogg",
+     "gain_db": -2.2,
+     "duration_ms": 992.6,
+     "bytes": 4830
+    }
+   ]
+  },
+  {
+   "cue": "coins",
+   "why": "coins in the till as the catch lands",
+   "files": [
+    {
+     "file": "audio/coins_0.mp3",
+     "source": "interface-sounds/glass_002.ogg",
+     "gain_db": -11.0,
+     "duration_ms": 93.1,
+     "bytes": 1373
+    },
+    {
+     "file": "audio/coins_1.mp3",
+     "source": "interface-sounds/glass_003.ogg",
+     "gain_db": -11.1,
+     "duration_ms": 120.5,
+     "bytes": 1738
+    },
+    {
+     "file": "audio/coins_2.mp3",
+     "source": "interface-sounds/glass_005.ogg",
+     "gain_db": -11.1,
+     "duration_ms": 48.8,
+     "bytes": 1138
+    }
+   ]
+  },
+  {
+   "cue": "spat",
+   "why": "the glutton spitting out what it ate",
+   "files": [
+    {
+     "file": "audio/spat_0.mp3",
+     "source": "interface-sounds/pluck_001.ogg",
+     "gain_db": -8.0,
+     "duration_ms": 72.2,
+     "bytes": 1530
+    },
+    {
+     "file": "audio/spat_1.mp3",
+     "source": "interface-sounds/pluck_002.ogg",
+     "gain_db": -7.5,
+     "duration_ms": 97.5,
+     "bytes": 1686
+    }
+   ]
+  },
+  {
+   "cue": "eat",
+   "why": "the glutton starting on a fish",
+   "files": [
+    {
+     "file": "audio/eat_0.mp3",
+     "source": "sci-fi-sounds/slime_000.ogg",
+     "gain_db": -7.5,
+     "duration_ms": 495.2,
+     "bytes": 5752
+    }
+   ]
+  },
+  {
+   "cue": "eaten",
+   "why": "the glutton's gulp",
+   "files": [
+    {
+     "file": "audio/eaten_0.mp3",
+     "source": "impact-sounds/impactSoft_heavy_001.ogg",
+     "gain_db": -7.0,
+     "duration_ms": 217.1,
+     "bytes": 1840
+    }
+   ]
+  },
+  {
+   "cue": "leak",
+   "why": "a monster battering the dock",
+   "files": [
+    {
+     "file": "audio/leak_0.mp3",
+     "source": "impact-sounds/impactWood_heavy_000.ogg",
+     "gain_db": -3.1,
+     "duration_ms": 310.1,
+     "bytes": 2178
+    },
+    {
+     "file": "audio/leak_1.mp3",
+     "source": "impact-sounds/impactWood_heavy_003.ogg",
+     "gain_db": -3.1,
+     "duration_ms": 310.1,
+     "bytes": 2205
+    }
+   ]
+  },
+  {
+   "cue": "buy",
+   "why": "a purchase in the shop",
+   "files": [
+    {
+     "file": "audio/buy_0.mp3",
+     "source": "interface-sounds/confirmation_001.ogg",
+     "gain_db": -8.1,
+     "duration_ms": 284.4,
+     "bytes": 2048
+    }
+   ]
+  },
+  {
+   "cue": "deny",
+   "why": "a shop button that cannot be paid for",
+   "files": [
+    {
+     "file": "audio/deny_0.mp3",
+     "source": "interface-sounds/error_004.ogg",
+     "gain_db": -12.7,
+     "duration_ms": 102.8,
+     "bytes": 1816
+    }
+   ]
+  },
+  {
+   "cue": "waveStart",
+   "why": "the harbour bell: here they come",
+   "files": [
+    {
+     "file": "audio/waveStart_0.mp3",
+     "source": "impact-sounds/impactBell_heavy_003.ogg",
+     "gain_db": -7.0,
+     "duration_ms": 415.1,
+     "bytes": 2699
+    }
+   ]
+  },
+  {
+   "cue": "waveClear",
+   "why": "steel pan, rising (pitch contour x1.56)",
+   "files": [
+    {
+     "file": "audio/waveClear_0.mp3",
+     "source": "music-jingles/Steel jingles/jingles_STEEL02.ogg",
+     "gain_db": -6.2,
+     "duration_ms": 1387.1,
+     "bytes": 9620
+    }
+   ]
+  },
+  {
+   "cue": "over",
+   "why": "steel pan, falling (pitch contour x0.39)",
+   "files": [
+    {
+     "file": "audio/over_0.mp3",
+     "source": "music-jingles/Steel jingles/jingles_STEEL12.ogg",
+     "gain_db": -5.8,
+     "duration_ms": 1255.7,
+     "bytes": 9071
+    }
+   ]
+  }
+ ],
+ "music": [
+  {
+   "cue": "music",
+   "file": "audio/music.mp3",
+   "title": "Busybody",
+   "author": "Bryan Teoh",
+   "source": "freepd/busybody.mp3",
+   "upstream": "archive.org/details/freepd comedy/Busybody.mp3",
+   "duration_ms": 85908.8,
+   "bytes": 1032163
+  }
+ ]
+}

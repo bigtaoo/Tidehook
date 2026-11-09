@@ -4,6 +4,7 @@
 import { Container, Graphics } from 'pixi.js';
 import { t, type TextKey } from '../../i18n';
 import { B } from '../../sim/balance';
+import { artSprite, aspect } from '../art';
 import { level, mineCost, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
 import type { World } from '../../sim/world';
 import { Button } from '../kit/button';
@@ -17,15 +18,20 @@ export interface ShopActions {
   mine(): void;
   reroll(): void;
   next(): void;
+  /** A press on something the player cannot buy. */
+  denied?(): void;
 }
 
 const PAD = 28;
 const GAP = 20;
 const HEAD = 90;
 const ROW = 140;
+/** The captain's bust at the head of the panel; it peeks over the panel's top edge. */
+const CAPTAIN_H = 150;
 
 export class ShopPanel extends Container {
   private last = '';
+  private readonly deny = () => this.act.denied?.();
 
   constructor(
     private readonly fr: Frame,
@@ -57,10 +63,16 @@ export class ShopPanel extends Container {
     this.addChild(bg);
 
     const inner = r.w - PAD * 2;
+    const capW = CAPTAIN_H * aspect('captain') + 12;
+    const captain = artSprite('captain', CAPTAIN_H, 0, 1);
+    if (captain) {
+      captain.position.set(r.x + PAD, r.y + PAD + HEAD + 8);
+      this.addChild(captain);
+    }
     const title = label(mine ? t('shop.title', { n: w.wave }) : t('shop.bot'), 52 * k);
-    fitIn(title, inner * 0.62, HEAD);
+    fitIn(title, inner * 0.62 - capW, HEAD);
     title.anchor.set(0, 0.5);
-    title.position.set(r.x + PAD, r.y + PAD + HEAD / 2);
+    title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
     const coins = label(t('hud.coins', { n: w.coins }), 52 * k, { fill: P.brassLight });
     fitIn(coins, inner * 0.3, HEAD);
     coins.anchor.set(1, 0.5);
@@ -88,7 +100,7 @@ export class ShopPanel extends Container {
       { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
     small.forEach((s, i) => {
-      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, enabled: mine && s.ok, onPress: s.onPress });
+      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, enabled: mine && s.ok, onPress: s.onPress, onDenied: this.deny });
       b.position.set(r.x + PAD + i * (cardW + GAP), rowY);
       this.addChild(b);
     });
@@ -127,7 +139,7 @@ export class ShopPanel extends Container {
     const cost = price(w, c.id);
     const b = c.bought
       ? new Button({ w: cw - text * 2, h: btnH, text: t('shop.sold'), size: 36 * k, enabled: false, onPress: () => {} })
-      : new Button({ w: cw - text * 2, h: btnH, text: '', size: 44 * k, price: cost, enabled: mine && w.coins >= cost, onPress: () => this.act.buy(i) });
+      : new Button({ w: cw - text * 2, h: btnH, text: '', size: 44 * k, price: cost, enabled: mine && w.coins >= cost, onPress: () => this.act.buy(i), onDenied: this.deny });
     b.position.set(text, ch - btnH - text);
     box.addChild(b);
     return box;

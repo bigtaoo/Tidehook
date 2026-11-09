@@ -6,6 +6,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { t, type TextKey } from '../../i18n';
 import type { Mode } from '../../game/session';
 import type { SimEvent } from '../../sim/events';
+import { artSprite, aspect } from '../art';
 import { P } from '../kit/palette';
 import { fitIn, label } from '../kit/text';
 import { toDesign } from '../orient';
@@ -13,6 +14,8 @@ import type { Frame } from './frame';
 
 /** How long a hint stays up, ms. */
 const BANNER_MS = 5000;
+/** The captain on the game over card: above the words in portrait, beside them in landscape. */
+const CAPTAIN_H = 340;
 
 type Cover = 'title' | 'paused' | 'over' | null;
 
@@ -27,6 +30,9 @@ export class Overlay extends Container {
 
   constructor(private readonly fr: Frame) {
     super();
+    // never a hit target: a passive Graphics under the stage's static mode still takes the hit
+    // test, so a cover would hide the HUD buttons from it; taps go to the stage instead
+    this.eventMode = 'none';
     this.addChild(this.banner, this.coverBox);
   }
 
@@ -92,7 +98,6 @@ export class Overlay extends Container {
     const k = this.fr.boost;
     if (!this.cover) return;
     const dim = new Graphics();
-    // a tap anywhere on a cover reaches the stage: the cover only darkens
     dim.rect(0, 0, fit.w, fit.h).fill({ color: P.line, alpha: this.cover === 'title' ? 0.25 : 0.6 });
     this.coverBox.addChild(dim);
     const mid = toDesign(f, 300, 240);
@@ -102,12 +107,23 @@ export class Overlay extends Container {
         : this.cover === 'paused'
           ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream]]
           : [[t('overlay.over'), 96, P.red], [t('overlay.reached', { n: this.wave }), 60, P.cream], [t('overlay.again'), 56, P.cream]];
-    const maxW = Math.min(f.w, fit.w) - 80;
+    const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
+    let maxW = Math.min(f.w, fit.w) - 80;
     let y = mid.y - (lines.length - 1) * 70;
+    if (this.cover === 'over') {
+      // the words stay centred; in landscape they give up the captain's width on both sides
+      const capW = CAPTAIN_H * aspect('captain');
+      if (fit.wide) maxW -= capW * 2 + 40;
+      else y += CAPTAIN_H / 2;
+      const top = y - lines[0][1] * k * 0.6;
+      const captain = artSprite('captain', CAPTAIN_H, 0.5, fit.wide ? 0.5 : 1);
+      captain?.position.set(fit.wide ? cx - maxW / 2 - capW / 2 - 20 : cx, fit.wide ? mid.y : top - 10);
+      if (captain) this.coverBox.addChild(captain);
+    }
     for (const [text, size, fill] of lines) {
       const tx: Text = fitIn(label(text, size * k, { fill }), maxW);
       tx.anchor.set(0.5);
-      tx.position.set(fit.wide ? f.x + f.w / 2 : fit.w / 2, y);
+      tx.position.set(cx, y);
       this.coverBox.addChild(tx);
       y += size * k * 1.3 + 20;
     }

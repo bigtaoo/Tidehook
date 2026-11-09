@@ -1,0 +1,10 @@
+2D casual mobile game art, sticker-like cartoon style. VERY THICK uniform black outline around every shape, like vinyl stickers. Strictly flat solid colors, exactly one hard-edged cel shadow tone per color, no gradients, no glossy highlights, no reflections, no texture, no soft shading. Very simple bold shapes, minimal details, readable at tiny phone size.
+Subject: a TALL PORTRAIT 9:16 in-game screenshot mockup of a casual mobile fishing-defense game, seen straight from above (top-down), no perspective.
+Layout from bottom to top:
+- Bottom strip: a dark walnut wooden shop bar with three rounded cream-paper upgrade cards, each with a small brass coin price button. No readable text, only simple blank shapes.
+- Above it: a short walnut-plank wooden pier across the full width. In its middle stands a small dockside crane: a thick walnut wooden boom with a round shiny-less brass winch drum wrapped in tan hemp rope. From the boom a hemp rope runs straight up into the sea, ending in a big brass hook.
+- The sea fills the rest, in two flat horizontal bands of color: near the pier a desaturated teal-green shallow band, above it a darker desaturated steel-blue deep band. Water is flat colour with only a few simple white wave strokes.
+- In the water: three cute round chubby FISH with silly dopey faces in warm bright colors (one golden yellow, one orange, one coral red), and one small brown wooden treasure chest.
+- Two enemy SEA MONSTERS crawling down toward the pier: a spiky steel-blue CRAB SOLDIER with two huge claws, and a slate-grey SEA TURTLE with a thick angular armored shell. Monsters use only cold colors (blue, grey, purple) with small glowing RED eyes; they look angular and hostile. The hook has just caught the crab, which dangles from it.
+- Top strip: a thin walnut wooden bar with a brass coin icon and a round brass pause button, blank, no readable text.
+Warm colors (walnut, brass, rope, gold, orange) belong only to the player's pier, crane, UI and the fish; the sea and monsters stay cold. No text, no letters, no numbers anywhere.

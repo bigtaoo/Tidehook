@@ -60,4 +60,14 @@ describe('Session', () => {
     expect(s.games).toBe(2);
     expect(s.world.seed).toBe(8);
   });
+
+  it('hands on the events raised between ticks: the wave starting and a cast', () => {
+    const s = new Session({ seed: 3, speed: 1, autoplay: null });
+    s.tap();
+    run(s, 300);
+    expect(s.drain().map((e) => e.e)).toContain('waveStart');
+    s.tap();
+    run(s, 50);
+    expect(s.drain().map((e) => e.e)).toContain('cast');
+  });
 });

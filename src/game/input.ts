@@ -1,13 +1,18 @@
 // The keyboard (docs/01-tech-plan.md section 5): Space casts, 1-3 buy a card, 4 repairs, 5 buys a
-// mine, R rerolls, Enter starts (the next wave, or a game), P pauses. No Esc: portals take it, so
+// mine, R rerolls, Enter starts (the next wave, or a game), P pauses, M turns the sound off or on
+// (through `extra`, as the sound is not the Session's). No Esc: portals take it, so
 // the pause button is on screen from the first frame. Taps on the lane come from the view.
 
 import type { Session } from './session';
 
-export function bindKeys(target: Pick<Window, 'addEventListener' | 'removeEventListener'>, s: Session): () => void {
+export function bindKeys(
+  target: Pick<Window, 'addEventListener' | 'removeEventListener'>,
+  s: Session,
+  extra: (key: string) => boolean = () => false,
+): () => void {
   const onKey = (e: KeyboardEvent) => {
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (handleKey(s, e.key)) e.preventDefault();
+    if (handleKey(s, e.key) || extra(e.key.toLowerCase())) e.preventDefault();
   };
   target.addEventListener('keydown', onKey);
   return () => target.removeEventListener('keydown', onKey);

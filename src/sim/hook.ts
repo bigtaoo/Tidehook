@@ -37,7 +37,8 @@ export function hookTip(w: World): { d: number; w: number } {
   return { d: B.crane.d + muldiv(cosB(h.ang), h.len, 1000), w: B.crane.w + muldiv(sinB(h.ang), h.len, 1000) };
 }
 
-function grabWeight(w: World, g: Grab): number {
+/** What a grab weighs on the winch: an item its weight, a monster its hit points. */
+export function grabWeight(w: World, g: Grab): number {
   if (g.t === 'item') return g.item.wt;
   return w.mons.find((m) => m.id === g.id)?.hp ?? 0;
 }

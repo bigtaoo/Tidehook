@@ -64,6 +64,7 @@ export class Session {
     this.pilot = this.opts.autoplay ? new Pilot(this.world.seed, this.opts.autoplay) : null;
     this.shopWait = 0;
     this.snapshot();
+    this.collect();
   }
 
   /** Runs the ticks `frameMs` of real time is worth; returns how many ran. */
@@ -77,11 +78,13 @@ export class Session {
         if (this.pilot && ++this.shopWait >= BOT_SHOP_TICKS) {
           this.shopWait = 0;
           this.pilot.tick(w);
+          this.collect();
         }
         if (w.phase === 'shop') continue;
       }
       this.snapshot();
       this.pilot?.tick(w);
+      this.collect();
       step(w);
       this.events.push(...w.events);
       if (w.phase === 'over') {
@@ -105,7 +108,10 @@ export class Session {
     if (this.mode === 'over' && this.overMs < OVER_LOCK_MS) return;
     if (this.mode !== 'play') this.start();
     else if (this.paused) this.paused = false;
-    else if (!this.pilot) fire(this.world);
+    else if (!this.pilot) {
+      fire(this.world);
+      this.collect();
+    }
   }
 
   togglePause(): void {
@@ -136,12 +142,21 @@ export class Session {
   nextWave(): boolean {
     if (!this.shopping()) return false;
     this.snapshot();
-    return nextWave(this.world);
+    const ok = nextWave(this.world);
+    this.collect();
+    return ok;
   }
 
   /** The player may shop: in the shop, not paused, not the bot's turn. */
   shopping(): boolean {
     return this.mode === 'play' && !this.paused && !this.pilot && this.world.phase === 'shop';
+  }
+
+  /** Takes the events a command raised outside a step (a cast, a throw, the wave starting), which
+   *  the next step would otherwise clear unseen. */
+  private collect(): void {
+    this.events.push(...this.world.events);
+    this.world.events = [];
   }
 
   private snapshot(): void {

@@ -19,12 +19,13 @@ export const P = {
   green: 0x4cc35a,
 } as const;
 
-/** The water, by distance from the dock: lighter near shore, deep indigo far out. The bands
- *  double as the value scale (farther = worth more), so they stay cool and desaturated. */
+/** The water, by distance from the dock: teal near shore, steel blue, then deep indigo far out,
+ *  picked from the style frame (art/style/style_frame_r2.png). The bands double as the value
+ *  scale (farther = worth more), so they stay cool: every warm colour on the field is catch. */
 export const SEA = {
-  shallow: 0x58aea6,
-  mid: 0x2f7aa0,
-  far: 0x22467a,
+  shallow: 0x26b2b0,
+  mid: 0x186e8c,
+  far: 0x16284a,
   /** Past the lane's sides and ends: the screen's fill. */
   deep: 0x123a52,
   /** The thin lines between bands. */

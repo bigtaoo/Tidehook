@@ -16,6 +16,8 @@ export interface ButtonOpts {
   color?: number;
   enabled?: boolean;
   onPress: () => void;
+  /** A press while disabled (the shop's "can't afford" sound). */
+  onDenied?: () => void;
 }
 
 export class Button extends Container {
@@ -44,6 +46,7 @@ export class Button extends Container {
     this.on('pointerdown', (e: FederatedPointerEvent) => {
       e.stopPropagation();
       if (this.enabled) o.onPress();
+      else o.onDenied?.();
     });
   }
 

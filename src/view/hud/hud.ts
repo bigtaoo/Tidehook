@@ -1,5 +1,5 @@
 // The HUD: wave, coins, the dock's hit points, mines and the junk in hand, on the plates frame.ts
-// lays out, plus the pause button. Words are rewritten only when a number changes.
+// lays out, plus the pause and sound buttons. Words are rewritten only when a number changes.
 
 import { Container, Graphics, Text } from 'pixi.js';
 import { t } from '../../i18n';
@@ -60,9 +60,10 @@ export class Hud extends Container {
   private readonly mines: Text;
   private readonly held: Text;
   private readonly marks = new Graphics();
+  private readonly speaker = new Graphics();
   private last = '';
 
-  constructor(fr: Frame, onPause: () => void) {
+  constructor(fr: Frame, onPause: () => void, onSound: () => void = () => {}) {
     super();
     this.slots = slotsFor(fr);
     this.size = fr.fit.wide ? 48 * fr.boost : 56;
@@ -84,13 +85,20 @@ export class Hud extends Container {
     pause.addChild(bars);
     pause.position.set(p.x, p.y);
     pause.label = 'pause';
-    this.addChild(pause);
+    const q = fr.sound;
+    const sound = new Button({ w: q.w, h: q.h, text: '', size: 1, onPress: onSound });
+    sound.addChild(this.speaker);
+    sound.position.set(q.x, q.y);
+    sound.label = 'sound';
+    this.addChild(pause, sound);
   }
 
-  update(w: World): void {
-    const key = `${w.wave}|${w.coins}|${w.hp}|${w.maxHp}|${w.mines}|${w.held ? 1 : 0}`;
+  /** `soundOn`: the player's sound toggle, drawn on its button. */
+  update(w: World, soundOn = true): void {
+    const key = `${w.wave}|${w.coins}|${w.hp}|${w.maxHp}|${w.mines}|${w.held ? 1 : 0}|${soundOn}`;
     if (key === this.last) return;
     this.last = key;
+    drawSpeaker(this.speaker.clear(), soundOn);
     const s = this.slots;
     this.put(this.wave, t('hud.wave', { n: Math.max(1, w.wave) }), s.wave);
     this.put(this.coins, t('hud.coins', { n: w.coins }), s.coins);
@@ -121,5 +129,20 @@ export class Hud extends Container {
     fitIn(text, s.maxW);
     text.anchor.set(s.ax, 0.5);
     text.position.set(s.x, s.y);
+  }
+}
+
+/** A speaker on the 96-unit sound button: with sound waves when on, crossed out when off. */
+function drawSpeaker(g: Graphics, on: boolean): void {
+  g.rect(20, 38, 14, 20).fill(P.line);
+  g.poly([34, 38, 52, 22, 52, 74, 34, 58]).fill(P.line);
+  if (on) {
+    // each arc starts with a moveTo, or a line runs to it from the button's corner
+    for (const r of [13, 24]) {
+      g.moveTo(52 + r * Math.cos(-0.75), 48 + r * Math.sin(-0.75));
+      g.arc(52, 48, r, -0.75, 0.75).stroke({ color: P.line, width: 6, cap: 'round' });
+    }
+  } else {
+    g.moveTo(60, 36).lineTo(80, 60).moveTo(80, 36).lineTo(60, 60).stroke({ color: P.red, width: 7, cap: 'round' });
   }
 }
