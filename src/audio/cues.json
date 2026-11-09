@@ -1,0 +1,23 @@
+{
+ "cast": 2,
+ "reel": 2,
+ "throw": 2,
+ "grabFish": 3,
+ "grabJunk": 2,
+ "grabMonster": 2,
+ "hit": 3,
+ "bounce": 2,
+ "kill": 2,
+ "blast": 1,
+ "mine": 1,
+ "coins": 3,
+ "spat": 2,
+ "eat": 1,
+ "eaten": 1,
+ "leak": 2,
+ "buy": 1,
+ "deny": 1,
+ "waveStart": 1,
+ "waveClear": 1,
+ "over": 1
+}

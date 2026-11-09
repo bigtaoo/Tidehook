@@ -1,0 +1,32 @@
+# Tidehook (拉钩港)
+
+Design docs live in `docs/` (Chinese); code, comments, commits and the README are in English.
+The gameplay reference is `prototype/v2.html` with its balance sim `prototype/tools/sim2.js`
+(reference only, not shipped). The engineering template is Potion Siege (`D:\fang`).
+
+## Layers
+
+- `src/sim/`: deterministic simulation. Integers only (FP = 1000 per world unit, 30 Hz ticks),
+  seeded `Prng`, table trig. No Pixi, DOM, clocks or `Math.random`;
+  `src/sim/determinismLint.test.ts` enforces it. World units are the prototype's (a lane 800 long,
+  480 wide), so its numbers carry over unchanged.
+- `src/view/`: Pixi rendering. `orient.ts` is the only place that maps lane (d, w) to the screen
+  (portrait: dock at the bottom; landscape: dock on the left). HUD and shop are never rotated.
+- `src/platform/`: one `Platform` per target (web, later CrazyGames and Playgama); `stub.ts` for tests.
+- `src/i18n/`: `t()` with `en.ts` as the source; other tables are typed `Table`, so a missing key
+  is a compile error. No literal player-facing strings in code.
+
+## File size
+
+- No file under `src/` or `scripts/` goes over **500 lines**, test files included.
+- New code goes into a new module, split by what it does.
+- Enforced by `npm run check:filelength`.
+
+## Checks
+
+`npm run check` = typecheck + file length + tests + balance guard + build + bundle size (≤ 5 MB).
+Run it before every commit. The balance guard (`npm run check:balance`, scripts/guard/) plays the
+bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
+
+URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`; `?seed`, `?speed`,
+`?autoplay` arrive with the sim.

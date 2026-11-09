@@ -1,0 +1,84 @@
+// Fixed-point numbers for the simulation, from Potion Siege (D:/fang), originally standing's
+// engine/math/fixed.ts (itself after daydayup's).
+//
+// Every number stored in the sim state is an integer: positions and speeds in FP units
+// (1 world unit = FP integers), times in ticks. Doubles hold integers exactly up to 2^53 and
+// +, -, * and / are exactly specified by IEEE 754, so integer maths with an explicit trunc
+// after each division gives the same bits on every JS engine. Transcendental functions do
+// not, which is why the sim never calls Math.sin/cos/atan2/hypot/exp (see trig.ts and
+// determinismLint.test.ts).
+//
+// World units are the prototype's (prototype/v2.html: a lane 800 long and 480 wide), so its
+// speeds, radii and prices carry over unchanged; the view scales them to the 1920x1080 design.
+
+/** Simulation steps per second. */
+export const TICK_RATE = 30;
+/** Integer units per world unit: 0.001 unit precision. */
+export const FP = 1000;
+
+/** World units to FP, for configuration constants only (rounded once, at load). */
+export function toFp(units: number): number {
+  return Math.round(units * FP);
+}
+
+/** World units per second to FP per tick, for configuration constants. */
+export function perTick(unitsPerSecond: number): number {
+  return Math.round((unitsPerSecond * FP) / TICK_RATE);
+}
+
+/** Seconds to whole ticks, for configuration constants. */
+export function ticks(seconds: number): number {
+  return Math.round(seconds * TICK_RATE);
+}
+
+/** a * b / d, truncated toward zero. */
+export function muldiv(a: number, b: number, d: number): number {
+  return Math.trunc((a * b) / d);
+}
+
+/** a / b rounded half up, for a >= 0 and b > 0 (Math.round of the true quotient). */
+export function roundDiv(a: number, b: number): number {
+  return Math.floor((2 * a + b) / (2 * b));
+}
+
+export function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+/** A multiplier or chance in permille, for configuration values. */
+export function pm(x: number): number {
+  return Math.round(x * 1000);
+}
+
+/** `v` times a permille multiplier, truncated. */
+export function times(v: number, permille: number): number {
+  return muldiv(v, permille, 1000);
+}
+
+/**
+ * floor(sqrt(n)) for a non-negative safe integer. Math.sqrt only gives the first guess; the
+ * two corrections make the result exact whatever the engine's last bit, so it is
+ * deterministic.
+ */
+export function isqrt(n: number): number {
+  if (n <= 0) return 0;
+  let r = Math.floor(Math.sqrt(n));
+  while (r * r > n) r--;
+  while ((r + 1) * (r + 1) <= n) r++;
+  return r;
+}
+
+/** Integer distance between two points, floor of the true length. */
+export function dist(dx: number, dy: number): number {
+  return isqrt(dx * dx + dy * dy);
+}
+
+/** Squared distance, for comparisons against a squared radius. */
+export function dist2(dx: number, dy: number): number {
+  return dx * dx + dy * dy;
+}
+
+/** FP to world units. Render side only: the result is a float. */
+export function fromFp(v: number): number {
+  return v / FP;
+}

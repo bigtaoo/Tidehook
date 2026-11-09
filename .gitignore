@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-*/
+tidehook-*.zip
+*.local
+coverage/
+art/raw/*.log

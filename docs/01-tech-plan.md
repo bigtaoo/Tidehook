@@ -95,7 +95,7 @@ Tidehook/
 
 ## 5. 输入
 
-- 单键或单点：点任意处（或空格）甩钩。v2 的键位作为桌面快捷键保留：1/2/3 选卡、4 修理、5 水雷、R 刷新、Enter 开始。
+- 单键或单点：点任意处（或空格）甩钩。v2 的键位作为桌面快捷键保留：1/2/3 选卡、4 修理、5 水雷、R 刷新、Enter 开始。M 开关声音。
 - 不用 Esc 做暂停，因为门户 iframe 会吞掉 Esc（Swarm Orbit 的教训）。暂停按钮从第一帧起就画出来。
 - iframe 尺寸为 0 时不初始化，等 resize（Swarm Orbit 的教训）。
 
@@ -117,17 +117,17 @@ Tidehook/
 
 - 代码、注释、commit、README 用英文；`docs/` 设计文档用中文。
 - 单文件 ≤ 500 行（含测试），由 `scripts/checkFileLength.mjs` 强制。
-- `npm run check` = typecheck + lint + 文件长度 + 单测覆盖率 + 平衡守卫 + 构建 + 包体大小。
+- `npm run check` = typecheck + 文件长度 + 单测 + 平衡守卫 + 构建 + 包体大小（≤ 5 MB）。
 - 不写字面量文案，全部走 `t()`；所有数值进 `balance.json`。
 - 开发开关：`?autoplay`、`?speed`、`?ads=fake`、`?lang`、`?seed`。
 - `.claude/launch.json` 为每个构建变体配一个预览服务。
 
 ## 9. 里程碑建议
 
-1. **M0 脚手架**：从 Potion Siege 复制 vite、tsconfig、check 脚本、platform/stub、i18n、fixedStep，空场景跑通。
-2. **M1 模拟移植**：sim 定点化，bot 在 CI 中复现原型的波次分布。
-3. **M2 灰盒视图**：色块和描边，横竖屏布局与 sweep 通过。
-4. **M3 Style frame**：定稿后批量出图、出音效。
+1. **M0 脚手架**（完成）：从 Potion Siege 复制 vite、tsconfig、check 脚本、platform/stub、i18n、fixedStep，空场景跑通。
+2. **M1 模拟移植**（完成）：sim 定点化，bot 在 CI 中复现原型的波次分布。
+3. **M2 灰盒视图**（完成）：色块和描边，横竖屏布局与 sweep 通过。
+4. **M3 Style frame**（完成）：r2 定稿，19 张精灵（`public/art/`，约 190 kB）和 21 个音效 cue + 1 段音乐（`public/audio/`，约 1.1 MB）接进游戏，HUD 加声音开关。管线见 `00-art-direction.md` 第 6、7 节。包体 1.9 MB。
 5. **M4 平台接入**：CrazyGames 和 Playgama、广告、存档、分析。
 6. **M5 上线**：网页 → 门户提审。
 

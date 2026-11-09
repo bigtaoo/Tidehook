@@ -1,0 +1,62 @@
+import type { Table } from './en';
+
+export const zh: Table = {
+  title: '拉钩港',
+  lang: { name: '中文' },
+  boot: {
+    tapToStart: '点击甩钩',
+    failed: '启动失败：{error}',
+  },
+  hud: {
+    wave: '第 {n} 波',
+    coins: '{n}',
+    dock: '码头 {hp}/{max}',
+    mines: '水雷 {n}',
+    held: '手里有破烂',
+    pause: '暂停',
+  },
+  shop: {
+    title: '第 {n} 波守住了',
+    level: '{n}/{max} 级',
+    sold: '已买',
+    repair: '修码头 +{n}',
+    mine: '水雷 {n}/{max}',
+    reroll: '换一批',
+    next: '下一波',
+    bot: '机器人在逛商店',
+  },
+  cards: {
+    grip: { name: '握力 +1', desc: '钩子能直接吊起更重的怪。' },
+    heft: { name: '重破烂 +2', desc: '扔出的破烂伤害 +2。' },
+    winch: { name: '绞盘 +25%', desc: '收钩更快，拖重物时尤其明显。' },
+    cast: { name: '快钩 +25%', desc: '钩子飞出去更快。' },
+    barb: { name: '倒刺 +1', desc: '吊不动的重怪，每次多扎掉 1 血。' },
+    pierce: { name: '穿透破烂', desc: '破烂命中后继续飞，多穿 1 只怪。' },
+    blast: { name: '爆裂破烂', desc: '破烂命中时炸伤周围的怪（半数伤害）。' },
+    bait: { name: '香饵', desc: '鱼吸引怪的范围更大，怪啃得更久。' },
+    swing: { name: '大摆幅', desc: '钩子左右各多摆 10°。' },
+    planks: { name: '加固 +3', desc: '码头耐久上限 +3，并马上恢复 3 点。' },
+    multi: { name: '串钩', desc: '抓到东西后钩子继续往前飞，一次多串 1 样。' },
+    magnet: { name: '磁钩', desc: '收钩时把沿途的鱼一起吸回来。' },
+    grounds: { name: '好渔场', desc: '鱼价值 +30%，每波多来 2 条鱼。' },
+  },
+  monsters: {
+    grunt: { name: '螃蟹', tip: '轻：钩上来在码头上砸碎。' },
+    darter: { name: '海鳗', tip: '快，从两侧游进来，不吃鱼。' },
+    brute: { name: '海龟', tip: '太重吊不动：扔破烂砸它，或者买握力。' },
+    glutton: { name: '鲨鱼', tip: '会吃鱼长大；砸碎它能把金币吐回来。' },
+  },
+  hints: {
+    debut: '新怪：{name}。{tip}',
+    held: '手里有破烂！再点一下，沿瞄准线扔出去。',
+    eat: '怪会停下来啃鱼：趁它啃的时候钩它！',
+  },
+  fx: { coins: '+{n}' },
+  overlay: {
+    paused: '暂停中',
+    resume: '点击继续',
+    over: '码头失守',
+    reached: '你守到了第 {n} 波',
+    again: '点击再来一局',
+  },
+};
