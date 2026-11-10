@@ -4,5 +4,5 @@ dist-*/
 tidehook-*.zip
 *.local
 coverage/
-art/raw/*.log
+art/raw/**/*.log
 recordings/
