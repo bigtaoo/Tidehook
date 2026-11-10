@@ -1,41 +1,41 @@
 #!/usr/bin/env bash
-# Rebuilds art/cut/ from the chosen generator outputs in art/raw/.
+# Rebuilds art/cut/ from the chosen generator outputs in art/raw/, then art/web and public/art.
 # usage: bash tools/build_sprites.sh
-# Each line names a sprite and the raw image picked for it (art/raw/<raw>.png, made from the
-# prompt art/prompts/<name>_editN.txt). The crab and the eel came out the same blues as the sea
-# bands, so recolor.py moves them off it: crab to periwinkle, eel to violet (front and side alike).
+# Each sprite is art/raw/<name>_<pick>.png, made from art/prompts/<name>_paper_editN.txt by editing
+# art/raw/mix/crab.png, the cut-paper anchor (docs/00-art-direction.md section 8). paper.py only
+# cuts it out: the paper's texture and layers are the style, so nothing is outlined or flattened.
+# The old outlined set (the *_e1 raws, flatten.py) is kept for reference.
 set -euo pipefail
 cd "$(dirname "$0")"
-H=256
+H=384
 OUT=../art/cut
 mkdir -p "$OUT"
 
-flat() { python flatten.py "../art/raw/$2.png" "$OUT/$1.png" "$H"; }
+pick() { echo "${PICK[$1]:-p1}"; }
+declare -A PICK=()
+# PICK[name]=p2 when a later attempt replaced the first
+PICK[enemy_grunt_side]=p2   # p1 with its red eyestalk recoloured blue (monsters stay cold)
+PICK[enemy_darter_side]=p2  # p1 came out a barracuda
+PICK[junk_barrel]=p2        # p1 was photographic, not paper
+PICK[enemy_glutton]=p2      # p1 with its frown painted out (dot eyes only)
+PICK[enemy_hermit]=p2       # p1: red claws recoloured teal, shell cooled to blue-grey, dot eyes added at the rim
+PICK[enemy_hermit_side]=p2  # p1: eye whites filled (dot eyes only), shell cooled to blue-grey
+PICK[enemy_kraken]=p2       # p1 with its pink suckers recoloured lavender
+PICK[enemy_kraken_side]=p2  # p1 with its smile painted out, eye whites filled, suckers lavender
+PICK[enemy_ray_side]=p2     # p1 with a floating eye stalk painted out
+PICK[chest]=p2              # p1 with its lemon-yellow bands toned to brass
+PICK[junk_anchor]=p2        # p1: photographic rust flattened to iron and lightened, stray dot eyes removed, ring hole filled
+PICK[mine]=p2               # p1 was a glossy 3D render, not paper
+PICK[winch]=p3              # p1 was photographic wood and rope, p2 too bare
 
-flat enemy_grunt enemy_grunt_e1
-flat enemy_darter enemy_darter_e1
-flat enemy_brute enemy_brute_e1
-flat enemy_glutton enemy_glutton_e1
-for s in grunt darter brute glutton; do
-  [ -f "../art/raw/enemy_${s}_side_e1.png" ] && flat "enemy_${s}_side" "enemy_${s}_side_e1"
-done
-flat fish_gold fish_gold_e1
-flat fish_orange fish_orange_e1
-flat fish_coral fish_coral_e1
-flat chest chest_e1
-flat junk_log junk_log_e1
-flat junk_anchor junk_anchor_e1
-flat junk_barrel junk_barrel_e1
-flat mine mine_e1
-flat winch winch_e1
-flat hook hook_e1
-flat captain captain_e1
-
-for f in enemy_grunt enemy_grunt_side; do
-  [ -f "$OUT/$f.png" ] && python recolor.py "$OUT/$f.png" "$OUT/$f.png" 0.5 0.7 0.62 1.2 0.7
-done
-for f in enemy_darter enemy_darter_side; do
-  [ -f "$OUT/$f.png" ] && python recolor.py "$OUT/$f.png" "$OUT/$f.png" 0.5 0.7 0.78 1.7 0.8
+for n in enemy_grunt enemy_darter enemy_brute enemy_glutton \
+         enemy_grunt_side enemy_darter_side enemy_brute_side enemy_glutton_side \
+         fish_gold fish_orange fish_coral chest junk_log junk_anchor junk_barrel \
+         mine winch hook captain \
+         enemy_hermit enemy_ray enemy_kraken enemy_hermit_side enemy_ray_side enemy_kraken_side; do
+  src="../art/raw/${n}_$(pick "$n").png"
+  # until every paper raw is made, a missing one keeps the old cut-out in art/cut
+  if [ -f "$src" ]; then python paper.py "$src" "$OUT/$n.png" "$H"; else echo "kept old $n (or none yet)"; fi
 done
 echo "built $(ls "$OUT" | wc -l) sprites in art/cut"
 cd ..

@@ -11,10 +11,22 @@ export const ART_NAMES = Object.keys(FIT) as ArtName[];
 
 const textures = new Map<ArtName, Texture>();
 
+/** The chart sea behind the lane, pier on the left (public/art/sea.webp, tools/build_sea.py). It
+ *  is not a sprite: no area fit, drawn to the lane's rectangle by field.ts. */
+let sea: Texture | undefined;
+
 /** Fetches every sprite. Never rejects: a missing file is logged and left to its placeholder. */
 export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<void> {
-  await Promise.all(
-    ART_NAMES.map(async (n) => {
+  const backdrop = Assets.load<Texture>(`${base}art/sea.webp`).then(
+    (t) => {
+      t.source.autoGarbageCollect = false;
+      sea = t;
+    },
+    (err) => console.warn('art: the sea failed to load, keeping the flat bands', err),
+  );
+  await Promise.all([
+    backdrop,
+    ...ART_NAMES.map(async (n) => {
       try {
         const t = await Assets.load<Texture>(`${base}art/${n}.webp`);
         // held for the whole session: no GPU re-upload mid-wave after a minute unseen
@@ -24,7 +36,11 @@ export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<
         console.warn(`art: ${n} failed to load, keeping the placeholder`, err);
       }
     }),
-  );
+  ]);
+}
+
+export function seaTex(): Texture | undefined {
+  return sea;
 }
 
 export function tex(n: ArtName): Texture | undefined {

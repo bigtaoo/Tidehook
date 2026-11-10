@@ -1,5 +1,6 @@
 // Reads the tap recorder's records (recordings/*.ndjson, from a dev build; src/game/rec/) and says, tap by
-// tap, what the player most likely aimed at, how far off the hook went, which way and why.
+// tap, what the player most likely aimed at, how far off the hook went, which way and why; then
+// wave by wave, how each game went (waves.mjs).
 //
 //   node scripts/rec/analyze.mjs                 the newest recording
 //   node scripts/rec/analyze.mjs <file> [--all]  that one; --all lists every tap, not just the misses
@@ -11,6 +12,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { formatWaves } from './waves.mjs';
 
 /** How far, in degrees past touching, a target may be from the aim and still count as the intent. */
 export const INTENT_SLACK = 12;
@@ -154,5 +156,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   const file = args.find((a) => !a.startsWith('--')) ?? newest('recordings');
   console.log(file);
-  console.log(format(analyze(parse(readFileSync(file, 'utf8'))), args.includes('--all')));
+  const records = parse(readFileSync(file, 'utf8'));
+  console.log(format(analyze(records), args.includes('--all')));
+  console.log(formatWaves(records).join('\n'));
 }

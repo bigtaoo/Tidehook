@@ -7,6 +7,7 @@ import { Sound } from './audio/sound';
 import { FIRST_SEED } from './game/guide/firstSeed';
 import { Guide } from './game/guide/guide';
 import { bindKeys, eventAge } from './game/input';
+import { Harbour } from './game/meta/harbour';
 import { startRecording } from './game/rec/wire';
 import { SEEN_MS, Session, type SessionOptions } from './game/session';
 import { urlSwitches } from './game/switches';
@@ -21,17 +22,19 @@ import { waitForSize } from './view/waitForSize';
 /** The player's language pick, in the platform's storage. */
 export const LANG_KEY = 'tidehook.lang';
 
-/** ?seed, ?speed, ?autoplay and ?lag (dev builds only; urlSwitches drops them in a release). */
+/** ?seed, ?speed, ?autoplay, ?lag and ?ease (dev builds only; urlSwitches drops them in a release). */
 export function sessionOptions(params: URLSearchParams, now: number): SessionOptions {
   const seed = Number.parseInt(params.get('seed') ?? '', 10);
   const speed = Number.parseFloat(params.get('speed') ?? '');
   const auto = params.get('autoplay');
   const lag = Number.parseFloat(params.get('lag') ?? '');
+  const ease = Number.parseInt(params.get('ease') ?? '', 10);
   return {
     seed: Number.isSafeInteger(seed) ? seed : now % 1_000_000,
     speed: speed > 0 && speed <= 20 ? speed : 1,
     autoplay: auto === null ? null : auto || 'good',
     lagMs: lag >= 0 && lag <= 150 ? lag : SEEN_MS,
+    ...(ease >= 0 ? { ease } : {}),
   };
 }
 
@@ -62,8 +65,11 @@ export async function boot(platform: Platform): Promise<Application> {
   // picked for it, with no title to tap through
   const guide = opts.autoplay ? null : new Guide(platform.storage);
   if (guide?.fresh && !params.has('seed')) opts.firstSeed = FIRST_SEED;
-  const session = new Session(opts, guide);
+  // the harbour between games (docs/02-onboarding.md section 7): a returning player boots into it
+  const harbour = opts.autoplay ? null : new Harbour(platform.storage);
+  const session = new Session(opts, guide, harbour);
   if (guide?.fresh) session.start();
+  else session.openLobby();
   // a tap anywhere that no button took casts (or starts, or resumes)
   app.stage.eventMode = 'static';
   app.stage.hitArea = app.screen;

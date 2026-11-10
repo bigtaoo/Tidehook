@@ -6,6 +6,8 @@ import { P, TEXT_STROKE } from './palette';
 
 export const FONT = 'system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
 
+const CJK = /[　-鿿＀-￯]/;
+
 export interface LabelOpts {
   fill?: number;
   /** Outline the words (on the field and on dark wood); off on paper. */
@@ -29,7 +31,9 @@ export function label(text: string, size: number, o: LabelOpts = {}): Text {
       align: o.align ?? 'center',
       wordWrap: o.wrap !== undefined,
       wordWrapWidth: o.wrap ?? 0,
-      breakWords: o.wrap !== undefined,
+      // inside a word only where there are no spaces to break at (CJK); a Latin word too long for
+      // the line stays whole and fitIn shrinks it
+      breakWords: o.wrap !== undefined && CJK.test(text),
       lineHeight: o.wrap !== undefined ? size * 1.2 : undefined,
     },
   });

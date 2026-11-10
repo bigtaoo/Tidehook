@@ -1,0 +1,7 @@
+Naive gouache painting for an indie mobile game, like an illustrated childrens picture book from the 1960s: opaque matte gouache in a muted, slightly chalky palette, visible flat brush strokes, simple rounded shapes with soft but clear edges, a few loose pencil lines, no black outlines. No gradients, no glossy highlights, no airbrush, no 3D render look, no digital vector shapes.
+Subject: a WIDE LANDSCAPE top-down in-game screenshot of a fishing-defense game. No horizon, no sky.
+- Far left: a narrow vertical wooden pier with a small squat rope winch on it. A thin rope runs right across the water to a hook.
+- The sea: three vertical bands getting darker to the right (shallow, middle, deep).
+- Small objects at real gameplay scale with lots of open water: five plump simple fish in warm orange, coral and gold, a small chest, a driftwood log.
+- Four sea monsters crawling left toward the pier, in cold blues, greys and purples only, each a strong simple silhouette: a crab with two big claws (one caught on the hook), a turtle with a blocky shell, a shark with a tall fin, an eel. Creatures have plain small dot eyes: no eyebrows, no teeth, no smiles, no cartoon mascot faces.
+- Far right: a narrow plain sidebar panel with a coin and a simple bar. No text, no letters, no numbers anywhere.

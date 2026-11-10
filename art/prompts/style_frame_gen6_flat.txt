@@ -1,0 +1,8 @@
+Flat geometric vector illustration for an indie mobile game, in the spirit of modern minimalist puzzle games: every object built from a few simple geometric shapes (circles, rounded triangles, rectangles), no outlines at all, two flat tones per object (base and one shadow side), crisp clean edges, generous empty space. A restrained palette: sea in muted teal, slate blue and deep indigo; loot in warm coral, apricot and gold; wood in walnut and sand. No gradients, no glossy highlights, no textures, no 3D rendering, no airbrushed shading.
+Creatures are abstract and charming through shape alone: single dot eyes, no eyebrows, no teeth, no smiles, no cartoon mascot faces.
+Subject: a WIDE LANDSCAPE top-down in-game screenshot of a fishing-defense game. No horizon, no sky.
+- Far left: a narrow vertical walnut pier made of plank rectangles, with a small round brass winch. A thin straight rope runs right across the water to a gold hook.
+- The sea: three vertical flat bands, teal near the pier, slate blue, deep indigo on the right, with a few short pale wave dashes.
+- Small objects at real gameplay scale with lots of open water: five plump fish in coral, apricot and gold, a small chest, a driftwood log.
+- Four sea monsters crawling left toward the pier in cold slate, periwinkle and lilac only, each a strong simple silhouette: a crab with two big claws (one caught on the hook), a turtle with a hexagon shell, a shark with a tall fin, an eel. Tiny red dot eyes.
+- Far right: a narrow walnut sidebar panel with a gold coin and a simple bar. No text, no letters, no numbers anywhere.

@@ -30,5 +30,5 @@ bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. Dev s
 
 URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`, `?seed`, `?speed`,
 `?autoplay`, `?lag` (ms a tap looks back, default 0; see docs/01-tech-plan.md section 5),
-`?rec=0` (turns off the tap recorder, on by default in dev: it writes recordings/*.ndjson, read with
+`?ease=N` (N waves of slow tide per game instead of 30, sim/tide.ts; 0 a bare game), `?rec=0` (turns off the tap recorder, on by default in dev: it writes recordings/*.ndjson, read with
 `node scripts/rec/analyze.mjs`).

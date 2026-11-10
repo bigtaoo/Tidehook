@@ -17,8 +17,13 @@ function bradPerTick(radPerSecond: number): number {
   return Math.round((radPerSecond / (2 * Math.PI)) * BRAD_FULL / TICK_RATE);
 }
 
-export type MonsterKind = 'grunt' | 'darter' | 'brute' | 'glutton';
-export const MONSTER_KINDS: readonly MonsterKind[] = ['grunt', 'darter', 'brute', 'glutton'];
+export type MonsterKind = 'grunt' | 'darter' | 'brute' | 'glutton' | 'hermit' | 'ray' | 'boss' | 'kraken';
+/** The bosses: the giant turtle every few waves, the kraken in its place every so many more. */
+export type BossKind = 'boss' | 'kraken';
+/** The kinds a wave's mix is made of (waves.ts); a boss comes on its own every few waves. */
+export type CrewKind = Exclude<MonsterKind, BossKind>;
+export const CREW_KINDS: readonly CrewKind[] = ['grunt', 'darter', 'brute', 'glutton', 'hermit', 'ray'];
+export const MONSTER_KINDS: readonly MonsterKind[] = [...CREW_KINDS, 'boss', 'kraken'];
 
 export interface MonsterSpec {
   hp: number;
@@ -32,6 +37,12 @@ export interface MonsterSpec {
   swims: boolean;
   /** Seeks fish from further away, keeps eating, and grows on what it eats. */
   greedy: boolean;
+  /** Wears a shell that takes the first hit, whatever it is; the hook knocks it off as junk. */
+  shell: boolean;
+  /** Dives now and then, out of reach of the hook and of thrown junk; ignores fish. */
+  dives: boolean;
+  /** A boss: never lifted, barely knocked back, sunk for its chest and pearls. */
+  boss: boolean;
 }
 
 /** The player's upgradable numbers, each in its own integer unit. */
@@ -60,12 +71,19 @@ export interface Stats {
   multi: number;
   /** Magnet level: pulls fish in while reeling. */
   magnet: number;
+  /** Ticks a thrown piece of junk stuns for, on top of the throw's own. */
+  tar: number;
+  /** Salvage level: sunk monsters leave junk behind (monsters.ts kill). */
+  salvage: number;
   /** Fishing grounds level: worth, restock and cap of fish. */
   grounds: number;
 }
 export type StatKey = keyof Stats;
 
-export type Effect = { stat: StatKey | 'dock'; add: number } | { stat: StatKey; mul: number };
+/** Something an add can raise besides a stat: the dock's hit points and, for the harbour's upgrades
+ *  (meta.ts), the coins a game starts with and the hit points patched after each wave. */
+export type Extra = 'dock' | 'coins' | 'mend' | 'mines' | 'stall';
+export type Effect = { stat: StatKey | Extra; add: number } | { stat: StatKey; mul: number };
 
 export interface UpgradeSpec {
   id: string;
@@ -79,12 +97,41 @@ export interface UpgradeSpec {
   ability: boolean;
   /** Each in the stat's own unit (an add) or permille (a mul). */
   effects: readonly Effect[];
+  /** A harbour unlock: each level starts the game with a level of this shop card (meta.ts). */
+  card?: string;
+  /** A shop card the shop only offers once its harbour blueprint is bought. */
+  locked: boolean;
+  /** A harbour blueprint: owning it lets the shop offer this locked card (meta.ts). */
+  unlock?: string;
+}
+
+/** A captain's log entry: reach `n` of `stat` in one game, or over every game played. The stats
+ *  are a game's tally (world.ts Tally) plus `wave` (reached) and `games` (1 a game). */
+/** A sea (seas.ts): how many waves of tide it starts ahead, and permille scales on the pearls a
+ *  game brings home, the monsters' speed and the gap between spawns; the chart's pearl price, and
+ *  the wave the sea before it must be reached to before the chart is on sale. */
+export interface SeaSpec {
+  id: string;
+  lead: number;
+  pearls: number;
+  speed: number;
+  gap: number;
+  price: number;
+  needs: number;
+}
+
+export interface GoalSpec {
+  id: string;
+  kind: 'game' | 'total';
+  stat: string;
+  n: number;
+  pearls: number;
 }
 
 /** How a stat's JSON value turns into its integer unit. */
-const STAT_UNIT: Record<StatKey | 'dock', (v: number) => number> = {
+const STAT_UNIT: Record<StatKey | Extra, (v: number) => number> = {
   grip: Math.round, heft: Math.round, barb: Math.round, pierce: Math.round, blast: Math.round,
-  multi: Math.round, magnet: Math.round, grounds: Math.round, dock: Math.round,
+  multi: Math.round, magnet: Math.round, grounds: Math.round, salvage: Math.round, tar: ticks, dock: Math.round, coins: Math.round, mend: Math.round, mines: Math.round, stall: Math.round,
   winch: pm, cast: pm, chew: pm, lure: toFp, swing: radToBrad,
 };
 
@@ -93,8 +140,42 @@ const sec = ticks;
 const mon = j.monster;
 const c = j.catch;
 
-function monster(m: { hp: number; speed: number; radius: number; dmg: number; swims?: boolean; greedy?: boolean }): MonsterSpec {
-  return { hp: m.hp, speed: perTick(m.speed), radius: toFp(m.radius), dmg: m.dmg, swims: !!m.swims, greedy: !!m.greedy };
+interface UpgradeJson {
+  id: string;
+  base: number;
+  max: number;
+  growth?: number;
+  core?: boolean;
+  ability?: boolean;
+  card?: string;
+  locked?: boolean;
+  unlock?: string;
+  effects: { stat: string; add?: number; mul?: number }[];
+}
+
+function upgradeSpec(u: UpgradeJson): UpgradeSpec {
+  return {
+    id: u.id,
+    base: u.base,
+    max: u.max,
+    growth: pm(u.growth ?? j.shop.priceGrowth),
+    core: !!u.core,
+    ability: !!u.ability,
+    effects: u.effects.map((e): Effect => {
+      const stat = e.stat as StatKey | Extra;
+      if (e.mul !== undefined) return { stat: stat as StatKey, mul: pm(e.mul) };
+      return { stat, add: STAT_UNIT[stat](e.add ?? 0) };
+    }),
+    ...(u.card ? { card: u.card } : {}),
+    locked: !!u.locked,
+    ...(u.unlock ? { unlock: u.unlock } : {}),
+  };
+}
+
+interface MonsterJson { hp: number; speed: number; radius: number; dmg: number; swims?: boolean; greedy?: boolean; shell?: boolean; dives?: boolean; boss?: boolean }
+
+function monster(m: MonsterJson): MonsterSpec {
+  return { hp: m.hp, speed: perTick(m.speed), radius: toFp(m.radius), dmg: m.dmg, swims: !!m.swims, greedy: !!m.greedy, shell: !!m.shell, dives: !!m.dives, boss: !!m.boss };
 }
 
 export const B = {
@@ -114,6 +195,7 @@ export const B = {
     magnetMinLen: toFp(j.hook.magnetMinLen),
     magnetBase: toFp(j.hook.magnetBase),
     magnetPer: toFp(j.hook.magnetPer),
+    aimSlow: pm(j.hook.aimSlow),
   },
   throw: {
     speed: perTick(j.throw.speed),
@@ -122,6 +204,7 @@ export const B = {
     offset: toFp(j.throw.offset),
     margin: toFp(j.throw.margin),
     behindDock: toFp(j.throw.behindDock),
+    aimSlow: pm(j.throw.aimSlow),
     stun: sec(j.throw.stun),
     knock: toFp(j.throw.knock),
     blastBase: toFp(j.throw.blastBase),
@@ -141,7 +224,22 @@ export const B = {
     darter: monster(j.monsters.darter),
     brute: monster(j.monsters.brute),
     glutton: monster(j.monsters.glutton),
+    hermit: monster(j.monsters.hermit),
+    ray: monster(j.monsters.ray),
+    boss: monster(j.monsters.boss),
+    kraken: monster(j.monsters.kraken),
   } satisfies Record<MonsterKind, MonsterSpec>,
+  /** The giant turtle: every `every` waves, halfway through the wave, with a chest on its back worth
+   *  `chest` coins at wave 1 (growing like a catch's value); it takes `knock` permille of a knock
+   *  and brings `pearls` home when killed. */
+  boss: { every: j.boss.every, chest: j.boss.chest, knock: pm(j.boss.knock), pearls: j.boss.pearls },
+  /** The kraken: the boss of every `every`th wave from wave `from` instead of the turtle, with a chest `chest`
+   *  permille of the turtle's; every `summon` ticks it calls up `brood` crabs beside it, `max` in
+   *  all; it brings `pearls` home. */
+  kraken: { from: j.kraken.from, every: j.kraken.every, chest: pm(j.kraken.chest), summon: sec(j.kraken.summon), brood: j.kraken.brood, max: j.kraken.max, pearls: j.kraken.pearls },
+  /** A diver (the ray) is under for `under` ticks of every `every`, but never within `near` FP of
+   *  the dock, where it stays up to be dealt with. */
+  dive: { every: sec(j.dive.every), under: sec(j.dive.under), near: toFp(j.dive.near) },
   monster: {
     hpPerWave: pm(mon.hpPerWave),
     speedPerWave: pm(mon.speedPerWave),
@@ -165,7 +263,7 @@ export const B = {
     gluttonMaxRadius: toFp(mon.gluttonMaxRadius),
   },
   waves: {
-    mix: j.waves.mix satisfies Record<MonsterKind, { from: number; base: number; offset: number; per: number }>,
+    mix: j.waves.mix satisfies Record<CrewKind, { from: number; base: number; offset: number; per: number }>,
     debutSlot: j.waves.debutSlot,
     firstDelay: sec(j.waves.firstDelay),
     gapStart: sec(j.waves.gapStart),
@@ -175,6 +273,8 @@ export const B = {
     jitterMax: pm(j.waves.jitterMax),
     clearDelay: sec(j.waves.clearDelay),
   },
+  tide: { waves: j.tide.waves, pace: pm(j.tide.pace) },
+  meta: { perWave: j.meta.perWave, upgrades: j.meta.upgrades.map(upgradeSpec) },
   catch: {
     startFish: c.startFish,
     startJunk: c.startJunk,
@@ -216,20 +316,20 @@ export const B = {
     minePerWave: j.shop.minePerWave,
   },
   grounds: { valueBonus: pm(j.grounds.valueBonus), restockBonus: j.grounds.restockBonus, capBonus: j.grounds.capBonus },
-  start: Object.fromEntries(Object.entries(j.start).map(([k, v]) => [k, STAT_UNIT[k as StatKey](v)])) as unknown as Stats,
-  upgrades: j.upgrades.map((u): UpgradeSpec => ({
-    id: u.id,
-    base: u.base,
-    max: u.max,
-    growth: pm('growth' in u && u.growth !== undefined ? u.growth : j.shop.priceGrowth),
-    core: 'core' in u && !!u.core,
-    ability: 'ability' in u && !!u.ability,
-    effects: u.effects.map((e): Effect => {
-      const stat = e.stat as StatKey | 'dock';
-      if ('mul' in e && e.mul !== undefined) return { stat: stat as StatKey, mul: pm(e.mul) };
-      return { stat, add: STAT_UNIT[stat]((e as { add: number }).add) };
-    }),
+  /** Salvage level L leaves junk behind every (every - L)th monster sunk. */
+  salvage: { every: j.salvage.every as number },
+  /** The seas (seas.ts), the home bay first. */
+  seas: (j.seas as SeaSpec[]).map((s) => ({ ...s })),
+  /** The captain's log (goals.ts): [kind, stat, n, pearls] each. */
+  goals: (j.goals as [string, string, number, number][]).map(([kind, stat, n, pearls]): GoalSpec => ({
+    id: `${kind}.${stat}.${n}`,
+    kind: kind as GoalSpec['kind'],
+    stat,
+    n,
+    pearls,
   })),
+  start: Object.fromEntries(Object.entries(j.start).map(([k, v]) => [k, STAT_UNIT[k as StatKey](v)])) as unknown as Stats,
+  upgrades: j.upgrades.map(upgradeSpec),
 };
 
 

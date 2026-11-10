@@ -1,11 +1,13 @@
 // Scripted players for the balance guard, ported from prototype/tools/sim2.js: they look along
-// the current aim (ray.ts, the prototype's rayFirst), decide whether to tap, and shop by a
-// fixed priority list. Deterministic: their reaction time is in ticks and their aim error comes
-// from their own Prng, so a seed always plays the same game.
+// the current aim (ray.ts, the prototype's rayFirst; with junk in hand the throw's sight, lead.ts),
+// decide whether to tap, and shop by a fixed priority list. Deterministic: their reaction time is
+// in ticks and their aim error comes from their own Prng, so a seed always plays the same game.
 
 import { B, radToBrad, type Stats } from '../balance';
 import { liftable } from '../monsters';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from '../lane';
+import { throwFirst } from '../lead';
+import type { MetaLevels } from '../meta';
 import { rayFirst } from '../ray';
 import { dist, TICK_RATE, toFp } from '../math/fixed';
 import { Prng } from '../math/prng';
@@ -31,10 +33,12 @@ export interface Persona {
 const BASE: Record<string, Omit<Persona, 'react' | 'err'> & { react: number; err: number }> = {
   good: { react: 0.1, err: 0.02, junk: true, fish: true, reroll: true, mines: true, spam: false },
   casual: { react: 0.3, err: 0.07, junk: true, fish: true, reroll: false, mines: false, spam: false },
+  novice: { react: 0.5, err: 0.14, junk: true, fish: true, reroll: false, mines: false, spam: false },
   spam: { react: 0.15, err: 0.1, junk: false, fish: true, reroll: false, mines: false, spam: true },
 };
 
-/** A persona by name: good, casual or spam, optionally with -nofish and/or -nojunk. */
+/** A persona by name: good, casual, novice (played like the recorded human rounds, scripts/guard/
+ *  novice.test.ts) or spam, optionally with -nofish and/or -nojunk. */
 export function persona(name: string): Persona {
   const [base, ...mods] = name.split('-');
   const b = BASE[base];
@@ -49,7 +53,7 @@ export function persona(name: string): Persona {
 }
 
 /** Upgrade ids in the order the bot buys them. */
-export const PRIO = ['grip', 'heft', 'barb', 'magnet', 'winch', 'grounds', 'multi', 'cast', 'pierce', 'blast', 'planks', 'swing', 'bait'];
+export const PRIO = ['grip', 'heft', 'barb', 'magnet', 'winch', 'grounds', 'multi', 'cast', 'pierce', 'salvage', 'blast', 'tar', 'planks', 'swing', 'bait'];
 
 const NEAR = toFp(300);
 const SEEN_BEYOND = toFp(20);
@@ -81,14 +85,16 @@ function decide(w: World, p: Persona, ang: number, rng: Prng): boolean {
   if (p.spam) return rng.int(1000) < SPAM_CHANCE;
   const mons = w.mons.filter((m) => m.d < LANE_LEN_FP + SEEN_BEYOND && m.w > -SEEN_SIDE && m.w < LANE_WIDTH_FP + SEEN_SIDE);
   if (w.held) {
-    const r = rayFirst(w, ang, true);
-    return !!r && r.o.t === 'mon' && (!liftable(w, r.o.m) || r.len < CLOSE_JUNK || !p.junk);
+    // the sight the player sees: it leads a walking monster (lead.ts)
+    const r = throwFirst(w, ang);
+    return !!r && (!liftable(w, r.m) || r.len < CLOSE_JUNK || !p.junk);
   }
   const r = rayFirst(w, ang, false);
   if (!r) return false;
   if (r.o.t === 'mon') {
     const m = r.o.m;
-    return liftable(w, m) || m.hp <= w.up.barb || r.len < CLOSE_MON || !p.junk;
+    // a hermit's shell comes off as junk to throw: always worth a cast
+    return liftable(w, m) || m.shell > 0 || m.hp <= w.up.barb || r.len < CLOSE_MON || !p.junk;
   }
   if (r.o.item.kind === 'junk') return p.junk && mons.some((m) => !liftable(w, m));
   const near = mons.some((m) => dist(m.d - B.crane.d, m.w - B.crane.w) < NEAR);
@@ -140,10 +146,11 @@ export class Pilot {
   }
 }
 
-/** Plays one game to the end (or `maxWave`, or `maxSecs` of game time). */
-export function playGame(seed: number, name: string, maxWave = 30, maxSecs = 3600): GameResult {
+/** Plays one game to the end (or `maxWave`, or `maxSecs` of game time); `ease` makes it a new
+ *  player's game (tide.ts), `sea` sails it on another sea (seas.ts). */
+export function playGame(seed: number, name: string, maxWave = 30, maxSecs = 3600, ease = 0, meta: MetaLevels = {}, sea = 0): GameResult {
   const pilot = new Pilot(seed, name);
-  const w = startGame(seed);
+  const w = startGame(seed, ease, meta, sea);
   const shops: ShopVisit[] = [];
   let t = 0;
   while (t < maxSecs * TICK_RATE) {

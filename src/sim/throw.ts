@@ -61,7 +61,7 @@ function hitWith(w: World, m: Monster, ud: number, uw: number): void {
   m.eat = 0;
   damage(w, m, dmg, true);
   if (alive(w, m)) {
-    m.stun = T.stun;
+    m.stun = T.stun + w.up.tar;
     knock(m, ud, uw, T.knock);
   }
   if (!w.up.blast) return;

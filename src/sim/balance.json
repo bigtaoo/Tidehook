@@ -12,6 +12,7 @@
     "homeLen": 14,
     "margin": 6,
     "swingRate": 1.7,
+    "aimSlow": 0.7,
     "swing": 1.15,
     "spread": 12,
     "magnetMinLen": 30,
@@ -25,6 +26,7 @@
     "offset": 22,
     "margin": 20,
     "behindDock": 30,
+    "aimSlow": 0.15,
     "stun": 0.6,
     "knock": 45,
     "blastBase": 50,
@@ -36,8 +38,15 @@
     "grunt": { "hp": 2, "speed": 36, "radius": 13, "dmg": 1 },
     "darter": { "hp": 1, "speed": 62, "radius": 11, "dmg": 1, "swims": true },
     "brute": { "hp": 6, "speed": 21, "radius": 19, "dmg": 3 },
-    "glutton": { "hp": 3, "speed": 30, "radius": 15, "dmg": 2, "greedy": true }
+    "glutton": { "hp": 3, "speed": 30, "radius": 15, "dmg": 2, "greedy": true },
+    "hermit": { "hp": 2, "speed": 30, "radius": 15, "dmg": 1, "shell": true },
+    "ray": { "hp": 2, "speed": 44, "radius": 16, "dmg": 2, "dives": true },
+    "boss": { "hp": 28, "speed": 14, "radius": 26, "dmg": 4, "boss": true },
+    "kraken": { "hp": 40, "speed": 12, "radius": 30, "dmg": 6, "boss": true }
   },
+  "boss": { "every": 5, "chest": 30, "knock": 0.35, "pearls": 4 },
+  "kraken": { "from": 20, "every": 10, "chest": 1.5, "summon": 5, "brood": 2, "max": 8, "pearls": 8 },
+  "dive": { "every": 4, "under": 1.6, "near": 240 },
   "monster": {
     "hpPerWave": 0.1,
     "speedPerWave": 0.035,
@@ -65,17 +74,20 @@
       "grunt": { "from": 1, "base": 3, "offset": 0, "per": 1 },
       "darter": { "from": 2, "base": 0, "offset": 0, "per": 2 },
       "brute": { "from": 3, "base": 0, "offset": 1, "per": 2 },
-      "glutton": { "from": 4, "base": 0, "offset": 1, "per": 3 }
+      "glutton": { "from": 4, "base": 0, "offset": 1, "per": 3 },
+      "hermit": { "from": 7, "base": 0, "offset": 4, "per": 3 },
+      "ray": { "from": 9, "base": 0, "offset": 6, "per": 3 }
     },
     "debutSlot": 2,
     "firstDelay": 1.2,
     "gapStart": 3,
-    "gapPerWave": 0.11,
+    "gapPerWave": 0.14,
     "gapMin": 0.8,
     "jitterMin": 0.6,
     "jitterMax": 1.4,
     "clearDelay": 1
   },
+  "tide": { "waves": 30, "pace": 0.55 },
   "catch": {
     "startFish": 9,
     "startJunk": 6,
@@ -129,7 +141,9 @@
     "swing": 1.15,
     "multi": 0,
     "magnet": 0,
-    "grounds": 0
+    "grounds": 0,
+    "tar": 0,
+    "salvage": 0
   },
   "upgrades": [
     { "id": "grip", "base": 20, "max": 8, "growth": 1.7, "core": true, "effects": [{ "stat": "grip", "add": 1 }] },
@@ -137,14 +151,51 @@
     { "id": "winch", "base": 14, "max": 4, "effects": [{ "stat": "winch", "mul": 1.25 }] },
     { "id": "cast", "base": 12, "max": 4, "effects": [{ "stat": "cast", "mul": 1.25 }] },
     { "id": "barb", "base": 20, "max": 4, "core": true, "effects": [{ "stat": "barb", "add": 1 }] },
-    { "id": "pierce", "base": 26, "max": 3, "effects": [{ "stat": "pierce", "add": 1 }] },
-    { "id": "blast", "base": 28, "max": 3, "effects": [{ "stat": "blast", "add": 1 }] },
+    { "id": "pierce", "base": 26, "max": 3, "locked": true, "effects": [{ "stat": "pierce", "add": 1 }] },
+    { "id": "blast", "base": 28, "max": 3, "locked": true, "effects": [{ "stat": "blast", "add": 1 }] },
     { "id": "bait", "base": 12, "max": 3, "effects": [{ "stat": "lure", "add": 40 }, { "stat": "chew", "mul": 1.35 }] },
     { "id": "swing", "base": 14, "max": 2, "effects": [{ "stat": "swing", "add": 0.17 }] },
     { "id": "planks", "base": 16, "max": 5, "effects": [{ "stat": "dock", "add": 3 }] },
-    { "id": "multi", "base": 40, "max": 2, "growth": 2, "ability": true, "effects": [{ "stat": "multi", "add": 1 }] },
+    { "id": "multi", "base": 40, "max": 2, "growth": 2, "ability": true, "locked": true, "effects": [{ "stat": "multi", "add": 1 }] },
     { "id": "magnet", "base": 30, "max": 3, "growth": 1.8, "ability": true, "effects": [{ "stat": "magnet", "add": 1 }] },
-    { "id": "grounds", "base": 35, "max": 3, "growth": 1.8, "ability": true, "effects": [{ "stat": "grounds", "add": 1 }] }
+    { "id": "grounds", "base": 35, "max": 3, "growth": 1.8, "ability": true, "locked": true, "effects": [{ "stat": "grounds", "add": 1 }] },
+    { "id": "tar", "base": 16, "max": 2, "locked": true, "effects": [{ "stat": "tar", "add": 0.5 }] },
+    { "id": "salvage", "base": 22, "max": 2, "growth": 1.6, "ability": true, "locked": true, "effects": [{ "stat": "salvage", "add": 1 }] }
   ],
-  "grounds": { "valueBonus": 0.3, "restockBonus": 2, "capBonus": 2 }
+  "meta": {
+    "perWave": 4,
+    "upgrades": [
+      { "id": "hull", "base": 20, "max": 5, "growth": 1.5, "effects": [{ "stat": "dock", "add": 2 }] },
+      { "id": "purse", "base": 15, "max": 5, "growth": 1.5, "effects": [{ "stat": "coins", "add": 15 }] },
+      { "id": "powder", "base": 30, "max": 2, "growth": 1.6, "effects": [{ "stat": "mines", "add": 1 }] },
+      { "id": "lodestone", "base": 80, "max": 1, "card": "magnet", "effects": [] },
+      { "id": "mend", "base": 40, "max": 3, "growth": 1.8, "effects": [{ "stat": "mend", "add": 1 }] },
+      { "id": "grip", "base": 50, "max": 2, "growth": 2, "effects": [{ "stat": "grip", "add": 1 }] },
+      { "id": "stall", "base": 70, "max": 1, "effects": [{ "stat": "stall", "add": 1 }] },
+      { "id": "planTar", "base": 25, "max": 1, "unlock": "tar", "effects": [] },
+      { "id": "planPierce", "base": 35, "max": 1, "unlock": "pierce", "effects": [] },
+      { "id": "planSalvage", "base": 45, "max": 1, "unlock": "salvage", "effects": [] },
+      { "id": "planBlast", "base": 55, "max": 1, "unlock": "blast", "effects": [] },
+      { "id": "planGrounds", "base": 65, "max": 1, "unlock": "grounds", "effects": [] },
+      { "id": "planMulti", "base": 80, "max": 1, "unlock": "multi", "effects": [] }
+    ]
+  },
+  "grounds": { "valueBonus": 0.3, "restockBonus": 2, "capBonus": 2 },
+  "salvage": { "every": 4 },
+  "seas": [
+    { "id": "bay", "lead": 0, "pearls": 1000, "speed": 1000, "gap": 1000, "price": 0, "needs": 0 },
+    { "id": "fog", "lead": 3, "pearls": 1500, "speed": 1000, "gap": 700, "price": 120, "needs": 12 },
+    { "id": "storm", "lead": 6, "pearls": 2000, "speed": 1200, "gap": 1000, "price": 240, "needs": 12 }
+  ],
+  "goals": [
+    ["game", "wave", 5, 10], ["game", "wave", 8, 15], ["game", "wave", 10, 20], ["game", "wave", 15, 30],
+    ["game", "wave", 20, 40], ["game", "wave", 25, 50], ["game", "wave", 30, 60], ["game", "wave", 40, 80],
+    ["game", "bosses", 1, 20], ["game", "bosses", 2, 30], ["game", "bosses", 4, 50], ["game", "krakens", 1, 40], ["game", "shells", 10, 15], ["game", "rays", 10, 20],
+    ["game", "kills", 60, 15], ["game", "kills", 150, 30], ["game", "crush", 25, 15], ["game", "junkKills", 15, 20],
+    ["game", "mines", 3, 15], ["game", "mined", 300, 20], ["game", "spat", 30, 20], ["game", "recaught", 20, 15],
+    ["game", "fog", 10, 40], ["game", "fog", 20, 80], ["game", "storm", 10, 60], ["game", "storm", 20, 120],
+    ["total", "games", 5, 10], ["total", "games", 20, 30], ["total", "kills", 500, 25], ["total", "kills", 2000, 50],
+    ["total", "kills", 5000, 80], ["total", "bosses", 5, 30], ["total", "bosses", 20, 60], ["total", "krakens", 5, 60], ["total", "crush", 300, 30],
+    ["total", "junkKills", 200, 30], ["total", "mines", 30, 25], ["total", "mined", 5000, 40]
+  ]
 }

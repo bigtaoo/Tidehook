@@ -42,7 +42,7 @@ export function addItem(w: World, kind: Item['kind']): boolean {
     const pd = rng.range(B.dock.edge + C.nearMargin, LANE_LEN_FP - C.farMargin - r);
     if (w.items.some((o) => dist2(o.w - pw, o.d - pd) < (o.r + r + C.spacing) * (o.r + r + C.spacing))) continue;
     const val = kind === 'fish' ? fishValue(w, chest, pd) : 0;
-    w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest) });
+    w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest), dropped: false });
     return true;
   }
   return false;
@@ -72,6 +72,24 @@ export function returnJunk(w: World, item: Item): void {
   w.items.push(item);
 }
 
+/** A piece of junk left where a monster sank (the salvage card), while the water holds fewer than
+ *  the cap. */
+export function dropJunk(w: World, m: Monster): void {
+  if (w.items.filter((o) => o.kind === 'junk').length >= C.junkCap) return;
+  const r = C.junkRadius;
+  w.items.push({
+    id: nextId(w),
+    kind: 'junk',
+    chest: false,
+    w: clamp(m.w, C.wallMargin + r, LANE_WIDTH_FP - C.wallMargin - r),
+    d: clamp(m.d, B.dock.edge + C.nearMargin, LANE_LEN_FP - C.farMargin - r),
+    r,
+    val: 0,
+    wt: C.junkWeight,
+    dropped: false,
+  });
+}
+
 /** The fish a glutton ate, dropped where it died when it was not crushed on the dock. */
 export function dropFish(w: World, m: Monster): Item {
   const chest = m.ate >= C.dropChest;
@@ -85,7 +103,9 @@ export function dropFish(w: World, m: Monster): Item {
     r,
     val: m.ate,
     wt: weightOf('fish', chest),
+    dropped: true,
   };
+  w.st.dropped += m.ate;
   w.items.push(item);
   return item;
 }

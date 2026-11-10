@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyze, format, intent, judge, parse } from './analyze.mjs';
 import { recFile, recLine } from './sink.mjs';
+import { formatWaves, waveGames } from './waves.mjs';
 
 const fish = (id, ang, dist = 200, r = 14) => ({ id, what: 'fish', d: 0, w: 0, r, ang, dist });
 const tap = (o) => ({ k: 'tap', n: 1, s: 1, fired: true, threw: false, dir: 1, shown: 0, cast: 0, back: 3, reach: 10, seen: [], ...o });
@@ -43,5 +44,20 @@ describe('rec analysis', () => {
     expect(recLine('[1]')).toBeNull();
     expect(recLine('nope')).toBeNull();
     expect(recFile('rec', new Date('2026-11-09T10:00:00Z')).replaceAll('\\', '/')).toBe('rec/rec-2026-11-09.ndjson');
+  });
+});
+
+describe('rec wave table', () => {
+  const st = { kills: 3, crush: 2, junkKills: 1, mined: 40, dropped: 9, recaught: 5, eaten: 6, spat: 0, casts: 7 };
+  const wave = (wave, o = {}) => ({ k: 'wave', wave, end: 'clear', secs: 30, hp0: 10, hp: 9, maxHp: 10, leaks: { grunt: 1 }, st, bought: [], ...o });
+
+  it('splits games where the wave number starts again', () => {
+    const recs = [wave(1), { k: 'tap' }, wave(2), wave(1), wave(2), wave(3, { end: 'over', hp: 0 })];
+    expect(waveGames(recs).map((g) => g.length)).toEqual([2, 3]);
+    const text = formatWaves(recs).join('\n');
+    expect(text).toContain('game 2');
+    expect(text).toContain('9/5');
+    expect(text).toContain('(fell)');
+    expect(text).toContain('g1');
   });
 });

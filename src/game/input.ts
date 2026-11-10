@@ -31,7 +31,7 @@ export function handleKey(s: Session, key: string, ageMs = 0): boolean {
       s.tap(ageMs);
       return true;
     case 'enter':
-      if (!s.nextWave()) s.tap();
+      if (!s.nextWave() && !s.sail()) s.tap();
       return true;
     case '1':
     case '2':

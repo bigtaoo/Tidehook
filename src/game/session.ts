@@ -1,19 +1,34 @@
-// One sitting at the game: the title, a run of waves, the game over and the next game. It owns
+// One sitting at the game: the title, a run of waves, the game over, the harbour between games
+// (meta/harbour.ts, docs/02-onboarding.md section 7) and the next game. It owns
 // the World, runs it at the fixed tick rate (view/fixedStep.ts) and is the only thing that
 // commands it, so the player's taps and keys, the ?autoplay bot and tests all come through here.
 // No Pixi: the view reads `world`, `prev` and the drained events to draw.
 
 import { Pilot } from '../sim/bot/bot';
-import { B } from '../sim/balance';
 import type { SimEvent } from '../sim/events';
 import { TICK_RATE } from '../sim/math/fixed';
 import { BRAD_FULL } from '../sim/math/trig';
 import { buyCard, buyMine, buyRepair, fire, nextWave, reroll, startGame, step } from '../sim/step';
-import type { World } from '../sim/world';
+import { B, type GoalSpec } from '../sim/balance';
+import { counts } from '../sim/goals';
+import { seaOf } from '../sim/seas';
+import { pearlsFor } from '../sim/meta';
+import type { Shot, World } from '../sim/world';
 import { FixedStep } from '../view/fixedStep';
 import type { Guide } from './guide/guide';
+import type { Harbour } from './meta/harbour';
 
-export type Mode = 'title' | 'play' | 'over';
+export type Mode = 'title' | 'play' | 'over' | 'lobby';
+
+/** How the last game went: its wave, the pearls it brought home and the log entries it met. */
+export interface LastGame {
+  wave: number;
+  pearls: number;
+  log: GoalSpec[];
+  /** The sea sailed (sim/seas.ts), and whether the wave beat that sea's best before it. */
+  sea: number;
+  record: boolean;
+}
 
 export interface SessionOptions {
   seed: number;
@@ -23,6 +38,9 @@ export interface SessionOptions {
   autoplay: string | null;
   /** The first game's seed, when it differs from `seed` (a new player's, guide/firstSeed.ts). */
   firstSeed?: number;
+  /** Waves of slow tide each game opens with (sim/tide.ts) instead of the player's B.tide.waves
+   *  (?ease, dev builds; 0 a bare game). */
+  ease?: number;
   /** How long a tap comes after the picture it answers was drawn, ms (SEEN_MS; ?lag). Unset (the
    *  headless tests and bots): a tap casts along the aim as it is in the sim. */
   lagMs?: number;
@@ -70,6 +88,9 @@ export class Session {
   /** Every monster's and item's position before the last step, by id; the hook's aim and rope. */
   readonly prev = new Map<number, Was>();
   prevHook = { ang: 0, len: 0 };
+  /** Each thrown shot's position before the last step. Shots have no id; the sim moves the same
+   *  object every tick, so it is the key. A shot thrown this tick has none. */
+  readonly prevShots = new WeakMap<Shot, Was>();
   /** Hears every tap in a game (the dev tap recorder), or null. */
   tapWatch: ((t: TapInfo) => void) | null = null;
   /** How many games have started. */
@@ -79,13 +100,30 @@ export class Session {
   private shopWait = 0;
   private events: SimEvent[] = [];
   private overMs = 0;
+  /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
+   *  entries it met, for the game over and the harbour. */
+  last: LastGame = { wave: 0, pearls: 0, log: [], sea: 0, record: false };
 
-  /** The tutorial; null for the bot and in tests that do not ask for it. */
+  /** The tutorial and the harbour; null for the bot and in tests that do not ask for them. */
   constructor(
     readonly opts: SessionOptions,
     readonly guide: Guide | null = null,
+    readonly harbour: Harbour | null = null,
   ) {
-    this.world = startGame(opts.firstSeed ?? opts.seed);
+    this.world = this.newWorld();
+  }
+
+  /** A player's game opens on a slow tide (sim/tide.ts). The bot and the tests have no guide and
+   *  play bare games, unless ?ease says otherwise. */
+  private ease(): number {
+    return this.opts.ease ?? (this.guide ? B.tide.waves : 0);
+  }
+
+  /** The next game's world: the first on the first seed, then a new seed each time; with the
+   *  harbour's upgrades as they are now. */
+  private newWorld(): World {
+    const seed = this.games === 0 ? (this.opts.firstSeed ?? this.opts.seed) : this.opts.seed + this.games;
+    return startGame(seed, this.ease(), this.harbour?.levels ?? {}, this.harbour?.sea ?? 0);
   }
 
   /** How far into the next tick to draw, 0 to 1. */
@@ -93,9 +131,9 @@ export class Session {
     return this.mode === 'play' && !this.paused ? this.fixed.alpha : 1;
   }
 
-  /** A new game: the first on the title's world, then a new seed each time. */
+  /** A new game (built again, so upgrades bought since the title count). */
   start(): void {
-    if (this.games > 0) this.world = startGame(this.opts.seed + this.games);
+    this.world = this.newWorld();
     this.games++;
     this.mode = 'play';
     this.paused = false;
@@ -136,6 +174,12 @@ export class Session {
       if (w.phase === 'over') {
         this.mode = 'over';
         this.overMs = 0;
+        const pearls = pearlsFor(w);
+        this.harbour?.earn(pearls);
+        const was = this.harbour?.best[seaOf(w).id] ?? 0;
+        const log = this.harbour?.logGame(counts(w)) ?? [];
+        const record = was > 0 && w.wave > was;
+        this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), log, sea: w.sea, record };
         break;
       }
     }
@@ -149,11 +193,14 @@ export class Session {
     return out;
   }
 
-  /** A tap on the lane or Space: start, resume, or cast. `ageMs`: how long the input waited before
-   *  it got here (the event's own time stamp). */
+  /** A tap on the lane or Space: start, resume, or cast; after a game over, on to the harbour.
+   *  In the harbour only its buttons do anything. `ageMs`: how long the input waited before it got
+   *  here (the event's own time stamp). */
   tap(ageMs = 0): void {
+    if (this.mode === 'lobby') return;
     if (this.mode === 'over' && this.overMs < OVER_LOCK_MS) return;
-    if (this.mode !== 'play') this.start();
+    if (this.mode === 'over' && this.harbour) this.openLobby();
+    else if (this.mode !== 'play') this.start();
     else if (this.paused) this.paused = false;
     else if (!this.pilot) {
       const h = this.world.hook;
@@ -186,7 +233,36 @@ export class Session {
     const lag = this.opts.lagMs;
     if (lag === undefined) return 0;
     const ticks = 1 - this.alpha + ((lag + ageMs) * TICK_RATE * this.opts.speed) / 1000;
-    return Math.round(ticks * B.hook.swingRate);
+    // at the swing's rate now: it slows while a throw would hit (sim/hook.ts)
+    return Math.round(ticks * this.world.hook.rate);
+  }
+
+  /** To the harbour between games (also on boot for a returning player). */
+  openLobby(): void {
+    if (!this.harbour || this.mode === 'play') return;
+    this.mode = 'lobby';
+  }
+
+  /** Leaves the harbour for a new game; false when not in it. */
+  sail(): boolean {
+    if (this.mode !== 'lobby') return false;
+    this.start();
+    return true;
+  }
+
+  /** Buys a level of a harbour upgrade; false when not in the harbour, too dear or maxed. */
+  buyMeta(id: string): boolean {
+    return this.mode === 'lobby' && !!this.harbour?.buy(id);
+  }
+
+  /** Buys sea `i`'s chart (sim/seas.ts); false when not in the harbour, too dear or not on sale. */
+  buyChart(i: number): boolean {
+    return this.mode === 'lobby' && !!this.harbour?.buyChart(i);
+  }
+
+  /** Picks sea `i` for the next game; false when not in the harbour or not owned. */
+  pickSea(i: number): boolean {
+    return this.mode === 'lobby' && !!this.harbour?.pick(i);
   }
 
   togglePause(): void {
@@ -246,6 +322,7 @@ export class Session {
     for (const it of w.items) this.prev.set(it.id, { d: it.d, w: it.w });
     for (const g of w.hook.grabs) if (g.t === 'item') this.prev.set(g.item.id, { d: g.item.d, w: g.item.w });
     this.prevHook = { ang: w.hook.ang, len: w.hook.len };
+    for (const sh of w.shots) this.prevShots.set(sh, { d: sh.d, w: sh.w });
   }
 }
 

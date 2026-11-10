@@ -1,20 +1,25 @@
 // The crane's hook (prototype fire, updHook, hookHit, placeGrabs, deliver). At rest it swings;
 // a tap casts it along the aim, where it grabs fish, junk and monsters light enough to lift (up
-// to 1 + multi of them), bounces off heavier ones, and reels back slower the more it carries.
-// With junk in the crane's hand a tap throws it instead (throw.ts).
+// to 1 + multi of them), bounces off heavier ones (knocking a hermit's shell off as junk), and reels back slower the more it carries.
+// With junk in the crane's hand a tap throws it instead (throw.ts). The swing slows while a tap now
+// would land: a lot while a throw would hit a monster (at full speed a far one sat under the aim
+// for some 50 ms, gone before the player could react), a little while a cast would catch.
 
 import { B } from './balance';
 import { alive, hitAt, type Target } from './collide';
 import { emit } from './events';
-import { returnJunk } from './items';
+import { dropJunk, returnJunk } from './items';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from './lane';
 import { dist, muldiv, times } from './math/fixed';
 import { cosB, normBrad, sinB } from './math/trig';
 import { damage, kill, knock, liftable } from './monsters';
+import { throwFirst } from './lead';
+import { rayFirst } from './ray';
 import { mineBlast, throwJunk } from './throw';
 import type { Grab, World } from './world';
 
 const H = B.hook;
+const T = B.throw;
 /** The most swing a tap can look back over, ticks (Session.tap: the screen and the finger lag). */
 const BACK_TICKS = 5;
 
@@ -24,7 +29,7 @@ const BACK_TICKS = 5;
 export function fire(w: World, back = 0): boolean {
   const h = w.hook;
   if (w.phase !== 'wave' || h.st !== 'swing') return false;
-  const ph = normBrad(h.ph - Math.min(Math.max(back, 0), H.swingRate * BACK_TICKS));
+  const ph = normBrad(h.ph - Math.min(Math.max(back, 0), h.rate * BACK_TICKS));
   const ang = muldiv(w.up.swing, sinB(ph), 1000);
   if (w.held) throwJunk(w, ang);
   else {
@@ -52,11 +57,34 @@ export function grabWeight(w: World, g: Grab): number {
   return w.mons.find((m) => m.id === g.id)?.hp ?? 0;
 }
 
+/** One tick of the swing. It moves in slow steps and stops at the first one where a tap would
+ *  land, so the aim slows from the edge of a target, not from wherever a full step (some 3.7°,
+ *  more than a far monster's whole width) happened to land in it. */
+function swing(w: World): void {
+  const h = w.hook;
+  const slow = Math.max(1, muldiv(H.swingRate, w.held ? T.aimSlow : H.aimSlow, 1000));
+  let moved = 0;
+  while (moved < H.swingRate) {
+    const s = Math.min(slow, H.swingRate - moved);
+    moved += s;
+    h.ph = normBrad(h.ph + s);
+    h.ang = muldiv(w.up.swing, sinB(h.ph), 1000);
+    if (onTarget(w, h.ang)) break;
+  }
+  h.rate = moved;
+}
+
+/** Whether a tap along `ang` would land: a throw on a monster, or a cast on a fish, chest or piece
+ *  of junk. Not on a monster: slowing on those made the defence too easy (balance guard). */
+export function onTarget(w: World, ang: number): boolean {
+  if (w.held) return throwFirst(w, ang) !== null;
+  return rayFirst(w, ang, false, H.tip)?.o.t === 'item';
+}
+
 export function updateHook(w: World): void {
   const h = w.hook;
   if (h.st === 'swing') {
-    h.ph = normBrad(h.ph + H.swingRate);
-    h.ang = muldiv(w.up.swing, sinB(h.ph), 1000);
+    swing(w);
     return;
   }
   const ud = cosB(h.ang);
@@ -119,11 +147,14 @@ function hookHit(w: World, o: Target, ud: number, uw: number): boolean {
   } else {
     const m = o.m;
     h.st = 'back';
-    if (w.mines > 0) {
+    // a hermit's shell comes off first, and floats there as junk; no mine is spent on it
+    const shelled = m.shell > 0;
+    if (w.mines > 0 && !shelled) {
       mineBlast(w, m);
       return false;
     }
     damage(w, m, w.up.barb, false);
+    if (shelled) dropJunk(w, m);
     w.st.bounce++;
     emit(w, { e: 'bounce', id: m.id, d: m.d, w: m.w });
     if (alive(w, m)) {
@@ -163,6 +194,7 @@ function deliver(w: World, g: Grab): void {
   if (it.kind === 'fish') {
     w.coins += it.val;
     w.st.mined += it.val;
+    if (it.dropped) w.st.recaught += it.val;
     emit(w, { e: 'coins', amount: it.val, spat: false });
   } else if (w.held) returnJunk(w, it);
   else {

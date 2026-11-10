@@ -16,7 +16,8 @@ export const P = {
   ink: 0x4a2c16,
   cream: 0xfff1d6,
   red: 0xe5484d,
-  green: 0x4cc35a,
+  /** The go buttons (next wave, sail) and a healthy dock: chart teal, not a glossy green. */
+  go: 0x2f7f78,
 } as const;
 
 /** The water, by distance from the dock: teal near shore, steel blue, then deep indigo far out,
@@ -26,10 +27,14 @@ export const SEA = {
   shallow: 0x26b2b0,
   mid: 0x186e8c,
   far: 0x16284a,
-  /** Past the lane's sides and ends: the screen's fill. */
-  deep: 0x123a52,
+  /** Past the lane's sides and ends: the screen's fill, the chart backdrop's far water. */
+  deep: 0x082040,
   /** The thin lines between bands. */
   seam: 0x0d2a3d,
+  /** The other seas' weather over the water (field.ts drawWeather): the Fog Bank's mist, the
+   *  Storm Reach's dark sky. */
+  fog: 0xdfe8ec,
+  storm: 0x0b1626,
 } as const;
 
 /** The words' outline on the field: dark enough to read over every band. */
@@ -41,6 +46,10 @@ export const MON = {
   darter: 0xc9b6ff,
   brute: 0x6c7fd8,
   glutton: 0x9fe6f0,
+  boss: 0x4a5cb0,
+  hermit: 0x7fc9c0,
+  ray: 0x6f78c8,
+  kraken: 0x8a5ca8,
 } as const;
 
 /** The catch: fish and chests are the money (warm), junk is grey. */

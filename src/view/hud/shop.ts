@@ -81,7 +81,9 @@ export class ShopPanel extends Container {
       captain.position.set(r.x + PAD, r.y + PAD + HEAD + 8);
       this.addChild(captain);
     }
-    const title = label(mine ? t('shop.title', { n: w.wave }) : t('shop.bot'), 52 * k);
+    // a new player's dock was patched for free after the wave (sim/tide.ts)
+    const done = w.mended ? t('shop.titleMend', { n: w.wave, hp: w.mended }) : t('shop.title', { n: w.wave });
+    const title = label(mine ? done : t('shop.bot'), 52 * k);
     fitIn(title, inner * 0.62 - capW, HEAD);
     title.anchor.set(0, 0.5);
     title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
@@ -97,7 +99,8 @@ export class ShopPanel extends Container {
 
     const cardsY = r.y + PAD + HEAD + 16;
     const cardH = r.h - PAD * 2 - HEAD - 16 - ROW * 2 - GAP * 2;
-    const cardW = (inner - GAP * 2) / 3;
+    const n = Math.max(3, w.cards.length);
+    const cardW = (inner - GAP * (n - 1)) / n;
     w.cards.forEach((_, i) => {
       const card = this.card(w, i, cardW, cardH, mine);
       const x = r.x + PAD + i * (cardW + GAP);
@@ -121,7 +124,7 @@ export class ShopPanel extends Container {
       this.addChild(b);
       if (i === 0) this.spots.set('repair', { x: b.x, y: rowY, w: cardW, h: ROW });
     });
-    const next = new Button({ w: inner, h: ROW, text: t('shop.next'), size: 60 * k, color: P.green, enabled: mine, onPress: () => this.act.next() });
+    const next = new Button({ w: inner, h: ROW, text: t('shop.next'), size: 60 * k, color: P.go, enabled: mine, onPress: () => this.act.next() });
     next.position.set(r.x + PAD, rowY + ROW + GAP);
     this.addChild(next);
     this.spots.set('next', { x: next.x, y: next.y, w: inner, h: ROW });

@@ -139,7 +139,7 @@ describe('the reel ratchet', () => {
   it('drops in pitch under weight', () => {
     const w = startGame(3);
     expect(reelRate(w)).toBe(1);
-    const item = { id: 99, kind: 'junk' as const, chest: false, d: 0, w: 0, r: 10, val: 0, wt: 6 };
+    const item = { id: 99, kind: 'junk' as const, chest: false, d: 0, w: 0, r: 10, val: 0, wt: 6, dropped: false };
     w.hook.grabs = [{ t: 'item', item }];
     const heavy = reelRate(w);
     expect(heavy).toBeLessThan(1);

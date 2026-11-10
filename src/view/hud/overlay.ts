@@ -13,7 +13,7 @@ import { toDesign } from '../orient';
 import type { Frame } from './frame';
 
 /** How long a hint stays up, ms. */
-const BANNER_MS = 5000;
+const BANNER_MS = 4000;
 /** The captain on the game over card: above the words in portrait, beside them in landscape. */
 const CAPTAIN_H = 340;
 
@@ -23,6 +23,10 @@ export class Overlay extends Container {
   private cover: Cover = null;
   private wave = 0;
   private lesson: string | null = null;
+  /** Pearls the last game brought home, or null without a harbour (the bot, tests). */
+  private pearls: number | null = null;
+  /** The game over's extra lines (a new best, the captain's log), joined for the change check. */
+  private notes: readonly string[] = [];
   private readonly banner = new Container();
   private readonly queue: string[] = [];
   private bannerMs = 0;
@@ -46,13 +50,17 @@ export class Overlay extends Container {
   }
 
   /** `shop`: the shop is open; the banner waits behind it (in landscape they share the top), and
-   *  behind the tutorial's words while `quiet`. `lesson`: a line for the game over card. */
-  update(mode: Mode, paused: boolean, shop: boolean, wave: number, events: readonly SimEvent[], frameMs: number, quiet = false, lesson: string | null = null): void {
-    const cover: Cover = mode === 'title' ? 'title' : mode === 'over' ? 'over' : paused ? 'paused' : null;
-    if (cover !== this.cover || (cover === 'over' && (wave !== this.wave || lesson !== this.lesson))) {
+   *  behind the tutorial's words while `quiet`. `lesson`: a line for the game over card; `pearls`:
+   *  what the game brought home to the harbour, null without one; `notes`: more lines for it.
+   *  The harbour draws itself. */
+  update(mode: Mode, paused: boolean, shop: boolean, wave: number, events: readonly SimEvent[], frameMs: number, quiet = false, lesson: string | null = null, pearls: number | null = null, notes: readonly string[] = []): void {
+    const cover: Cover = mode === 'title' ? 'title' : mode === 'over' ? 'over' : mode === 'play' && paused ? 'paused' : null;
+    if (cover !== this.cover || (cover === 'over' && (wave !== this.wave || lesson !== this.lesson || pearls !== this.pearls || notes.join('|') !== this.notes.join('|')))) {
       this.cover = cover;
       this.wave = wave;
       this.lesson = lesson;
+      this.pearls = pearls;
+      this.notes = notes;
       this.drawCover();
     }
     for (const ev of events) {
@@ -81,7 +89,7 @@ export class Overlay extends Container {
     this.bannerMs = BANNER_MS;
     const r = this.fr.banner;
     const g = new Graphics();
-    g.roundRect(r.x, r.y, r.w, r.h, 20).fill({ color: P.line, alpha: 0.85 }).stroke({ color: P.brassLight, width: 3 });
+    g.roundRect(r.x, r.y, r.w, r.h, 20).fill({ color: P.line, alpha: 0.7 }).stroke({ color: P.brassLight, width: 3 });
     const size = 40 * this.fr.boost;
     const words = label(text, size, { fill: P.cream, wrap: r.w - 60, weight: '700' });
     fitIn(words, r.w - 60, r.h - 30);
@@ -112,8 +120,10 @@ export class Overlay extends Container {
           : [
               [t('overlay.over'), 96, P.red],
               [t('overlay.reached', { n: this.wave }), 60, P.cream],
+              ...(this.pearls ? [[t('overlay.pearls', { n: this.pearls }), 56, P.cream] as [string, number, number]] : []),
+              ...this.notes.map((n): [string, number, number] => [n, 48, P.brassLight]),
               ...(this.lesson ? [[this.lesson, 52, P.brassLight] as [string, number, number]] : []),
-              [t('overlay.again'), 56, P.cream],
+              [t(this.pearls === null ? 'overlay.again' : 'overlay.harbour'), 56, P.cream],
             ];
     const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
     let maxW = Math.min(f.w, fit.w) - 80;

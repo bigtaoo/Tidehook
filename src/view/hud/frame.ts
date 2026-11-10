@@ -63,6 +63,6 @@ export function frameFor(fit: Fit): Frame {
     pause,
     sound: { ...pause, x: pause.x - PAUSE - GAP },
     shop: { x: GAP, y: bottom.y - GAP - SHOP_PORTRAIT_H, w: fit.w - GAP * 2, h: SHOP_PORTRAIT_H },
-    banner: { x: GAP, y: PORTRAIT_TOP + GAP, w: fit.w - GAP * 2, h: 170 },
+    banner: { x: GAP, y: PORTRAIT_TOP + GAP, w: fit.w - GAP * 2, h: 130 },
   };
 }

@@ -11,7 +11,12 @@ import { startGame, step } from '../../sim/step';
 import type { World } from '../../sim/world';
 import { frameFor, type Frame } from '../hud/frame';
 import { Hud } from '../hud/hud';
+import { goalText } from '../hud/lobbyLog';
+import { seaName } from '../hud/lobbySeas';
+import { LOBBY_TABS, LobbyPanel } from '../hud/lobby';
 import { Overlay } from '../hud/overlay';
+import { Harbour } from '../../game/meta/harbour';
+import { SafeStore } from '../../platform/types';
 import { ShopPanel, type ShopActions } from '../hud/shop';
 import { Button } from '../kit/button';
 import { fitDesign } from '../viewport';
@@ -70,11 +75,11 @@ function screens(fr: Frame): Screen[] {
   });
   out.push(hud('start', () => startGame(1)), hud('rich', () => rich(firstShop())));
 
-  // every card in the shop, three at a time, at level 0 and with big numbers; the bot's turn;
-  // a bought card
+  // every card in the shop, three at a time and four (the harbour's wider stall), at level 0 and
+  // with big numbers; the bot's turn; a bought card
   const ids = B.upgrades.map((u) => u.id);
-  for (let i = 0; i < ids.length; i += 3) {
-    const three = [0, 1, 2].map((k) => ids[(i + k) % ids.length]);
+  for (const n of [3, 4]) for (let i = 0; i < ids.length; i += n) {
+    const three = Array.from({ length: n }, (_, k) => ids[(i + k) % ids.length]);
     for (const big of [false, true]) {
       out.push({
         name: `shop/${three.join(',')}${big ? ' rich' : ''}`,
@@ -110,6 +115,34 @@ function screens(fr: Frame): Screen[] {
     },
   });
   out.push(cover('title', 'title', false), cover('paused', 'play', true), cover('over', 'over', false));
+  out.push({
+    name: 'cover/over with pearls',
+    build: () => {
+      const o = new Overlay(fr);
+      const longest = B.goals.map(goalText).sort((a, b) => b.length - a.length)[0];
+      o.update('over', false, false, 188, [], 16, false, t('guide.lesson.fish'), 9_876, [t('overlay.record', { sea: seaName(1) }), t('overlay.logOne', { goal: longest })]);
+      return o;
+    },
+  });
+
+  // the harbour: a new one, and a rich one with every upgrade bought up to the max or near it
+  for (const rich of [false, true]) for (const tab of LOBBY_TABS) {
+    out.push({
+      name: `lobby/${rich ? 'rich' : 'new'}/${tab}`,
+      build: () => {
+        const h = new Harbour(new SafeStore(null));
+        if (rich) {
+          h.earn(9_999_999);
+          for (const u of B.meta.upgrades) for (let i = 0; i < u.max - (u.id === 'powder' ? 1 : 0); i++) h.buy(u.id);
+          h.logGame({ wave: 12, kills: 9_000, mined: 99_999, crush: 3, games: 1 });
+        }
+        const p = new LobbyPanel(fr, { buy() {}, sail() {}, chart() {}, pick() {} });
+        p.tab = tab;
+        p.update(h, true, rich ? { wave: 188, pearls: 9_876 } : { wave: 0, pearls: 0 });
+        return p;
+      },
+    });
+  }
   const hints = [
     ...MONSTER_KINDS.map((k) => t('hints.debut', { name: t(`monsters.${k}.name` as TextKey), tip: t(`monsters.${k}.tip` as TextKey) })),
     t('hints.held'),

@@ -8,6 +8,7 @@ import { Button } from '../kit/button';
 import { CATCH, P } from '../kit/palette';
 import { fitIn, label } from '../kit/text';
 import type { Frame, Rect } from './frame';
+import { lowDock } from '../scene/danger';
 
 interface Slot {
   x: number;
@@ -60,6 +61,8 @@ export class Hud extends Container {
   private readonly mines: Text;
   private readonly held: Text;
   private readonly marks = new Graphics();
+  /** A red ring that throbs round the dock's bar while it is about to fall (scene/danger.ts). */
+  private readonly alarm = new Graphics();
   private readonly speaker = new Graphics();
   private last = '';
 
@@ -76,7 +79,7 @@ export class Hud extends Container {
     this.mines = this.addChild(label('', this.size * 0.85));
     this.held = this.addChild(label('', this.size * 0.75));
     // after the words: layout/check.ts takes an earlier Graphics as a word's box
-    this.addChild(this.marks);
+    this.addChild(this.marks, this.alarm);
     const p = fr.pause;
     const pause = new Button({ w: p.w, h: p.h, text: '', size: 1, onPress: onPause });
     const bars = new Graphics();
@@ -95,6 +98,12 @@ export class Hud extends Container {
 
   /** `soundOn`: the player's sound toggle, drawn on its button. */
   update(w: World, soundOn = true): void {
+    const b0 = this.slots.bar;
+    const al = this.alarm.clear();
+    if (lowDock(w)) {
+      const throb = 0.5 + 0.5 * Math.sin((w.tick / 30) * 8);
+      al.roundRect(b0.x - 6, b0.y - 6, b0.w + 12, b0.h + 12, (b0.h + 12) / 2).stroke({ color: P.red, width: 6, alpha: 0.35 + throb * 0.65 });
+    }
     const key = `${w.wave}|${w.coins}|${w.hp}|${w.maxHp}|${w.mines}|${w.held ? 1 : 0}|${soundOn}`;
     if (key === this.last) return;
     this.last = key;
@@ -115,7 +124,7 @@ export class Hud extends Container {
     const b = s.bar;
     g.roundRect(b.x, b.y, b.w, b.h, b.h / 2).fill(P.line);
     const part = w.maxHp > 0 ? Math.max(0, w.hp) / w.maxHp : 0;
-    if (part > 0) g.roundRect(b.x + 4, b.y + 4, Math.max(b.h - 8, (b.w - 8) * part), b.h - 8, (b.h - 8) / 2).fill(part > 0.34 ? P.green : P.red);
+    if (part > 0) g.roundRect(b.x + 4, b.y + 4, Math.max(b.h - 8, (b.w - 8) * part), b.h - 8, (b.h - 8) / 2).fill(part > 0.34 ? P.go : P.red);
     // the junk in hand
     if (w.held) {
       const hs = this.size * 0.5;

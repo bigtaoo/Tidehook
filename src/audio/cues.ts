@@ -52,7 +52,10 @@ export function cueFor(ev: SimEvent): Cue | null {
     case 'hit':
       return 'hit';
     case 'bounce':
+    case 'shell':
       return 'bounce';
+    case 'summon':
+      return 'eat';
     case 'kill':
       return 'kill';
     case 'blast':
@@ -74,7 +77,7 @@ export function cueFor(ev: SimEvent): Cue | null {
     case 'over':
       return 'over';
     // 'debut' shows a banner and 'spawn' is every few seconds; 'drop' and 'held' follow a grab
-    // that already made a sound
+    // that already made a sound; 'mend' comes on the wave clear's tick
     default:
       return null;
   }

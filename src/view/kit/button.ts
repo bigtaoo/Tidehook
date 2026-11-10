@@ -13,6 +13,8 @@ export interface ButtonOpts {
   size: number;
   /** A second, smaller line: a price, drawn after a coin. */
   price?: number;
+  /** The price is in pearls (the harbour's, between games): a pearl instead of the coin. */
+  pearl?: boolean;
   color?: number;
   enabled?: boolean;
   onPress: () => void;
@@ -50,16 +52,23 @@ export class Button extends Container {
     });
   }
 
-  /** A coin and the price, centred on the line at `y`. */
+  /** A coin (or a pearl) and the price, centred on the line at `y`. */
   private price(text: string, o: ButtonOpts, pad: number, y: number, k: number): void {
-    const n = label(text, o.size * k, { fill: P.brassLight });
+    const n = label(text, o.size * k, { fill: o.pearl ? P.cream : P.brassLight });
     const coin = o.size * k * 0.36;
     fitIn(n, o.w - pad * 2 - coin * 3, o.h * (k < 1 ? 0.4 : 0.8));
     const left = o.w / 2 - (coin * 2.6 + n.width) / 2;
     const g = new Graphics();
-    g.circle(left + coin, y, coin).fill(P.brassLight).stroke({ color: P.line, width: 3 });
+    if (o.pearl) drawPearl(g, left + coin, y, coin);
+    else g.circle(left + coin, y, coin).fill(P.brassLight).stroke({ color: P.line, width: 3 });
     n.anchor.set(0, 0.5);
     n.position.set(left + coin * 2.6, y);
     this.addChild(g, n);
   }
+}
+
+/** A pearl of radius `r` at (x, y): cream with a glint. */
+export function drawPearl(g: Graphics, x: number, y: number, r: number): void {
+  g.circle(x, y, r).fill(P.cream).stroke({ color: P.line, width: 3 });
+  g.circle(x - r * 0.35, y - r * 0.35, r * 0.28).fill(0xffffff);
 }
