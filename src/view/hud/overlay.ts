@@ -23,7 +23,9 @@ const SLOT_H = 150;
 /** Card lines this size and up (the headline) shrink to one line; smaller ones wrap onto two. */
 const WRAP_BELOW = 90;
 
-type Cover = 'title' | 'paused' | 'over' | null;
+type Cover = 'title' | 'paused' | 'over' | 'voyage' | null;
+/** How a game reached its end: at the voyage's end, choosing (`voyage`), or home from it (`home`). */
+export type VoyageEnd = 'voyage' | 'home' | null;
 type Line = [string, number, number];
 
 export class Overlay extends Container {
@@ -35,6 +37,7 @@ export class Overlay extends Container {
   /** The game over's extra lines (a new best, the captain's log), joined for the change check. */
   private notes: readonly string[] = [];
   private offer: Offer = null;
+  private end: VoyageEnd = null;
   /** Where the card left room for the ad buttons, or null. */
   slot: Slot | null = null;
   private readonly banner = new Container();
@@ -62,11 +65,14 @@ export class Overlay extends Container {
   /** `shop`: the shop is open; the banner waits behind it (in landscape they share the top), and
    *  behind the tutorial's words while `quiet`. `lesson`: a line for the game over card; `pearls`:
    *  what the game brought home to the harbour, null without one; `notes`: more lines for it.
-   *  `offer`: the ad buttons the card makes room for (game/ads.ts). The harbour draws itself. */
-  update(mode: Mode, paused: boolean, shop: boolean, wave: number, events: readonly SimEvent[], frameMs: number, quiet = false, lesson: string | null = null, pearls: number | null = null, notes: readonly string[] = [], offer: Offer = null): void {
-    const cover: Cover = mode === 'title' ? 'title' : mode === 'over' ? 'over' : mode === 'play' && paused ? 'paused' : null;
-    if (cover !== this.cover || (cover === 'over' && (wave !== this.wave || lesson !== this.lesson || pearls !== this.pearls || offer !== this.offer || notes.join('|') !== this.notes.join('|')))) {
+   *  `offer`: the ad buttons the card makes room for (game/ads.ts). `end`: the voyage's end
+   *  (game/session.ts), whose card leaves room for its own buttons (hud/voyageEnd.ts). The harbour
+   *  draws itself. */
+  update(mode: Mode, paused: boolean, shop: boolean, wave: number, events: readonly SimEvent[], frameMs: number, quiet = false, lesson: string | null = null, pearls: number | null = null, notes: readonly string[] = [], offer: Offer = null, end: VoyageEnd = null): void {
+    const cover: Cover = mode === 'title' ? 'title' : mode === 'over' ? 'over' : mode === 'play' && paused ? 'paused' : end === 'voyage' && mode === 'play' ? 'voyage' : null;
+    if (cover !== this.cover || (cover === 'over' && (wave !== this.wave || lesson !== this.lesson || pearls !== this.pearls || offer !== this.offer || end !== this.end || notes.join('|') !== this.notes.join('|')))) {
       this.cover = cover;
+      this.end = end;
       this.wave = wave;
       this.lesson = lesson;
       this.pearls = pearls;
@@ -78,6 +84,8 @@ export class Overlay extends Container {
       if (ev.e === 'debut') this.hint(`debut.${ev.kind}`, t('hints.debut', { name: t(`monsters.${ev.kind}.name` as TextKey), tip: t(`monsters.${ev.kind}.tip` as TextKey) }));
       else if (ev.e === 'held') this.hint('held', t('hints.held'));
       else if (ev.e === 'eatStart') this.hint('eat', t('hints.eat'));
+      // every sea event says what it is, ahead of any lesson waiting (sim/seaEvents.ts)
+      else if (ev.e === 'seaEvent') this.queue.unshift(t(`events.${ev.id}` as TextKey));
     }
     // nor over a cover: the game over card's lines can climb up to the top
     this.banner.visible = !shop && !quiet && !this.cover;
@@ -130,11 +138,13 @@ export class Overlay extends Container {
         ? [[t('title'), 120, P.brassLight], [t('boot.tapToStart'), 60, P.cream]]
         : this.cover === 'paused'
           ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream]]
-          : this.overLines();
+          : this.cover === 'voyage'
+            ? [[t('voyage.title'), 96, P.brassLight], [t('voyage.body', { n: this.wave }), 52, P.cream], ['', 0, 0]]
+            : this.overLines();
     const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
     // a widened portrait (a square embed) lets the words run past the lane, over the dim
     let maxW = (fit.wide ? Math.min(f.w, fit.w) : Math.max(f.w, fit.w - 192)) - 80;
-    const over = this.cover === 'over';
+    const over = this.cover === 'over' || this.cover === 'voyage';
     const tall = over && !fit.wide;
     if (over && fit.wide) maxW -= CAPTAIN_H * aspect('captain') * 2 + 40;
     // each line's words, null for the ad buttons' row, then the block laid out by their real heights
@@ -174,7 +184,9 @@ export class Overlay extends Container {
   /** The game over card's lines; an empty line is the ad buttons' slot. While the revive is on
    *  offer the game is not counted yet, so no pearls and no way on but the buttons. */
   private overLines(): Line[] {
-    const head: Line[] = [[t('overlay.over'), 96, P.red], [t('overlay.reached', { n: this.wave }), 60, P.cream]];
+    const head: Line[] = this.end === 'home'
+      ? [[t('voyage.home'), 96, P.brassLight], [t('overlay.reached', { n: this.wave }), 60, P.cream]]
+      : [[t('overlay.over'), 96, P.red], [t('overlay.reached', { n: this.wave }), 60, P.cream]];
     if (this.offer === 'revive') return [...head, [t('ads.reviveNote'), 48, P.brassLight], ['', 0, 0]];
     return [
       ...head,

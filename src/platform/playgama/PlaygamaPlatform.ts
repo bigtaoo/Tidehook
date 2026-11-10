@@ -1,13 +1,17 @@
 // Playgama: the browser host plus the Bridge SDK for saves, ads, the platform's pause and sound
 // switches, the lifecycle messages and its telemetry. Built with `create()`, which waits (bounded)
 // for Bridge and reads every saved key through it first: Playgama keeps games out of the browser's
-// own storage. After Potion Siege's platform/playgama/PlaygamaPlatform.ts, without its leaderboards
-// and save copies (docs/01-tech-plan.md section 6).
+// own storage. After Potion Siege's platform/playgama/PlaygamaPlatform.ts, without its save copies;
+// its one leaderboard is the daily voyage's, its one product the remove-ads purchase
+// (docs/01-tech-plan.md section 6).
 
-import { SafeStore, type BreakPlacement, type Platform, type RewardedPlacement, type TrackData } from '../types';
+import { SafeStore, type Board, type BreakPlacement, type Payments, type Platform, type RewardedPlacement, type TrackData } from '../types';
 import { WebPlatform } from '../web';
 import { PlaygamaBridge } from './bridge';
 import { BridgeStore } from './bridgeStore';
+
+/** The leaderboard's id in playgama-bridge-config.json (vite.playgama.config.js). */
+export const BOARD_ID = 'daily';
 
 /** Bridge's stand-ins for a page that is no portal: a developer's own preview and the QA tool. */
 const TEST_PLATFORMS = new Set(['mock', 'qa_tool']);
@@ -33,7 +37,9 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
     super();
     const id = bridge.platformId();
     this.name = id && !TEST_PLATFORMS.has(id) ? 'playgama' : 'web';
-    if (saves) this.storage = new SafeStore(saves);
+    // without Bridge the save lives in memory for this visit only: Playgama allows no writes past
+    // Bridge (requirement 3.2.1), not even the browser's own storage
+    this.storage = new SafeStore(saves);
     // the platform's pause (an overlay, the tab hidden) silences the game, stops a wave under its
     // pause cover, and the save goes to Bridge at once: a page on its way out may get no next tick
     bridge.onPause((paused) => {
@@ -57,18 +63,38 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
   }
 
   /** `keys`: every key the game keeps, read from Bridge in one call. Without Bridge (blocked, or
-   *  it never answered) the save stays in the browser's storage, as on the plain web. */
+   *  it never answered) the save is kept in memory, never in the browser's storage. */
   static async create(keys: string[], bridge = new PlaygamaBridge(), doc: Document = document, win: Window = window): Promise<PlaygamaPlatform> {
     const ok = await bridge.init();
     const saves = ok ? await BridgeStore.create(bridge, keys) : null;
-    console.info(`[tidehook] Playgama Bridge: ${ok ? bridge.platformId() : 'unavailable'}, save: ${saves ? 'bridge' : 'localStorage'}`);
+    console.info(`[tidehook] Playgama Bridge: ${ok ? bridge.platformId() : 'unavailable'}, save: ${saves ? 'bridge' : 'memory'}`);
     return new PlaygamaPlatform(bridge, saves, doc, win);
   }
 
-  /** The platform's language first, then the browser's. */
+  /** The platform's language only, English when it has none or one we lack: Playgama takes the
+   *  language from Bridge, never from the browser (requirements 3.4.1 and 3.4.2). */
   override languages(): string[] {
     const lang = this.bridge.language();
-    return lang ? [lang, ...super.languages()] : super.languages();
+    return lang ? [lang, 'en'] : ['en'];
+  }
+
+  /** The daily voyage's board (Bridge SaaS leaderboard BOARD_ID), when Bridge can read it back. */
+  board(): Board | null {
+    if (!this.bridge.boardReady()) return null;
+    return {
+      submit: (score) => this.bridge.setScore(BOARD_ID, score),
+      top: () => this.bridge.entries(BOARD_ID),
+    };
+  }
+
+  /** The remove-ads purchase (game/noAds.ts), where the platform takes payments. */
+  payments(): Payments | null {
+    if (!this.bridge.paymentsReady()) return null;
+    return {
+      owned: () => this.bridge.purchases(),
+      price: (id) => this.bridge.price(id),
+      buy: (id) => this.bridge.purchase(id),
+    };
   }
 
   override loaded(): void {

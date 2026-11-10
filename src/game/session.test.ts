@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SafeStore } from '../platform/types';
 import { B } from '../sim/balance';
+import { BF } from '../sim/balanceFun';
 import { gameOver } from '../sim/monsters';
 import { Guide } from './guide/guide';
 import { saveGuide } from './guide/store';
@@ -151,5 +152,31 @@ describe('Session', () => {
     s.sail();
     s.openLobby();
     expect(s.mode).toBe('play');
+  });
+  it("stops at the voyage's end until the captain picks home or on", () => {
+    const toEnd = () => {
+      const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+      s.tap();
+      const w = s.world;
+      w.wave = BF.voyage.wave;
+      w.queue = [];
+      w.mons = [];
+      run(s, 3000, () => w.phase === 'shop');
+      return s;
+    };
+    const home = toEnd();
+    expect(home.atVoyageEnd()).toBe(true);
+    expect(home.shopping()).toBe(false);
+    home.tap();
+    expect(home.atVoyageEnd()).toBe(true);
+    expect(home.home()).toBe(true);
+    expect(home.mode).toBe('over');
+    expect(home.last).toMatchObject({ wave: BF.voyage.wave, home: true });
+    expect(home.last.won).toBeGreaterThanOrEqual(BF.voyage.home);
+    const on = toEnd();
+    expect(on.sailOn()).toBe(true);
+    expect(on.atVoyageEnd()).toBe(false);
+    expect(on.shopping()).toBe(true);
+    expect(on.home()).toBe(false);
   });
 });

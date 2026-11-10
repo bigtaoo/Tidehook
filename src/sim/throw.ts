@@ -4,6 +4,7 @@
 // to lift, hurting everything near it.
 
 import { B } from './balance';
+import { BF } from './balanceFun';
 import { alive, hitAt } from './collide';
 import { emit } from './events';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from './lane';
@@ -11,12 +12,27 @@ import { dist, muldiv } from './math/fixed';
 import { cosB, sinB } from './math/trig';
 import { damage, knock } from './monsters';
 import { mineDamage } from './shop';
-import type { Monster, World } from './world';
+import type { Monster, Shot, World } from './world';
 
 const T = B.throw;
 
-/** Throws the junk in the crane's hand along `ang` (brads; the current aim by default). */
+/** Throws the junk in the crane's hand along `ang` (brads; the current aim by default): a
+ *  pufferfish as a bomb, junk with the scattershot as three, the side ones at half the heft. */
 export function throwJunk(w: World, ang = w.hook.ang): void {
+  const puff = w.held?.kind === 'puffer';
+  shot(w, ang, w.up.heft, w.up.pierce, puff ? BF.puffer.boom : 0);
+  if (puff) w.st.puffs++;
+  else if (w.up.scatter) {
+    const side = Math.ceil(w.up.heft / 2);
+    shot(w, ang - BF.scatter.spread, side, 0, 0);
+    shot(w, ang + BF.scatter.spread, side, 0, 0);
+  }
+  w.held = null;
+  w.st.throws++;
+  emit(w, { e: 'throw' });
+}
+
+function shot(w: World, ang: number, dmg: number, pierce: number, boom: number): void {
   const ud = cosB(ang);
   const uw = sinB(ang);
   w.shots.push({
@@ -24,12 +40,11 @@ export function throwJunk(w: World, ang = w.hook.ang): void {
     w: B.crane.w + muldiv(uw, T.offset, 1000),
     ud,
     uw,
-    pierce: w.up.pierce,
+    pierce,
+    dmg,
+    boom,
     hit: [],
   });
-  w.held = null;
-  w.st.throws++;
-  emit(w, { e: 'throw' });
 }
 
 export function updateShots(w: World): void {
@@ -48,7 +63,12 @@ export function updateShots(w: World): void {
       }
       const o = hitAt(w, s.d, s.w, T.radius, true, s.hit);
       if (o?.t !== 'mon') continue;
-      hitWith(w, o.m, s.ud, s.uw);
+      if (s.boom) {
+        boom(w, o.m, s);
+        gone = true;
+        break;
+      }
+      hitWith(w, o.m, s.ud, s.uw, s.dmg);
       s.hit.push(o.m.id);
       if (--s.pierce < 0) gone = true;
     }
@@ -56,8 +76,28 @@ export function updateShots(w: World): void {
   }
 }
 
-function hitWith(w: World, m: Monster, ud: number, uw: number): void {
-  const dmg = w.up.heft;
+/** A pufferfish bomb goes off on `at`: everything near is hurt hard, stunned and blown outward. */
+function boom(w: World, at: Monster, s: Shot): void {
+  const P = BF.puffer;
+  const cd = at.d;
+  const cw = at.w;
+  emit(w, { e: 'boom', d: cd, w: cw, r: s.boom });
+  for (const m of [...w.mons]) {
+    if (m.grab || !alive(w, m)) continue;
+    const dd = m.d - cd;
+    const dw = m.w - cw;
+    const len = dist(dd, dw);
+    if (len >= s.boom + m.r) continue;
+    m.eat = 0;
+    damage(w, m, P.boomDmg + s.dmg, true);
+    if (!alive(w, m)) continue;
+    m.stun = T.stun;
+    const n = len || 1;
+    knock(m, muldiv(dd, 1000, n), muldiv(dw, 1000, n), T.knock);
+  }
+}
+
+function hitWith(w: World, m: Monster, ud: number, uw: number, dmg: number): void {
   m.eat = 0;
   damage(w, m, dmg, true);
   if (alive(w, m)) {

@@ -12,7 +12,13 @@ import type { World } from './world';
 export type Counts = Readonly<Record<string, number>>;
 
 export function counts(w: World): Counts {
-  return { ...w.st, wave: w.wave, games: 1, [seaOf(w).id]: w.wave };
+  const sunk = Object.fromEntries(Object.entries(w.sunk).map(([k, n]) => [sunkKey(k), n]));
+  return { ...w.st, ...sunk, wave: w.wave, games: 1, [seaOf(w).id]: w.wave, [`${seaOf(w).id}Voyage`]: w.st.voyage };
+}
+
+/** The count of monsters of `kind` sunk, in a game's counts and the harbour's totals (the codex). */
+export function sunkKey(kind: string): string {
+  return `sunk_${kind}`;
 }
 
 /** `totals` with a game's `c` added. */

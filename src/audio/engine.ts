@@ -1,13 +1,16 @@
 // The speakers: Web Audio for the effects, a streamed <audio> element for the music (decoding 86 s
-// of stereo would hold some 30 MB). Browsers keep audio locked until the player touches the page,
+// of stereo would hold some 30 MB). One element for every track: a change of track fades it out,
+// swaps its source and fades back in, so the element iOS unlocked with the first touch stays unlocked. Browsers keep audio locked until the player touches the page,
 // so nothing is created before unlock(); every call before then is dropped, quietly.
 
-import { CUES, cueFile, MUSIC_FILE, VARIANTS, type Cue } from './cues';
+import { CUES, cueFile, musicFile, VARIANTS, type Cue, type Music } from './cues';
 import type { AudioOut } from './sound';
 
 /** Mix levels, 0-1. */
 const SFX_GAIN = 0.8;
 const MUSIC_GAIN = 0.32;
+/** A change of track: fade out, swap, fade in, seconds each way. */
+const MUSIC_FADE = 0.4;
 /** The most effects sounding at once; a new one past this is dropped. */
 const MAX_VOICES = 12;
 
@@ -17,6 +20,11 @@ export class WebAudioOut implements AudioOut {
   private ctx: AudioContext | null = null;
   private sfx: GainNode | null = null;
   private music: HTMLAudioElement | null = null;
+  private musicGain: GainNode | null = null;
+  /** The track asked for, and the one the element holds. */
+  private track: Music = 'harbour';
+  private loaded: Music | null = null;
+  private swap: ReturnType<typeof setTimeout> | null = null;
   private readonly buffers = new Map<string, AudioBuffer>();
   /** When each sounding effect ends, on the context's clock: a count kept by onended would leak
    *  a voice for every end event a browser drops. */
@@ -43,7 +51,8 @@ export class WebAudioOut implements AudioOut {
       this.sfx = this.ctx.createGain();
       this.sfx.gain.value = SFX_GAIN;
       this.sfx.connect(this.ctx.destination);
-      const m = new Audio(MUSIC_FILE);
+      const m = new Audio(musicFile(this.track));
+      this.loaded = this.track;
       m.loop = true;
       m.preload = 'auto';
       // through the graph, not m.volume: iOS ignores that
@@ -52,6 +61,7 @@ export class WebAudioOut implements AudioOut {
       mg.connect(this.ctx.destination);
       this.ctx.createMediaElementSource(m).connect(mg);
       this.music = m;
+      this.musicGain = mg;
     }
     if (this.audible) this.wake();
     if (!this.loading) {
@@ -67,6 +77,29 @@ export class WebAudioOut implements AudioOut {
       void this.ctx?.suspend().catch(() => {});
       this.music?.pause();
     }
+  }
+
+  setMusic(track: Music): void {
+    this.track = track;
+    const m = this.music;
+    const g = this.musicGain;
+    const ctx = this.ctx;
+    if (!m || !g || !ctx || this.loaded === track || this.swap) return;
+    const now = ctx.currentTime;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(0, now + MUSIC_FADE);
+    this.swap = setTimeout(() => {
+      this.swap = null;
+      // the latest ask wins: a run of changes inside one fade loads only the last
+      this.loaded = this.track;
+      m.src = musicFile(this.track);
+      if (this.audible) void m.play().catch(() => {});
+      const t = ctx.currentTime;
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(MUSIC_GAIN, t + MUSIC_FADE);
+    }, MUSIC_FADE * 1000);
   }
 
   play(cue: Cue, i: number, rate: number, gain: number): void {

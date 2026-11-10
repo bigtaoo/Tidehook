@@ -3,6 +3,7 @@
 // restock).
 
 import { B } from './balance';
+import { goldChance, goldMult } from './fun';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from './lane';
 import { clamp, dist2, muldiv, roundDiv } from './math/fixed';
 import { nextId, type Item, type Monster, type World } from './world';
@@ -24,16 +25,16 @@ export function fishCap(w: World): number {
   return C.fishCap + B.grounds.capBonus * w.up.grounds;
 }
 
-function radiusOf(kind: Item['kind'], chest: boolean): number {
+function radiusOf(kind: 'fish' | 'junk', chest: boolean): number {
   return kind === 'junk' ? C.junkRadius : chest ? C.chestRadius : C.fishRadius;
 }
 
-function weightOf(kind: Item['kind'], chest: boolean): number {
+function weightOf(kind: 'fish' | 'junk', chest: boolean): number {
   return kind === 'junk' ? C.junkWeight : chest ? C.chestWeight : C.fishWeight;
 }
 
 /** Puts one new item somewhere clear of the others; false when no spot was found. */
-export function addItem(w: World, kind: Item['kind']): boolean {
+export function addItem(w: World, kind: 'fish' | 'junk'): boolean {
   const rng = w.rng.catch;
   for (let k = 0; k < C.tries; k++) {
     const chest = kind === 'fish' && rng.int(1000) < C.chestChance;
@@ -41,8 +42,11 @@ export function addItem(w: World, kind: Item['kind']): boolean {
     const pw = rng.range(C.wallMargin + r, LANE_WIDTH_FP - C.wallMargin - r);
     const pd = rng.range(B.dock.edge + C.nearMargin, LANE_LEN_FP - C.farMargin - r);
     if (w.items.some((o) => dist2(o.w - pw, o.d - pd) < (o.r + r + C.spacing) * (o.r + r + C.spacing))) continue;
-    const val = kind === 'fish' ? fishValue(w, chest, pd) : 0;
-    w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest), dropped: false });
+    let val = kind === 'fish' ? fishValue(w, chest, pd) : 0;
+    // now and then a fish is gold (fun.ts), drawn from its own stream so the rest do not shift
+    const gold = kind === 'fish' && !chest && w.rng.luck.int(1000) < goldChance(w);
+    if (gold) val = muldiv(val, goldMult(w), 1000);
+    w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest), dropped: false, gold });
     return true;
   }
   return false;
@@ -87,6 +91,7 @@ export function dropJunk(w: World, m: Monster): void {
     val: 0,
     wt: C.junkWeight,
     dropped: false,
+    gold: false,
   });
 }
 
@@ -104,6 +109,7 @@ export function dropFish(w: World, m: Monster): Item {
     val: m.ate,
     wt: weightOf('fish', chest),
     dropped: true,
+    gold: false,
   };
   w.st.dropped += m.ate;
   w.items.push(item);

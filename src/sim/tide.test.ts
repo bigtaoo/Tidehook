@@ -28,7 +28,7 @@ describe("the sea climbs slower at the start of a player's game", () => {
   });
 
   it('mixes and gaps are the old per-wave ones on whole waves', () => {
-    expect(waveMix(1000)).toEqual({ grunt: 4, darter: 0, brute: 0, glutton: 0, hermit: 0, ray: 0 });
+    expect(waveMix(1000)).toEqual({ grunt: 4, darter: 0, brute: 0, glutton: 0, hermit: 0, ray: 0, puffer: 0, moray: 0 });
     expect(waveMix(3500)).toEqual(waveMix(3000));
     expect(spawnGap(2000)).toBeLessThan(spawnGap(1500));
   });

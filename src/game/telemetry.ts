@@ -7,10 +7,16 @@
 // The dimensions, all bounded (docs/01-tech-plan.md section 8):
 // - game: the player's game number over every sitting, 1 to GAME_CAP (GAME_CAP means that or more),
 //   so "how many come back for a second and third game" reads straight off the funnel;
+// - mode: 'daily' for the daily voyage (meta/daily.ts), else 'voyage', so the day's game, with no
+//   upgrades and its own tide, stays out of the plain games' wave curve;
 // - revive on a failure: 'offered' (the revive ad is on offer), 'used' (this game already had its
 //   revive) or 'none' (no ad to offer);
 // - lesson on the first game over ever: the tip the card showed (junk, cards, fish, near), which
-//   says what new players lose to.
+//   says what new players lose to;
+// - minutes on a failure: the game's play time so far in whole minutes (shop time left out),
+//   capped at MINUTES_CAP, to see how long real games run (docs/04-content.md section 4.3);
+// - harbour_complete: once, the purchase that leaves nothing in the harbour to buy, with the game
+//   number, which says when the long-tail content runs out.
 
 import type { Platform } from '../platform/types';
 import type { SimEvent } from '../sim/events';
@@ -19,9 +25,12 @@ import { STEP_IDS } from './guide/guide';
 import { B } from '../sim/balance';
 import { PerfSampler } from './perf';
 import type { Session } from './session';
+import { TICK_RATE } from '../sim/math/fixed';
 
 /** The game number is sent as is up to here; past it, as this. */
 export const GAME_CAP = 20;
+/** A game's minutes are sent as is up to here; past it, as this. */
+export const MINUTES_CAP = 90;
 
 export class Telemetry {
   private readonly perf: PerfSampler;
@@ -44,21 +53,28 @@ export class Telemetry {
     this.owned = this.holdings();
   }
 
+  private wasEnd = false;
+
   /** One frame: its length, whether the game was in active visible play, and its events. */
   frame(ms: number, active: boolean, events: readonly SimEvent[]): void {
     const s = this.session;
     const game = this.game();
-    const step = { step_id: 'wave', step_index: s.world.wave, sea: seaOf(s.world).id, game };
+    const step = { step_id: 'wave', step_index: s.world.wave, sea: seaOf(s.world).id, game, mode: s.daily ? 'daily' : 'voyage' };
     for (const ev of events) {
       if (ev.e === 'waveStart') this.send('progression_started', step);
       else if (ev.e === 'waveClear') this.send('progression_completed', step);
       else if (ev.e === 'over') {
-        const fail: Record<string, string | number | boolean> = { ...step, reason: 'dock_fell', revive: s.pending ? 'offered' : s.revived ? 'used' : 'none' };
+        const minutes = Math.min(MINUTES_CAP, Math.floor(s.world.tick / TICK_RATE / 60));
+        const fail: Record<string, string | number | boolean> = { ...step, reason: 'dock_fell', revive: s.pending ? 'offered' : s.revived ? 'used' : 'none', minutes };
         const lesson = s.guide?.lesson;
         if (lesson) fail.lesson = lesson.slice(lesson.lastIndexOf('.') + 1);
         this.send('progression_failed', fail);
       }
     }
+    // the voyage's end offered the way home (game/session.ts): which way the captain went
+    const atEnd = s.atVoyageEnd();
+    if (this.wasEnd && !atEnd) this.send('voyage_end', { ...step, choice: s.mode === 'over' && s.last.home ? 'home' : 'sail_on' });
+    this.wasEnd = atEnd;
     this.tutorial();
     if (s.mode === 'lobby') this.purchases(game);
     if (s.mode === 'over' && !s.pending && this.cheered !== s.games) {
@@ -90,10 +106,21 @@ export class Telemetry {
   /** One `harbour_purchase` per level or chart bought since the last look. */
   private purchases(game: number): void {
     const now = this.holdings();
+    let bought = false;
     for (const [id, level] of Object.entries(now)) {
-      for (let l = (this.owned[id] ?? 0) + 1; l <= level; l++) this.send('harbour_purchase', { item_id: id, level: l, game });
+      for (let l = (this.owned[id] ?? 0) + 1; l <= level; l++) {
+        this.send('harbour_purchase', { item_id: id, level: l, game });
+        bought = true;
+      }
     }
     this.owned = now;
+    if (bought && this.complete()) this.send('harbour_complete', { game });
+  }
+
+  /** Nothing left to buy: every upgrade at its top level and every chart owned. */
+  private complete(): boolean {
+    const h = this.session.harbour;
+    return !!h && B.meta.upgrades.every((u) => h.price(u.id) === null) && B.seas.every((_, i) => h.owns(i));
   }
 
   private tutorial(): void {

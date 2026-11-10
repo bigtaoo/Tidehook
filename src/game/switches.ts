@@ -1,7 +1,8 @@
-// The URL switches (README "URL switches"): ?autoplay, ?speed, ?ads=fake, ?ota, ?notify=fake, ?track,
-// ?quality and ?lang. A release build (web, CrazyGames, iOS) reads only ?lang, which changes nothing but the
-// words: the others let anyone on the live page farm crystals at ?speed, get free rewarded ads
-// or run the bot into their save. Same rule as D:\standing's 5958f85.
+// The URL switches (CLAUDE.md): ?lang, ?ads=fake, ?seed, ?speed, ?autoplay, ?lag, ?ease, ?rec and
+// ?board=fake (a made-up daily board, platform/fakeBoard.ts), ?pay=fake (the remove-ads product on
+// sale in memory, platform/fakePayments.ts). A release build reads only ?lang, which
+// changes nothing but the words: the others would let anyone on the live page farm pearls at ?speed,
+// get free rewarded ads or run the bot into their save.
 
 /** Switches a release build still reads. */
 const RELEASE: readonly string[] = ['lang'];

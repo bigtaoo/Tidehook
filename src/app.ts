@@ -5,15 +5,21 @@ import { Application } from 'pixi.js';
 import { WebAudioOut } from './audio/engine';
 import { Sound } from './audio/sound';
 import { Ads } from './game/ads';
+import { DailyBoard } from './game/board';
 import { FIRST_SEED } from './game/guide/firstSeed';
 import { Guide } from './game/guide/guide';
 import { bindKeys, eventAge } from './game/input';
+import { today } from './game/meta/daily';
 import { Harbour } from './game/meta/harbour';
 import { startRecording } from './game/rec/wire';
 import { SEEN_MS, Session, type SessionOptions } from './game/session';
 import { urlSwitches } from './game/switches';
 import { Telemetry } from './game/telemetry';
 import { detectLocale, loadLocale, setLocale } from './i18n';
+import { fakeBoard } from './platform/fakeBoard';
+import { fakePayments } from './platform/fakePayments';
+import { NoAds } from './game/noAds';
+import { seaOf } from './sim/seas';
 import type { Platform } from './platform/types';
 import { SEA } from './view/kit/palette';
 import { loadArt } from './view/art';
@@ -90,6 +96,12 @@ export async function boot(platform: Platform): Promise<Application> {
     sound.hostMute(hostMuted || ads.on);
   });
   const telemetry = new Telemetry(platform, session, __TH_BUILD__);
+  // the daily voyage's leaderboard, where the host has one (?board=fake in a dev build)
+  const board = new DailyBoard(params.get('board') === 'fake' ? fakeBoard() : (platform.board?.() ?? null), today);
+  // the remove-ads purchase, where the host sells it (?pay=fake in a dev build): no interstitials once owned
+  const noAds = new NoAds(params.get('pay') === 'fake' ? fakePayments() : (platform.payments?.() ?? null));
+  ads.adFree = () => noAds.owned;
+  void noAds.load();
   const ui: SceneUi = {
     shop: (ok) => sound.cue(ok ? 'buy' : 'deny', performance.now()),
     toggleSound: () => sound.toggle(),
@@ -107,7 +119,7 @@ export async function boot(platform: Platform): Promise<Application> {
   let scene: Scene | null = null;
   const layout = () => {
     scene?.destroy({ children: true });
-    scene = new Scene(fitDesign(app.screen.width, app.screen.height), session, ui, ads);
+    scene = new Scene(fitDesign(app.screen.width, app.screen.height), session, ui, ads, board, noAds);
     app.stage.addChild(scene);
   };
   layout();
@@ -119,16 +131,18 @@ export async function boot(platform: Platform): Promise<Application> {
   }, __TH_BUILD__, opts.lagMs);
   let playing = false;
   app.ticker.add((tk) => {
-    session.update(tk.deltaMS);
+    session.update(scene ? scene.feel.clock(tk.deltaMS) : tk.deltaMS);
     const events = scene?.draw(tk.deltaMS) ?? session.drain();
     record?.(tk.deltaMS, events);
     const now = session.mode === 'play' && !session.paused && !session.hold;
     ads.frame(events);
     telemetry.frame(tk.deltaMS, now && !document.hidden, events);
+    board.frame(session);
     const ms = performance.now();
     sound.setPaused(session.mode === 'play' && session.paused);
     sound.events(events, ms);
     sound.reel(session.world, now, ms);
+    sound.music(session.mode === 'lobby' || session.mode === 'title', seaOf(session.world).id);
     if (now !== playing) {
       playing = now;
       if (now) platform.gameplayStart();
@@ -136,7 +150,7 @@ export async function boot(platform: Platform): Promise<Application> {
     }
   });
 
-  if (import.meta.env.DEV) Object.assign(window, { __th: { app, session, sound, ads, build: __TH_BUILD__ } });
+  if (import.meta.env.DEV) Object.assign(window, { __th: { app, session, sound, ads, noAds, build: __TH_BUILD__ } });
   platform.loaded();
   return app;
 }

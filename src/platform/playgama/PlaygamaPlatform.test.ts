@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { PlaygamaBridge } from './bridge';
-import { PlaygamaPlatform } from './PlaygamaPlatform';
+import { BOARD_ID, PlaygamaPlatform } from './PlaygamaPlatform';
 import { fakeBridge, type FakeBridge } from './testBridge';
 
 beforeAll(() => {
@@ -44,6 +44,19 @@ describe('PlaygamaPlatform', () => {
       await tick();
       expect(f.saved).toEqual([[['tidehook.harbour', 'tidehook.lang'], ['{"pearls":4}', 'zh']]]);
       expect(touched).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the save in memory, not the browser's storage, when Bridge is missing", async () => {
+    const touched: string[] = [];
+    const spy = { getItem: (k: string) => (touched.push(k), null), setItem: (k: string) => void touched.push(k) };
+    vi.stubGlobal('window', { localStorage: spy });
+    try {
+      const p = await platform(null);
+      p.storage.setItem('tidehook.harbour', '{"pearls":4}');
+      expect([p.storage.getItem('tidehook.harbour'), touched]).toEqual(['{"pearls":4}', []]);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -104,10 +117,12 @@ describe('PlaygamaPlatform', () => {
     expect([clean.rewardedAvailable(), clean.adBlocked()]).toEqual([true, false]);
   });
 
-  it("puts the platform's language first", async () => {
-    vi.stubGlobal('navigator', { languages: ['en'], language: 'en' });
+  it("takes the platform's language, English otherwise, never the browser's", async () => {
+    vi.stubGlobal('navigator', { languages: ['de'], language: 'de' });
     try {
-      expect((await platform(fakeBridge({ language: 'zh' }))).languages()[0]).toBe('zh');
+      expect((await platform(fakeBridge({ language: 'zh' }))).languages()).toEqual(['zh', 'en']);
+      expect((await platform(fakeBridge({ language: 'ar' }))).languages()).toEqual(['ar', 'en']);
+      expect((await platform(null)).languages()).toEqual(['en']);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -133,5 +148,47 @@ describe('PlaygamaPlatform', () => {
     await mid;
     p.celebrate();
     expect([started, f.shown, f.messages]).toEqual([2, ['rewarded', 'interstitial'], ['player_got_achievement']]);
+  });
+
+  it("hands the daily board to the game only where Bridge can write and read it back", async () => {
+    expect((await platform(fakeBridge())).board()).toBeNull();
+    expect((await platform(fakeBridge({ board: { type: 'native_popup' } }))).board()).toBeNull();
+    const entries = [{ id: 'p1', name: 'Ada', photo: '', score: 5017, rank: 1 }, { name: 7, score: 'x', rank: 2 }, { score: 4012, rank: 3 }];
+    const f = fakeBridge({ board: { entries } });
+    const board = (await platform(f)).board()!;
+    await board.submit(5020);
+    expect(f.scores).toEqual([[BOARD_ID, 5020]]);
+    expect(await board.top()).toEqual([
+      { name: 'Ada', score: 5017, rank: 1 },
+      { name: '', score: 4012, rank: 3 },
+    ]);
+    expect(await (await platform(fakeBridge({ board: { entries: 'nope' } }))).board()!.top()).toEqual([]);
+  });
+});
+
+describe('PlaygamaPlatform payments', () => {
+  const catalog = [{ id: 'other', price: '9 €' }, { id: 'remove_ads', price: '1,99 €', priceValue: 1.99 }];
+
+  it('hands payments to the game only where Bridge takes them', async () => {
+    expect((await platform(fakeBridge())).payments()).toBeNull();
+    expect((await platform(fakeBridge({ pay: { supported: false } }))).payments()).toBeNull();
+    expect((await platform(null)).payments()).toBeNull();
+  });
+
+  it("reads what the player owns and the catalog's own price, and buys through Bridge", async () => {
+    const f = fakeBridge({ pay: { owned: [{ id: 'remove_ads', token: 'x' }, { nope: 1 }, null], catalog } });
+    const pay = (await platform(f)).payments()!;
+    expect(await pay.owned()).toEqual(['remove_ads']);
+    expect(await pay.price('remove_ads')).toBe('1,99 €');
+    expect(await pay.price('missing')).toBe('');
+    expect(await pay.buy('remove_ads')).toBe(true);
+    expect(f.bought).toEqual(['remove_ads']);
+  });
+
+  it('answers false when the player backs out, and empty on a broken answer', async () => {
+    const pay = (await platform(fakeBridge({ pay: { pays: false, owned: 'junk', catalog: { id: 'remove_ads' } } }))).payments()!;
+    expect(await pay.buy('remove_ads')).toBe(false);
+    expect(await pay.owned()).toEqual([]);
+    expect(await pay.price('remove_ads')).toBe('');
   });
 });

@@ -22,7 +22,7 @@ function emptyLane(): World {
 }
 
 function put(w: World, kind: Item['kind'], d: number, val = 7): Item {
-  const it: Item = { id: w.nextId++, kind, chest: false, d: toFp(d), w: B.crane.w, r: B.catch.fishRadius, val, wt: 1, dropped: false };
+  const it: Item = { id: w.nextId++, kind, chest: false, d: toFp(d), w: B.crane.w, r: B.catch.fishRadius, val, wt: 1, dropped: false, gold: false };
   w.items.push(it);
   return it;
 }
@@ -64,8 +64,8 @@ describe('determinism', () => {
 
 describe('waves', () => {
   it('brings in new kinds as the prototype did', () => {
-    expect(waveMix(1000)).toEqual({ grunt: 4, darter: 0, brute: 0, glutton: 0, hermit: 0, ray: 0 });
-    expect(waveMix(4000)).toEqual({ grunt: 7, darter: 2, brute: 1, glutton: 1, hermit: 0, ray: 0 });
+    expect(waveMix(1000)).toEqual({ grunt: 4, darter: 0, brute: 0, glutton: 0, hermit: 0, ray: 0, puffer: 0, moray: 0 });
+    expect(waveMix(4000)).toEqual({ grunt: 7, darter: 2, brute: 1, glutton: 1, hermit: 0, ray: 0, puffer: 0, moray: 0 });
     expect(waveMix(7000)).toMatchObject({ hermit: 1, ray: 0 });
     expect(waveMix(9000)).toMatchObject({ hermit: 1, ray: 1 });
   });

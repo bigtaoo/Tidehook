@@ -27,13 +27,21 @@ const FISH: readonly ArtName[] = ['fish_coral', 'fish_orange', 'fish_gold'];
 const JUNK: readonly ArtName[] = ['junk_log', 'junk_anchor', 'junk_barrel'];
 
 /** A fish's colour is its price step: coral, orange, then gold for one worth as much as a fish
- *  from the far band. The value is fixed when it spawns, so the colour holds while it is reeled. */
-export function fishArt(w: World, it: Item): ArtName {
+ *  from the far band, or a gold fish (sim/fun.ts). The value is fixed when it spawns, so the colour
+ *  holds while it is reeled. A pufferfish in the crane's hand is drawn as the monster it was. */
+export function fishArt(w: World, it: Item, wide = false): ArtName {
   if (it.kind === 'junk') return JUNK[it.id % JUNK.length];
+  if (it.kind === 'puffer') return monsterArt('puffer', wide).art;
   if (it.chest) return 'chest';
+  if (it.gold) return FISH[2];
   const mid = fishValue(w, false, BANDS[2].from * FP);
   const far = fishValue(w, false, BANDS[3].from * FP);
   return FISH[it.val >= far ? 2 : it.val >= mid ? 1 : 0];
+}
+
+/** The tint over a catch's sprite: a pufferfish keeps its yellow. */
+export function itemTint(it: Item): number {
+  return it.kind === 'puffer' ? (STAND_IN.puffer?.tint ?? 0xffffff) : 0xffffff;
 }
 
 /** Kinds drawn with another kind's sprite, tinted (a new kind's own art may not be built yet):
@@ -43,6 +51,8 @@ const STAND_IN: Partial<Record<MonsterKind, { k: MonsterKind; tint: number }>> =
   hermit: { k: 'grunt', tint: 0x9fd8d0 },
   ray: { k: 'darter', tint: 0x8f98e8 },
   kraken: { k: 'glutton', tint: 0xc49ad8 },
+  puffer: { k: 'glutton', tint: 0xf6d860 },
+  moray: { k: 'darter', tint: 0x9fd07a },
 };
 
 const own = (k: MonsterKind, wide: boolean) => `enemy_${k}${wide ? '_side' : ''}`;
@@ -71,13 +81,19 @@ export interface Step {
 }
 
 /** Radians of step per world unit come, by kind. */
-const STRIDE: Record<MonsterKind, number> = { grunt: 0.55, darter: 0.3, brute: 0.35, glutton: 0.4, boss: 0.22, hermit: 0.45, ray: 0.18, kraken: 0.16 };
+const STRIDE: Record<MonsterKind, number> = { grunt: 0.55, darter: 0.3, brute: 0.35, glutton: 0.4, boss: 0.22, hermit: 0.45, ray: 0.18, kraken: 0.16, puffer: 0.4, moray: 0.34 };
 
 /** The step of `m` (drawn `d` world units from the dock). */
 export function step(m: Monster, d: number): Step {
   const s = -d * STRIDE[m.kind] + m.id * 1.7;
   const hop = Math.abs(Math.sin(s));
   switch (m.kind) {
+    case 'moray':
+      // a long slither: a slow, deep wriggle
+      return { up: 0, rot: Math.sin(s) * 0.2, sx: 1 + Math.cos(s * 2) * 0.05, sy: 1 };
+    case 'puffer':
+      // a puffed bob, swelling as it rises
+      return { up: hop * 0.06, rot: Math.cos(s) * 0.04, sx: 1 + hop * 0.06, sy: 1 + hop * 0.06 };
     case 'darter':
       // a wriggle, no hop: it swims
       return { up: 0, rot: Math.sin(s) * 0.14, sx: 1 + Math.cos(s * 2) * 0.03, sy: 1 };

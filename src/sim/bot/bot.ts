@@ -14,6 +14,7 @@ import { Prng } from '../math/prng';
 import { buyCard, buyMine, buyRepair, mineCost, repairCost, reroll } from '../shop';
 import { fire, nextWave, startGame, step } from '../step';
 import type { Tally, World } from '../world';
+import { seen } from '../weather';
 
 export interface Persona {
   /** Ticks between looks. */
@@ -61,7 +62,7 @@ export function persona(name: string): Persona {
 }
 
 /** Upgrade ids in the order the bot buys them. */
-export const PRIO = ['grip', 'heft', 'barb', 'magnet', 'winch', 'grounds', 'multi', 'cast', 'pierce', 'salvage', 'blast', 'tar', 'planks', 'swing', 'bait'];
+export const PRIO = ['grip', 'heft', 'barb', 'shanty', 'scatter', 'keg', 'barnacle', 'golden', 'magnet', 'winch', 'grounds', 'multi', 'cast', 'pierce', 'salvage', 'blast', 'tar', 'planks', 'swing', 'bait'];
 
 const NEAR = toFp(300);
 const SEEN_BEYOND = toFp(20);
@@ -92,14 +93,15 @@ function shop(w: World, p: Persona, rng: Prng): void {
 /** Whether the persona taps now, looking along `ang`. */
 function decide(w: World, p: Persona, ang: number, rng: Prng): boolean {
   if (p.spam) return rng.int(1000) < SPAM_CHANCE;
-  const mons = w.mons.filter((m) => m.d < LANE_LEN_FP + SEEN_BEYOND && m.w > -SEEN_SIDE && m.w < LANE_WIDTH_FP + SEEN_SIDE);
+  // nothing in the fog is seen (weather.ts)
+  const mons = w.mons.filter((m) => m.d < LANE_LEN_FP + SEEN_BEYOND && m.w > -SEEN_SIDE && m.w < LANE_WIDTH_FP + SEEN_SIDE && seen(w, m.d));
   if (w.held) {
     // the sight the player sees: it leads a walking monster (lead.ts)
     const r = throwFirst(w, ang);
-    return !!r && (!liftable(w, r.m) || r.len < CLOSE_JUNK || !p.junk);
+    return !!r && seen(w, r.m.d) && (!liftable(w, r.m) || r.len < CLOSE_JUNK || !p.junk);
   }
   const r = rayFirst(w, ang, false);
-  if (!r) return false;
+  if (!r || !seen(w, r.o.t === 'mon' ? r.o.m.d : r.o.item.d)) return false;
   if (r.o.t === 'mon') {
     const m = r.o.m;
     // a hermit's shell comes off as junk to throw: always worth a cast

@@ -3,7 +3,9 @@
 // shop. Interstitials only at natural breaks (the shop opening after a wave, leaving a game over
 // for the harbour), never in a new player's first game and never straight after a rewarded ad;
 // how often they really show is the host's to pace (Playgama's minimumDelayBetweenInterstitial),
-// so there is no timer here. While an ad is on screen the session holds and the sound is off.
+// so there is no timer here. While an ad is on screen the session holds and the sound is off. A
+// player who bought the remove-ads product (noAds.ts) sees no interstitial again; the rewarded ads
+// stay on offer.
 
 import type { SimEvent } from '../sim/events';
 import type { BreakPlacement, Platform, RewardedPlacement } from '../platform/types';
@@ -18,6 +20,8 @@ export class Ads {
   /** A rewarded ad played since the last wave began: the next break shows no interstitial. */
   private rewardedLately = false;
   private mode: Mode;
+  /** The player owns the remove-ads product: no interstitials (the app points it at NoAds). */
+  adFree: () => boolean = () => false;
 
   /** `onChange` hears `on` flip (the app mutes the sound with it). */
   constructor(
@@ -89,7 +93,7 @@ export class Ads {
 
   private async interstitial(placement: BreakPlacement): Promise<void> {
     const s = this.session;
-    if (this.on || this.rewardedLately || s.opts.autoplay || (s.guide && s.guide.games <= 1)) return;
+    if (this.on || this.rewardedLately || this.adFree() || s.opts.autoplay || (s.guide && s.guide.games <= 1)) return;
     await this.play(() => this.platform.midgame(() => this.hold(true), placement).then(() => true));
   }
 

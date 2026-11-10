@@ -3,10 +3,12 @@ import { StubPlatform } from '../platform/stub';
 import { SafeStore } from '../platform/types';
 import { gameOver } from '../sim/monsters';
 import { Guide } from './guide/guide';
-import { Harbour } from './meta/harbour';
+import { B } from '../sim/balance';
+import { TICK_RATE } from '../sim/math/fixed';
+import { Harbour, HARBOUR_KEY } from './meta/harbour';
 import { PerfSampler, SAMPLE_MS } from './perf';
 import { Session } from './session';
-import { Telemetry } from './telemetry';
+import { MINUTES_CAP, Telemetry } from './telemetry';
 
 describe('PerfSampler', () => {
   it('samples active play only and drops the frame after a stop', () => {
@@ -40,8 +42,18 @@ describe('Telemetry', () => {
     tel.frame(16, false, s.drain());
     tel.frame(16, false, []);
     expect(p.tracked.map(([e]) => e)).toEqual(['progression_started', 'progression_failed']);
-    expect(p.tracked[1][1]).toMatchObject({ step_id: 'wave', step_index: 1, reason: 'dock_fell', game: 1, revive: 'none' });
+    expect(p.tracked[1][1]).toMatchObject({ step_id: 'wave', step_index: 1, reason: 'dock_fell', game: 1, revive: 'none', mode: 'voyage' });
     expect(p.calls.filter((c) => c === 'celebrate')).toHaveLength(1);
+  });
+
+  it("marks the daily voyage's waves apart from a plain voyage's", () => {
+    const p = new StubPlatform();
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+    const tel = new Telemetry(p, s, 'b');
+    s.openLobby();
+    s.sailDaily('2026-11-10');
+    tel.frame(16, true, s.drain());
+    expect(p.tracked[0]).toEqual(['progression_started', expect.objectContaining({ mode: 'daily' })]);
   });
 
   it("sends the tutorial's steps as they are done, skipped ones marked", () => {
@@ -87,5 +99,27 @@ describe('Telemetry', () => {
       { item_id: 'hull', level: 1, game: 1 },
       { item_id: 'hull', level: 2, game: 1 },
     ]);
+  });
+
+  it('sends the minutes on a failure and harbour_complete once, on the last purchase', () => {
+    const p = new StubPlatform();
+    const store = new SafeStore(null);
+    const lv = Object.fromEntries(B.meta.upgrades.map((u) => [u.id, u.max]));
+    lv.hull -= 1;
+    store.setItem(HARBOUR_KEY, JSON.stringify({ pearls: 10_000, lv, charts: B.seas.slice(1).map((sea) => sea.id) }));
+    const harbour = new Harbour(store);
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, harbour);
+    const tel = new Telemetry(p, s, 'b');
+    s.start();
+    s.world.tick = 125 * 60 * TICK_RATE;
+    gameOver(s.world);
+    s.update(50);
+    tel.frame(16, false, s.drain());
+    expect(p.tracked.find(([e]) => e === 'progression_failed')?.[1].minutes).toBe(MINUTES_CAP);
+    s.openLobby();
+    expect(s.buyMeta('hull')).toBe(true);
+    tel.frame(16, false, []);
+    tel.frame(16, false, []);
+    expect(p.tracked.filter(([e]) => e === 'harbour_complete').map(([, d]) => d)).toEqual([{ game: 1 }]);
   });
 });

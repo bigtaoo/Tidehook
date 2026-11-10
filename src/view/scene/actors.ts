@@ -5,6 +5,8 @@
 // hand, the throw's sight out to the monster it would hit, sight.ts). Bodies are
 // sprites (art.ts); a sprite that is not loaded falls back to its grey-box shape. Positions are
 // drawn `alpha` of the way from where they were a tick ago (Session.prev) to where they are.
+// All of it is clipped to the lane, so a monster coming in from beside or beyond the sea swims in
+// over the picture's edge instead of walking on the frame around it.
 
 import { Container, Graphics } from 'pixi.js';
 import { aimFinds } from '../../game/guide/guide';
@@ -16,8 +18,11 @@ import type { Item, Monster } from '../../sim/world';
 import { CATCH, HEAVY, MON, P } from '../kit/palette';
 import { toDesign, type Field } from '../orient';
 import { areaScale, tex } from '../art';
+import { LANE_LEN } from '../../sim/lane';
+import { bandRect } from './field';
 import { isBoss, diving } from '../../sim/kinds';
-import { fishArt, hasOwnArt, lookRadius, monsterArt, pips, step } from './look';
+import { clarity } from '../../sim/weather';
+import { fishArt, hasOwnArt, itemTint, lookRadius, monsterArt, pips, step } from './look';
 import { inDanger, lowDock } from './danger';
 import { throwSight } from './sight';
 import { SpritePool } from './sprites';
@@ -63,7 +68,10 @@ export class Actors extends Container {
 
   constructor(private readonly f: Field) {
     super();
-    this.addChild(this.bodies.shade, this.under, this.bodies, this.over);
+    const lane = bandRect(f, 0, LANE_LEN);
+    const mask = new Graphics().rect(lane.x, lane.y, lane.w, lane.h).fill(0xffffff);
+    this.addChild(this.bodies.shade, this.under, this.bodies, this.over, mask);
+    this.mask = mask;
   }
 
   draw(s: Session): void {
@@ -82,11 +90,18 @@ export class Actors extends Container {
       return { ...toDesign(f, dd / FP, ww / FP), d: dd / FP };
     };
     const time = (w.tick + a) / 30;
-    const item = (it: Item, p: Pt) => {
+    const item = (it: Item, p: Pt, seen = 1) => {
       const bob = Math.sin(time * 2.2 + it.id) * 0.06;
-      const art = fishArt(w, it);
+      const art = fishArt(w, it, f.wide);
       const r = lookRadius(art, (it.r / FP) * k, f.wide);
-      const pose = { rot: it.kind === 'junk' ? 0 : bob, flip: it.kind === 'fish' && !it.chest && it.id % 2 === 1 };
+      const pose = { rot: it.kind === 'junk' ? 0 : bob, flip: it.kind === 'fish' && !it.chest && it.id % 2 === 1, alpha: seen, tint: itemTint(it) };
+      // a gold fish shines, with a glint going round it
+      if (it.gold) {
+        const pulse = 0.5 + 0.5 * Math.sin(time * 6 + it.id);
+        g.circle(p.x, p.y, r * (1.15 + pulse * 0.2)).fill({ color: P.brassLight, alpha: (0.25 + pulse * 0.2) * seen });
+        const gl = time * 3 + it.id;
+        over.star(p.x + Math.cos(gl) * r * 1.1, p.y + Math.sin(gl) * r * 1.1, 4, r * 0.28, r * 0.1).fill({ color: P.cream, alpha: seen });
+      }
       // coins a glutton spilled glow, so the player sees their money back in the water
       if (it.dropped) {
         const pulse = 0.5 + 0.5 * Math.sin(time * 5 + it.id);
@@ -95,10 +110,17 @@ export class Actors extends Container {
       if (!bodies.put(art, p.x, p.y, r, pose)) drawItemShape(g, it, p, k);
     };
 
-    for (const it of w.items) item(it, at(it.id, it.d, it.w));
+    // what is out in the fog is not drawn, and fades in over its edge (sim/weather.ts)
+    for (const it of w.items) {
+      const c = clarity(w, it.d);
+      if (c > 0) item(it, at(it.id, it.d, it.w), c / 1000);
+    }
 
     // monsters before the hook, so a grabbed one hangs under it
-    for (const m of w.mons) this.monster(m, at(m.id, m.d, m.w), w.up.grip, time, diving(w, m));
+    for (const m of w.mons) {
+      const c = clarity(w, m.d);
+      if (c > 0) this.monster(m, at(m.id, m.d, m.w), w.up.grip, time, diving(w, m), c / 1000);
+    }
     if (lowDock(w)) drawCracks(g, f, time);
 
     // the hook: the rope from the crane to the tip, between last tick's aim and length and now's
@@ -160,14 +182,14 @@ export class Actors extends Container {
     }
     if (w.held) {
       const r = HELD_R * k;
-      if (!bodies.put(fishArt(w, w.held), hub.x, hub.y, r)) {
+      if (!bodies.put(fishArt(w, w.held, f.wide), hub.x, hub.y, r, { tint: itemTint(w.held) })) {
         g.roundRect(hub.x - r, hub.y - r, r * 2, r * 2, r / 3).fill(CATCH.junk).stroke({ color: P.line, width: 2.5 * k });
       }
     }
     bodies.end();
   }
 
-  private monster(m: Monster, p: Pt & { d: number }, grip: number, time: number, under: boolean): void {
+  private monster(m: Monster, p: Pt & { d: number }, grip: number, time: number, under: boolean, seen: number): void {
     const { f, under: g, bodies, over } = this;
     const k = f.scale;
     const r = (m.r / FP) * k;
@@ -176,16 +198,23 @@ export class Actors extends Container {
     const boss = isBoss(m.kind);
     const { art, tint } = monsterArt(m.kind, f.wide, m.shell > 0);
     const drawn = bodies.put(art, p.x, p.y - st.up * r, lookRadius(art, r, f.wide), {
-      rot: st.rot + (m.grab ? Math.sin(p.x * 0.05) * 0.2 : 0),
+      // a hooked moray pulling the rope out thrashes
+      rot: st.rot + (m.grab ? Math.sin(p.x * 0.05) * 0.2 : 0) + (m.tug > 0 ? Math.sin(time * 40) * 0.35 : 0),
       sx: st.sx,
       sy: st.sy,
       // a diving ray is a dark shape under the water: out of reach until it surfaces
-      alpha: under ? DIVE_ALPHA : stunned ? 0.75 : 1,
+      alpha: (under ? DIVE_ALPHA : stunned ? 0.75 : 1) * seen,
       tint: under ? 0x3a4a78 : stunned ? 0xb8c4d6 : tint,
     });
     // a hermit borrowing the crab's sprite carries its shell on its back
     if (m.shell > 0 && !hasOwnArt(m.kind, f.wide)) drawShell(over, p.x, p.y - st.up * r - r * 0.25, r * 0.85, k);
     // a boss's chest rides on its back: what killing it at sea drops
+    // a bounty wears a brass ring that beats: the marked one with a purse on it (sim/seaEvents.ts)
+    if (m.bounty) {
+      const beat = 0.5 + 0.5 * Math.sin(time * 6);
+      over.circle(p.x, p.y, r * (1.35 + beat * 0.12)).stroke({ color: P.brassLight, width: 5 * k, alpha: (0.6 + beat * 0.4) * seen });
+      over.star(p.x, p.y - r * 1.55, 5, r * 0.32, r * 0.14).fill({ color: P.brassLight, alpha: seen }).stroke({ color: P.line, width: 2 * k });
+    }
     if (boss) bodies.put('chest', p.x, p.y - st.up * r - r * 0.35, r * BOSS_CHEST, { rot: st.rot });
     // a glutton shows the coins it has eaten: one coin for every few, over its head
     else if (m.ate > 0) drawCoins(over, p.x, p.y - r * 1.6, Math.min(MAX_COINS, Math.ceil(m.ate / COINS_EACH)), k);
@@ -198,8 +227,8 @@ export class Actors extends Container {
     if (m.grab) over.circle(p.x, p.y, r * 1.25).stroke({ color: P.brassLight, width: 3 * k, alpha: 0.9 });
     if (m.eat) over.circle(p.x, p.y, r * 1.35).stroke({ color: CATCH.fish, width: 2 * k, alpha: 0.8 });
     // hit points as pips under it; the ones over the hook's grip are steel squares, so a monster
-    // the hook will bounce off says so before the cast
-    if (under) return;
+    // the hook will bounce off says so before the cast; none until it is out of the fog
+    if (under || seen < 1) return;
     const { n, heavy } = pips(m.hp, boss ? 0 : grip);
     const pr = 2.6 * k;
     const left = p.x - ((n - 1) * pr * 2.6) / 2;

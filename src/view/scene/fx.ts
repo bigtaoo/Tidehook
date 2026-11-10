@@ -2,6 +2,7 @@
 // a rising "+7" when coins come in, and a red wash over the dock when a monster gets through. A
 // thrown hit lands far out, often 700 from the crane, so it gets a wide brass ring and its damage
 // rising from the monster: a small cream ring up there went unseen.
+// The fun layer's (sim/fun.ts) get words: a streak's pay, "Perfect!", a gold fish, a bounty.
 // Grey-box stand-ins for the particles of M4.
 
 import { Container, Graphics, Text } from 'pixi.js';
@@ -10,7 +11,7 @@ import { B } from '../../sim/balance';
 import type { SimEvent } from '../../sim/events';
 import { LANE_LEN } from '../../sim/lane';
 import { FP } from '../../sim/math/fixed';
-import { P } from '../kit/palette';
+import { MON, P } from '../kit/palette';
 import { label } from '../kit/text';
 import { toDesign, type Field } from '../orient';
 import { bandRect } from './field';
@@ -68,12 +69,40 @@ export class Fx extends Container {
       else if (ev.e === 'kill') ring(ev.d, ev.w, 6, 34, ev.crushed ? P.brassLight : P.cream);
       else if (ev.e === 'coins') this.pop(t('fx.coins', { n: ev.amount }), toDesign(f, B.crane.d / FP + 30, B.crane.w / FP + 40), P.brassLight);
       else if (ev.e === 'leak') this.leakMs = LEAK_MS;
+      else this.fun(ev);
     }
   }
 
+  /** The fun layer's flashes (sim/fun.ts): streaks, perfect casts, gold, bounties, the pufferfish. */
+  private fun(ev: SimEvent): void {
+    const f = this.f;
+    const ring = (d: number, w: number, r0: number, r1: number, color: number, life = RING_MS) => {
+      const p = toDesign(f, d / FP, w / FP);
+      this.rings.push({ x: p.x, y: p.y, r0: r0 * f.scale, r1: r1 * f.scale, color, ms: 0, life });
+    };
+    const at = (d: number, w: number) => toDesign(f, Math.min(d / FP + DMG_LIFT, LANE_LEN - DMG_LIFT), w / FP);
+    const crane = (lift = 0) => toDesign(f, B.crane.d / FP + 30 + lift, B.crane.w / FP - 60);
+    if (ev.e === 'combo') this.pop(t('fx.combo', { n: ev.n, c: ev.coins }), at(ev.d, ev.w), ev.n >= 4 ? P.red : P.brassLight, 30 + Math.min(ev.n, 8) * 3);
+    else if (ev.e === 'perfect') {
+      ring(ev.d, ev.w, 6, 40, P.cream, 400);
+      this.pop(t('fx.perfect'), at(ev.d, ev.w), P.cream, 34);
+    } else if (ev.e === 'gold') this.pop(t('fx.gold', { n: ev.amount }), crane(20), P.brassLight, 40);
+    else if (ev.e === 'bounty') {
+      ring(ev.d, ev.w, 10, 90, P.brassLight, 700);
+      this.pop(t('fx.bounty', { n: ev.coins }), at(ev.d, ev.w), P.brassLight, 42);
+    } else if (ev.e === 'keg') this.pop(t('fx.keg'), crane(40), P.cream);
+    else if (ev.e === 'barnacle') this.pop(t('fx.barnacle', { n: ev.hp }), crane(40), P.cream);
+    else if (ev.e === 'burst') ring(ev.d, ev.w, 10, ev.r / FP, MON.puffer, 500);
+    else if (ev.e === 'boom') {
+      ring(ev.d, ev.w, 10, ev.r / FP, P.red, 650);
+      ring(ev.d, ev.w, 6, (ev.r / FP) * 0.6, MON.puffer, 450);
+      this.pop(t('fx.boom'), at(ev.d, ev.w), P.red, 44);
+    } else if (ev.e === 'tug') this.pop(t('fx.tug'), crane(80), P.red, 40);
+  }
+
   /** Words that pop up on `p` and rise: coins beside the crane, damage on a monster. */
-  private pop(text: string, p: { x: number; y: number }, fill: number): void {
-    const tx = label(text, 30 * this.f.scale, { fill });
+  private pop(text: string, p: { x: number; y: number }, fill: number, size = 30): void {
+    const tx = label(text, size * this.f.scale, { fill });
     tx.anchor.set(0.5);
     tx.position.set(p.x, p.y);
     this.addChild(tx);

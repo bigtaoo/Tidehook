@@ -34,6 +34,8 @@ const SIZES: [number, number][] = [
   [600, 600],
 ];
 
+const DAY = '2026-11-10';
+
 const noop: ShopActions = { buy() {}, repair() {}, mine() {}, reroll() {}, next() {} };
 
 /** A world in its first shop, played there by the good bot. */
@@ -126,6 +128,14 @@ function screens(fr: Frame): Screen[] {
       return o;
     },
   });
+  out.push({
+    name: 'over/daily',
+    build: () => {
+      const o = new Overlay(fr);
+      o.update('over', false, false, 188, [], 16, false, t('guide.lesson.fish'), 9_876, [t('overlay.daily', { n: 188 }), t('overlay.logMany', { n: 12 })]);
+      return o;
+    },
+  });
 
   // the harbour: a new one, and a rich one with every upgrade bought up to the max or near it
   for (const rich of [false, true]) for (const tab of LOBBY_TABS) {
@@ -137,10 +147,15 @@ function screens(fr: Frame): Screen[] {
           h.earn(9_999_999);
           for (const u of B.meta.upgrades) for (let i = 0; i < u.max - (u.id === 'powder' ? 1 : 0); i++) h.buy(u.id);
           h.logGame({ wave: 12, kills: 9_000, mined: 99_999, crush: 3, games: 1 });
+          // stuck: the line under the title gives the chart tip, with a sea's name in it
+          h.flat = 9;
+          h.logDaily(DAY, 188);
         }
-        const p = new LobbyPanel(fr, { buy() {}, sail() {}, chart() {}, pick() {} });
+        const p = new LobbyPanel(fr, { buy() {}, sail() {}, chart() {}, pick() {}, daily() {} });
         p.tab = tab;
-        p.update(h, true, rich ? { wave: 188, pearls: 9_876 } : { wave: 0, pearls: 0 });
+        // the board: a new harbour still reading it, a rich one with long names and big waves
+        const rows = rich ? [...Array(10).keys()].map((i) => ({ rank: i + 1, name: i === 2 ? '' : 'Old Barnacle Jim of the Northern Reaches', wave: 999 - i })) : null;
+        p.update(h, true, rich ? { wave: 188, pearls: 9_876 } : { wave: 0, pearls: 0 }, { day: DAY, rows });
         return p;
       },
     });

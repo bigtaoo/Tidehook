@@ -2,7 +2,9 @@
 // hurt the dock when they reach it (prototype spawn, updMons, dmgMon, killMon, knock).
 
 import { B, type MonsterKind } from './balance';
+import { BF } from './balanceFun';
 import { emit } from './events';
+import { afterKill, byWave } from './fun';
 import { dropFish, dropJunk } from './items';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from './lane';
 import { clamp, dist, muldiv, roundDiv, times, toFp } from './math/fixed';
@@ -50,13 +52,16 @@ export function spawn(w: World, kind: MonsterKind): Monster {
     eat: 0,
     eatT: 0,
     full: 0,
-    // the boss's chest: coins inside it like a glutton's, dropped where it dies (kill)
-    ate: boss ? (kind === 'kraken' ? muldiv(bossChest(w), B.kraken.chest, 1000) : bossChest(w)) : 0,
+    // the boss's chest (and a moray's purse): coins inside it like a glutton's, dropped where it
+    // dies (kill)
+    ate: boss ? (kind === 'kraken' ? muldiv(bossChest(w), B.kraken.chest, 1000) : bossChest(w)) : spec.tugs ? byWave(w, BF.moray.coins) : 0,
     ph: rng.int(BRAD_FULL),
     grab: false,
     shell: spec.shell ? 1 : 0,
     cd: kind === 'kraken' ? B.kraken.summon : 0,
     brood: 0,
+    bounty: false,
+    tug: 0,
   };
   w.mons.push(m);
   emit(w, { e: 'spawn', id: m.id, kind });
@@ -110,7 +115,11 @@ export function kill(w: World, m: Monster, crushed: boolean): void {
   if (isBoss(m.kind)) w.st.bosses++;
   if (m.kind === 'kraken') w.st.krakens++;
   if (m.kind === 'ray') w.st.rays++;
+  if (m.kind === 'moray') w.st.morays++;
+  w.sunk[m.kind] = (w.sunk[m.kind] ?? 0) + 1;
   emit(w, { e: 'kill', id: m.id, kind: m.kind, crushed, d: m.d, w: m.w });
+  afterKill(w, m, crushed);
+  if (B.monsters[m.kind].bursts) puffed(w, m, crushed);
   if (!crushed && w.up.salvage && w.st.kills % (B.salvage.every - w.up.salvage) === 0) dropJunk(w, m);
   if (m.ate <= 0) return;
   if (crushed) {
@@ -120,6 +129,22 @@ export function kill(w: World, m: Monster, crushed: boolean): void {
   } else {
     dropFish(w, m);
     emit(w, { e: 'drop', val: m.ate, d: m.d, w: m.w });
+  }
+}
+
+/** A pufferfish dies: at sea it bursts, hurting what is near (which may burst in turn); crushed on
+ *  the dock it is a bomb in the crane's hand, if the hand is free. */
+function puffed(w: World, m: Monster, crushed: boolean): void {
+  const P = BF.puffer;
+  if (crushed) {
+    if (w.held) return;
+    w.held = { id: nextId(w), kind: 'puffer', chest: false, d: m.d, w: m.w, r: m.r, val: 0, wt: 0, dropped: false, gold: false };
+    emit(w, { e: 'held' });
+    return;
+  }
+  emit(w, { e: 'burst', d: m.d, w: m.w, r: P.burst });
+  for (const o of [...w.mons]) {
+    if (!o.grab && w.mons.includes(o) && dist(o.d - m.d, o.w - m.w) < P.burst + o.r) damage(w, o, P.burstDmg, false);
   }
 }
 

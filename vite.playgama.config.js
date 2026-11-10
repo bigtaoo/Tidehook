@@ -18,10 +18,22 @@ const DEFAULT_ENTRY = '/src/main.ts';
 const PORTAL_ENTRY = '/src/main.playgama.ts';
 
 /** Interstitials no closer than a minute apart (Bridge's own default, made explicit): the game
- *  asks at every natural break (src/game/ads.ts) and leaves the pacing to Bridge. */
-export const BRIDGE_CONFIG = {
-  advertisement: { minimumDelayBetweenInterstitial: 60 },
-};
+ *  asks at every natural break (src/game/ads.ts) and leaves the pacing to Bridge. The daily voyage's
+ *  leaderboard (src/game/board.ts) is a Bridge SaaS one: Playgama has no leaderboard of its own. It
+ *  needs the game's public SaaS token from the developer console (Bridge SaaS, Leaderboards), given
+ *  as PLAYGAMA_SAAS_TOKEN at build time; without it Bridge reports no leaderboard and the game
+ *  shows none. The one product, remove_ads (src/game/noAds.ts), is listed here by id only; its price,
+ *  title and description are the developer console's (In-app purchases). */
+export function bridgeConfig(token = process.env.PLAYGAMA_SAAS_TOKEN) {
+  const config = {
+    advertisement: { minimumDelayBetweenInterstitial: 60 },
+    leaderboards: [{ id: 'daily' }],
+    payments: [{ id: 'remove_ads' }],
+  };
+  if (token) config.saas = { publicToken: token, leaderboards: { platforms: ['playgama', 'qa_tool'] } };
+  return config;
+}
+export const BRIDGE_CONFIG = bridgeConfig();
 
 export function rewritePlaygamaHtml(html) {
   let out = html;

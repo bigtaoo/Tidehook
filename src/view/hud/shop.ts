@@ -5,7 +5,7 @@ import { Container, Graphics } from 'pixi.js';
 import { t, type TextKey } from '../../i18n';
 import { B } from '../../sim/balance';
 import { artSprite, aspect } from '../art';
-import { level, mineCost, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
+import { level, mineCost, pairedWith, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
 import type { World } from '../../sim/world';
 import type { ShopPick } from '../../game/guide/shopPick';
 import { Button } from '../kit/button';
@@ -110,7 +110,8 @@ export class ShopPanel extends Container {
       this.addChild(card);
       const btnH = Math.min(110, cardH * 0.22);
       this.spots.set(`card${i}`, { x: x + 16, y: cardsY + cardH - btnH - 16, w: cardW - 32, h: btnH });
-      if (i === tag) this.addChild(this.tag(x + cardW / 2, cardsY, cardW));
+      if (i === tag) this.addChild(this.tag(x + cardW / 2, cardsY, cardW, t('guide.topPick')));
+      else if (upgrade(w.cards[i].id).rare) this.addChild(this.tag(x + cardW / 2, cardsY, cardW, t('shop.rare'), P.brass));
     });
 
     const rowY = cardsY + cardH + GAP;
@@ -136,30 +137,31 @@ export class ShopPanel extends Container {
     this.spots.set('next', { x: next.x, y: next.y, w: inner, h: ROW });
   }
 
-  /** The Top pick ribbon, centred on a card's top edge. */
-  private tag(cx: number, top: number, cw: number): Container {
+  /** A ribbon saying `text` (Top pick, Rare), centred on a card's top edge. */
+  private tag(cx: number, top: number, cw: number, text: string, fill: number = P.brassLight): Container {
     const k = this.fr.boost;
     const box = new Container();
-    const words = label(t('guide.topPick'), 30 * k, { fill: P.line, stroke: false, weight: '800' });
+    const words = label(text, 30 * k, { fill: P.line, stroke: false, weight: '800' });
     fitIn(words, cw - 40, 44);
     const w = words.width + 36;
     const h = Math.max(44, words.height + 12);
     const g = new Graphics();
-    g.roundRect(cx - w / 2, top - h / 2, w, h, h / 2).fill(P.brassLight).stroke({ color: P.line, width: 4 });
+    g.roundRect(cx - w / 2, top - h / 2, w, h, h / 2).fill(fill).stroke({ color: P.line, width: 4 });
     words.anchor.set(0.5);
     words.position.set(cx, top);
     box.addChild(g, words);
     return box;
   }
 
-  /** Card `i`: its name, level and what it does on paper, and its price on a button. */
+  /** Card `i`: its name, level and what it does on paper, and its price on a button. A rare card is
+   *  gold paper; a card that pairs with one owned says so in place of its level (sim/shop.ts). */
   private card(w: World, i: number, cw: number, ch: number, mine: boolean): Container {
     const c = w.cards[i];
     const u = upgrade(c.id);
     const k = this.fr.boost;
     const box = new Container();
     const paper = new Graphics();
-    paper.roundRect(0, 0, cw, ch, 24).fill(c.bought ? P.paperDark : P.paper).stroke({ color: P.line, width: 5 });
+    paper.roundRect(0, 0, cw, ch, 24).fill(c.bought ? P.paperDark : u.rare ? P.brassLight : P.paper).stroke({ color: u.rare ? P.brassDark : P.line, width: u.rare ? 7 : 5 });
     box.addChild(paper);
     const text = 16;
     const nameH = ch * 0.2;
@@ -167,7 +169,9 @@ export class ShopPanel extends Container {
     fitIn(name, cw - text * 2, nameH);
     name.anchor.set(0.5);
     name.position.set(cw / 2, text + nameH / 2);
-    const lv = label(t('shop.level', { n: level(w, c.id), max: u.max }), 30 * k, { fill: P.brassDark, stroke: false });
+    const pair = c.bought ? null : pairedWith(w, c.id);
+    const lvText = pair ? t('shop.pairs', { name: t(`cards.${pair}.name` as TextKey) }) : t('shop.level', { n: level(w, c.id), max: u.max });
+    const lv = label(lvText, 30 * k, { fill: pair ? P.go : P.brassDark, stroke: false, weight: pair ? '800' : undefined });
     fitIn(lv, cw - text * 2, ch * 0.08);
     lv.anchor.set(0.5);
     lv.position.set(cw / 2, text + nameH + ch * 0.06);

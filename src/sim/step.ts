@@ -3,6 +3,7 @@
 // here or the shop's buy functions.
 
 import { B } from './balance';
+import { tickStreak } from './fun';
 import { updateHook } from './hook';
 import { restock } from './items';
 import { applyMeta, type MetaLevels } from './meta';
@@ -37,6 +38,7 @@ export function step(w: World): void {
   w.tick++;
   w.events = [];
   if (w.phase !== 'wave') return;
+  tickStreak(w);
   updateHook(w);
   updateShots(w);
   updateMonsters(w);

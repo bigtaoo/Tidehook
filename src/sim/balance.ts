@@ -17,12 +17,12 @@ function bradPerTick(radPerSecond: number): number {
   return Math.round((radPerSecond / (2 * Math.PI)) * BRAD_FULL / TICK_RATE);
 }
 
-export type MonsterKind = 'grunt' | 'darter' | 'brute' | 'glutton' | 'hermit' | 'ray' | 'boss' | 'kraken';
+export type MonsterKind = 'grunt' | 'darter' | 'brute' | 'glutton' | 'hermit' | 'ray' | 'puffer' | 'moray' | 'boss' | 'kraken';
 /** The bosses: the giant turtle every few waves, the kraken in its place every so many more. */
 export type BossKind = 'boss' | 'kraken';
 /** The kinds a wave's mix is made of (waves.ts); a boss comes on its own every few waves. */
 export type CrewKind = Exclude<MonsterKind, BossKind>;
-export const CREW_KINDS: readonly CrewKind[] = ['grunt', 'darter', 'brute', 'glutton', 'hermit', 'ray'];
+export const CREW_KINDS: readonly CrewKind[] = ['grunt', 'darter', 'brute', 'glutton', 'hermit', 'ray', 'puffer', 'moray'];
 export const MONSTER_KINDS: readonly MonsterKind[] = [...CREW_KINDS, 'boss', 'kraken'];
 
 export interface MonsterSpec {
@@ -43,6 +43,10 @@ export interface MonsterSpec {
   dives: boolean;
   /** A boss: never lifted, barely knocked back, sunk for its chest and pearls. */
   boss: boolean;
+  /** The pufferfish: bursts when killed at sea, hurting what is near; crushed, it is a bomb to throw. */
+  bursts: boolean;
+  /** The moray: carries coins, and fights the hook for a while once caught (fun.ts). */
+  tugs: boolean;
 }
 
 /** The player's upgradable numbers, each in its own integer unit. */
@@ -77,6 +81,14 @@ export interface Stats {
   salvage: number;
   /** Fishing grounds level: worth, restock and cap of fish. */
   grounds: number;
+  /** The rare cards (fun.ts), 0 or 1 each: a throw fans out three ways; every so many kills a
+   *  free mine; kill streaks last longer and pay double; every so many crushes a hit point back;
+   *  gold fish come more often and pay more. */
+  scatter: number;
+  keg: number;
+  shanty: number;
+  barnacle: number;
+  golden: number;
 }
 export type StatKey = keyof Stats;
 
@@ -103,6 +115,10 @@ export interface UpgradeSpec {
   locked: boolean;
   /** A harbour blueprint: owning it lets the shop offer this locked card (meta.ts). */
   unlock?: string;
+  /** A rare card: never in the usual deal, now and then offered as an extra fourth (shop.ts). */
+  rare: boolean;
+  /** Cards it works well with, for the shop to point out when one is owned. */
+  pairs: readonly string[];
 }
 
 /** A captain's log entry: reach `n` of `stat` in one game, or over every game played. The stats
@@ -118,6 +134,11 @@ export interface SeaSpec {
   gap: number;
   price: number;
   needs: number;
+  /** How far out one can see, FP from the crane (weather.ts); 0 a clear sea. */
+  fog: number;
+  /** The gust's strongest pull on a cast hook, brads of bend over a lane's length of rope
+   *  (weather.ts); 0 a calm sea. */
+  wind: number;
 }
 
 export interface GoalSpec {
@@ -131,7 +152,8 @@ export interface GoalSpec {
 /** How a stat's JSON value turns into its integer unit. */
 const STAT_UNIT: Record<StatKey | Extra, (v: number) => number> = {
   grip: Math.round, heft: Math.round, barb: Math.round, pierce: Math.round, blast: Math.round,
-  multi: Math.round, magnet: Math.round, grounds: Math.round, salvage: Math.round, tar: ticks, dock: Math.round, coins: Math.round, mend: Math.round, mines: Math.round, stall: Math.round,
+  multi: Math.round, magnet: Math.round, grounds: Math.round, salvage: Math.round, tar: ticks,
+  scatter: Math.round, keg: Math.round, shanty: Math.round, barnacle: Math.round, golden: Math.round, dock: Math.round, coins: Math.round, mend: Math.round, mines: Math.round, stall: Math.round,
   winch: pm, cast: pm, chew: pm, lure: toFp, swing: radToBrad,
 };
 
@@ -150,6 +172,8 @@ interface UpgradeJson {
   card?: string;
   locked?: boolean;
   unlock?: string;
+  rare?: boolean;
+  pairs?: string[];
   effects: { stat: string; add?: number; mul?: number }[];
 }
 
@@ -169,13 +193,15 @@ function upgradeSpec(u: UpgradeJson): UpgradeSpec {
     ...(u.card ? { card: u.card } : {}),
     locked: !!u.locked,
     ...(u.unlock ? { unlock: u.unlock } : {}),
+    rare: !!u.rare,
+    pairs: u.pairs ?? [],
   };
 }
 
-interface MonsterJson { hp: number; speed: number; radius: number; dmg: number; swims?: boolean; greedy?: boolean; shell?: boolean; dives?: boolean; boss?: boolean }
+interface MonsterJson { hp: number; speed: number; radius: number; dmg: number; swims?: boolean; greedy?: boolean; shell?: boolean; dives?: boolean; boss?: boolean; bursts?: boolean; tugs?: boolean }
 
 function monster(m: MonsterJson): MonsterSpec {
-  return { hp: m.hp, speed: perTick(m.speed), radius: toFp(m.radius), dmg: m.dmg, swims: !!m.swims, greedy: !!m.greedy, shell: !!m.shell, dives: !!m.dives, boss: !!m.boss };
+  return { hp: m.hp, speed: perTick(m.speed), radius: toFp(m.radius), dmg: m.dmg, swims: !!m.swims, greedy: !!m.greedy, shell: !!m.shell, dives: !!m.dives, boss: !!m.boss, bursts: !!m.bursts, tugs: !!m.tugs };
 }
 
 export const B = {
@@ -226,6 +252,8 @@ export const B = {
     glutton: monster(j.monsters.glutton),
     hermit: monster(j.monsters.hermit),
     ray: monster(j.monsters.ray),
+    puffer: monster(j.monsters.puffer),
+    moray: monster(j.monsters.moray),
     boss: monster(j.monsters.boss),
     kraken: monster(j.monsters.kraken),
   } satisfies Record<MonsterKind, MonsterSpec>,
@@ -274,6 +302,8 @@ export const B = {
     clearDelay: sec(j.waves.clearDelay),
   },
   tide: { waves: j.tide.waves, pace: pm(j.tide.pace) },
+  /** The daily voyage (game/meta/daily.ts): its waves of slow tide, fewer than a voyage's. */
+  daily: { ease: j.daily.ease },
   meta: { perWave: j.meta.perWave, upgrades: j.meta.upgrades.map(upgradeSpec) },
   catch: {
     startFish: c.startFish,
@@ -319,7 +349,10 @@ export const B = {
   /** Salvage level L leaves junk behind every (every - L)th monster sunk. */
   salvage: { every: j.salvage.every as number },
   /** The seas (seas.ts), the home bay first. */
-  seas: (j.seas as SeaSpec[]).map((s) => ({ ...s })),
+  seas: (j.seas as SeaSpec[]).map((s) => ({ ...s, fog: toFp(s.fog) })),
+  /** The fog's edge, FP: things fade out over this much past the sea's fog line; and one gust's
+   *  swing from one side and back, ticks (weather.ts). */
+  weather: { fogBand: toFp(j.weather.fogBand), gustTicks: j.weather.gustSecs * TICK_RATE },
   /** The captain's log (goals.ts): [kind, stat, n, pearls] each. */
   goals: (j.goals as [string, string, number, number][]).map(([kind, stat, n, pearls]): GoalSpec => ({
     id: `${kind}.${stat}.${n}`,

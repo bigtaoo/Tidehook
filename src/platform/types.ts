@@ -16,6 +16,31 @@ export type RewardedPlacement = 'revive' | 'double' | 'reroll';
 /** Where an interstitial plays: the shop opening, or on the way back to the harbour. */
 export type BreakPlacement = 'shop' | 'harbour';
 
+/** One leaderboard entry: the player's name on the host, a score, a rank (1 the best). */
+export interface BoardEntry {
+  name: string;
+  score: number;
+  rank: number;
+}
+
+/** The host's leaderboard for the daily voyage (game/board.ts). */
+export interface Board {
+  /** Resolves once the host has taken it (or failed to). */
+  submit(score: number): Promise<void>;
+  /** The entries, best first; empty on any trouble. */
+  top(): Promise<BoardEntry[]>;
+}
+
+/** The host's payments, for the one product the game sells (game/noAds.ts). */
+export interface Payments {
+  /** The ids of the products the player owns; empty on any trouble. */
+  owned(): Promise<string[]>;
+  /** Product `id`'s price in the player's currency, worded by the host; '' when it has none. */
+  price(id: string): Promise<string>;
+  /** Buys product `id` (from a player's press only); true once it is bought. */
+  buy(id: string): Promise<boolean>;
+}
+
 export interface Platform {
   /** Short id for telemetry, e.g. 'web' or 'playgama'. */
   readonly name: string;
@@ -43,6 +68,10 @@ export interface Platform {
   onHostMute(listener: (muted: boolean) => void): void;
   /** Called whenever the host pauses the game; absent: never. */
   onHostPause?(listener: () => void): void;
+  /** The daily voyage's leaderboard, where the host has one the game can draw; absent: none. */
+  board?(): Board | null;
+  /** The host's payments, where it sells the game's products; absent: none. */
+  payments?(): Payments | null;
   /** The element the canvas fills; the window when absent. */
   readonly mount?: HTMLElement;
 }

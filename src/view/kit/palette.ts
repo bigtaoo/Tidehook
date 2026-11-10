@@ -50,6 +50,8 @@ export const MON = {
   hermit: 0x7fc9c0,
   ray: 0x6f78c8,
   kraken: 0x8a5ca8,
+  puffer: 0xf2d04a,
+  moray: 0x7fae5a,
 } as const;
 
 /** The catch: fish and chests are the money (warm), junk is grey. */

@@ -179,7 +179,9 @@ Tidehook/
 - **首发只做 Playgama**（2026-11 决定；CrazyGames 不做）。自有网页（`main.ts`）留作开发和试玩用。
   - 入口 `src/main.playgama.ts`，实现在 `src/platform/playgama/`，配置 `vite.playgama.config.js`：把 Bridge v2 的 CDN 脚本插到 `</title>` 后，作为 head 里第一个脚本，并输出 `playgama-bridge-config.json`（`minimumDelayBetweenInterstitial: 60`）。构建时如果 HTML 没被改写就直接报错。
   - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/packPlaygama.mjs`，纯 Node，不再需要 Python）。`npm run check` 最后也会跑一遍。
-  - 存档只走 Bridge storage（语言、声音、教程、港口四个 key）。
+  - 存档只走 Bridge storage（语言、声音、教程、港口四个 key）。Bridge 没起来（被拦截、超时）时，存档只放在内存里，这次访问有效，
+    **不再退回浏览器的 localStorage**（Playgama 要求 3.2.1：除了 Bridge 不许写任何存储）。2026-11-10 改。
+  - 语言只听 Bridge 的（要求 3.4.1、3.4.2）：Bridge 给的语言我们有就用，没有或没给就用英文，不再看浏览器语言。普通网页版照旧看浏览器。
   - 上传和发布沙盒都要先问过人。
 - **激励广告**（`src/game/ads.ts`），每局各一次，都由玩家自己点：
   - **修好码头**：码头被毁后，结算先挂起（`Session.pending`），卡片上只有“修好码头”和“算了”。看完广告后，码头回到一半血，离码头 300 内的怪被推回 300，所有怪晕 2 秒（`sim/revive.ts`），这一波接着打。点“算了”或者没有广告可放时，才正式结算。广告开始了但没看完，按钮保留。
@@ -195,19 +197,44 @@ Tidehook/
     以及第一次输时卡片上给的提示 `lesson`（junk / cards / fish / near），用来看新手卡在哪；
   - `harbour_purchase`：港口每买一级发一次，带 item_id（升级 id，或 `chart_<海>`）、level 和 game。看“第几局买了什么”、海图有没有人买；
   - 激励和插屏广告带 placement 传给 Bridge（`revive` / `double` / `reroll`，`shop` / `harbour`），广告收入和次数由 Bridge 自己统计，游戏不重复发；
+  - 波次事件另带 `mode`（`daily` 每日航行 / `voyage` 普通一局），每日那局不升级、潮水不同，不混进普通局的波次曲线；
+  - `progression_failed` 另带 `minutes`：这局到输为止的游玩分钟数（商店时间不算，封顶 90），看真实一局有多长（04-content 第 4.3 节）；
+  - `harbour_complete`：港口最后一样东西买完时发一次，带 game，看长线内容在第几局用完；
   - `tutorial_step` / `tutorial_completed`；
   - 每 30 秒有效游玩发一次 `performance_sample`（`src/game/perf.ts`）；
   - 出现新纪录或完成船长日志目标时调用 `celebrate()`（`player_got_achievement`）。
   - 不发任何玩家个人信息。
   - 2026-11-10 修掉一个 bug：每个模拟事件都被交出去两次（`Session.run` 用了 take 而不是 collect），
     遥测的波次事件翻倍、复活后又补发一次失败，音效、粒子和教程观察也都是双份。`session.test.ts` 钉住“每个事件只交一次”。
+- **去广告内购**（2026-11-10，`src/game/noAds.ts`，卡片 `src/view/hud/lobbyNoAds.ts`）：
+  - 一个永久商品 `remove_ads`，买一次，**只关插屏**；激励广告留着（玩家自己点、有奖励，关掉反而亏玩家）。
+  - 只在 Bridge 支持支付、并且商品目录里给出了价格时出现：港口“港口”页升级卡片后面多一张卡，按钮上是平台给的本地价格。
+    没上架或不支持支付的平台上什么都不显示。
+  - 拥有状态每次启动从平台读（`getPurchases`），**不写进存档**：跟着玩家的账号走，不跟设备；也没法改存档白拿。
+  - 永久商品不 consume。玩家中途取消、平台报错都当没买，按钮恢复。
+  - 不加遥测事件：支付由 Playgama 自己统计。
+  - Bridge 配置只写 id（`vite.playgama.config.js` 的 `payments`），价格、标题、描述在开发者后台 In-app purchases 里填，
+    **要用户点头**（`replace_in_app_products` 会删掉没列出的商品）。没在后台建之前，线上就是“不出现”。
+  - 开发时 `?pay=fake`（`platform/fakePayments.ts`，标价 $1.99，买的时候等 0.6 秒）。
 - **之后再说**：iOS（Capacitor 8 + AdMob + 去广告内购 + Game Center + Capgo OTA，照 Potion Siege 的 `docs/ios.md`），以及微信小游戏（竖屏天然适配，参考 Blight Bloom 的 Pixi DOMAdapter 方案，主包 4 MB）。
-- 包体：首包 ≤ 5 MB，图片用 WebP。目前 `dist-playgama` 2.17 MB，zip 1.6 MB。
+- 包体：首包 ≤ 5 MB，图片用 WebP。四首音乐加进来以后 `dist-playgama` 3.98 MB，zip 3.2 MB（QA 工具实测加载 1.17 秒）。
+- **QA 工具**（2026-11-10）：`npm run dev:playgama` 后，用开发者后台的 `get_local_game_qa_tool_link` 拿链接，在 Playgama 的 Bridge 环境里跑本地包。
+  日志顺序正常：Bridge 初始化 → 读四个存档 key → 语言 → 读购买和商品目录 → `game_ready` → `gameplay_started`，没有报错。
+  Chrome 装了拦截插件时 QA 工具会报 AdBlock，这时三个激励按钮不出现，是预期行为。
+- **后期压测**（2026-11-10，浏览器里 autoplay、20 倍速，码头血锁满）：打到第 119 波，帧平均 1.2 ms（含每帧 10 个 tick），最坏 44 ms（一次 GC）；
+  显示节点一直是 113 个左右，GPU 纹理固定 80 张，没有越积越多。JS 堆在 140–245 MB 之间锯齿（20 倍速下分配快，GC 能收回），不是泄漏。
 
 ## 7. 后端
 
 - **v1 不自建服务器**（2026-11-10 定）。存档走 Bridge storage，遥测走 Playgama 的 telemetry。
-- 排行榜放到上线以后，看真实数据再决定。要做时不自建：Playgama 平台没有原生排行榜（`bridge.leaderboards.type` 为 `not_available`），但可以在 Bridge 配置的 `saas` 块里打开 Playgama 托管的 SaaS 排行榜，模块按 `in_game` 工作（`setScore` + `getEntries` 自己画），榜在开发者后台建。只建“最远波次”，每片海一个榜。
+- **排行榜只做一个：每日航行榜**（2026-11-10，`src/game/board.ts`）。不自建：Playgama 平台没有原生排行榜（`bridge.leaderboards.type` 为 `not_available`），
+  用 Bridge 配置的 `saas` 块打开 Playgama 托管的 SaaS 排行榜，模块按 `in_game` 工作（`setScore` + `getEntries` 自己画）。
+  - 只做每日的，不做“每片海最远波次”：普通局带港口升级，老玩家永远压着新玩家；每日那局人人一样，比的是手艺，而且每天清零，新玩家也有机会上榜。
+  - 平台每人只留一个最好成绩、榜不会按天清零，所以分数是 `天数 × 1000 + 波数`：晚一天的成绩总比早一天的大，同一天里按波数排，大厅只显示今天的行。
+    这一局打出当天新纪录时才提交。
+  - 要两样东西才会出现：开发者后台建一个 id 为 `daily` 的 SaaS 排行榜（`create_leaderboard`，**要用户点头**），
+    以及构建时的环境变量 `PLAYGAMA_SAAS_TOKEN`（后台给的 public token）。少一样 Bridge 就报没有排行榜，每日页只显示自己的今日最佳。
+  - 开发时 `?board=fake`（`platform/fakeBoard.ts`，编出来的榜）。
 - 真要防作弊时：模拟是确定性的，可以用录像回放校验分数（复用 Potion Siege 的 collector，Node + NDJSON）。
 
 ## 8. 工程规范（沿用）
@@ -236,4 +263,4 @@ Tidehook/
 3. ~~关卡还是无尽~~：已定（2026-11-10），保持无尽波次，不做手工关卡。
    - 关卡的节奏已经由别的东西给了：三片海是三章，每 5 波一个首领是关底，船长日志的目标是关卡任务，港口升级是关与关之间的成长（生涯模拟 3.5 小时）。
    - 手工关卡要编辑器、逐关设计和逐关调平衡，平衡守卫也要重写，还会切碎“一局越走越远”的乐趣；网页玩家习惯“打开就玩、死了再来”。
-   - 上线后的候选更新：“每日海域”，按日期算种子，所有人当天打同一局，不要服务器；和排行榜一起做效果最好。
+   - “每日航行”已经做了（2026-11-10，04-content 第 3.8 节），和每日排行榜一起，见第 7 节。

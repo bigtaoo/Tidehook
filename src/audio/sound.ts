@@ -6,7 +6,7 @@
 import type { SimEvent } from '../sim/events';
 import type { World } from '../sim/world';
 import type { KeyValueStore } from '../platform/types';
-import { cueFor, DEFAULT_GAP_MS, MIN_GAP_MS, VARIANTS, VOLUME, type Cue } from './cues';
+import { cueFor, cueRate, DEFAULT_GAP_MS, MIN_GAP_MS, seaMusic, VARIANTS, VOLUME, type Cue, type Music } from './cues';
 import { ReelClock } from './reel';
 
 /** The player's sound toggle, in the platform's storage: 'off' or absent. */
@@ -18,6 +18,8 @@ export interface AudioOut {
   play(cue: Cue, i: number, rate: number, gain: number): void;
   /** Whether anything may be heard now; false silences everything, the music included. */
   setAudible(on: boolean): void;
+  /** The music track to play, faded over from the one playing. */
+  setMusic(track: Music): void;
 }
 
 /** A small random detune, so a cue played often does not sound like a machine. */
@@ -33,6 +35,7 @@ export class Sound {
   private readonly lastAt = new Map<Cue, number>();
   private readonly lastVariant = new Map<Cue, number>();
   private readonly reelClock = new ReelClock();
+  private track: Music | null = null;
 
   constructor(
     private readonly out: AudioOut,
@@ -73,11 +76,21 @@ export class Sound {
     return this.on && !this.hostMuted && !this.paused && !this.hidden;
   }
 
+  /** Called every frame: the harbour's tune between games, the sea's own on a voyage. */
+  music(inHarbour: boolean, sea: string): Music {
+    const track = inHarbour ? 'harbour' : seaMusic(sea);
+    if (track !== this.track) {
+      this.track = track;
+      this.out.setMusic(track);
+    }
+    return track;
+  }
+
   /** Plays what a frame's events sound like. `now` is in ms. */
   events(evs: readonly SimEvent[], now: number): void {
     for (const ev of evs) {
       const cue = cueFor(ev);
-      if (cue) this.cue(cue, now);
+      if (cue) this.cue(cue, now, cueRate(ev));
     }
   }
 

@@ -20,6 +20,8 @@ interface HarbourSave {
   done: string[];
   charts: string[];
   sea: string;
+  flat: number;
+  daily: { day: string; best: number };
 }
 
 export class Harbour {
@@ -34,6 +36,12 @@ export class Harbour {
   charts: string[] = [];
   /** The sea the next game sails, an index into B.seas. */
   sea = 0;
+  /** Games in a row that made nothing better: no best wave on their sea, no log entry, and nothing
+   *  bought since. The player most likely to give up (docs/04-content.md section 4); game/meta/tip.ts
+   *  points them somewhere. */
+  flat = 0;
+  /** The best wave of the daily voyage (daily.ts) on `day`. */
+  daily = { day: '', best: 0 };
 
   constructor(private readonly store: KeyValueStore | null) {
     const save = load(store);
@@ -48,6 +56,22 @@ export class Harbour {
     this.charts = save.charts.filter((id) => B.seas.some((s) => s.id === id));
     const sea = B.seas.findIndex((s) => s.id === save.sea);
     this.sea = sea > 0 && this.owns(sea) ? sea : 0;
+    this.flat = save.flat;
+    this.daily = save.daily;
+  }
+
+  /** The best wave of `day`'s daily voyage, 0 when not sailed that day. */
+  dailyBest(day: string): number {
+    return this.daily.day === day ? this.daily.best : 0;
+  }
+
+  /** Takes in a daily voyage's wave; true when it is the day's best. */
+  logDaily(day: string, wave: number): boolean {
+    if (wave <= this.dailyBest(day)) return false;
+    this.daily = { day, best: wave };
+    this.flat = 0;
+    this.save();
+    return true;
   }
 
   /** Whether sea `i` can be sailed. */
@@ -69,6 +93,7 @@ export class Harbour {
     this.pearls -= p;
     this.charts = [...this.charts, B.seas[i].id];
     this.sea = i;
+    this.flat = 0;
     this.save();
     return true;
   }
@@ -84,11 +109,13 @@ export class Harbour {
   /** Takes in a finished game's counts: the log entries it meets are done and their pearls
    *  earned. Returns them. */
   logGame(c: Counts): GoalSpec[] {
+    const better = B.seas.some((s) => (c[s.id] ?? 0) > (this.best[s.id] ?? 0));
     this.best = bestCounts(this.best, c);
     this.totals = addCounts(this.totals, c);
     const met = newlyMet(this.done, this.best, this.totals);
     this.done = [...this.done, ...met.map((g) => g.id)];
     this.pearls += met.reduce((s, g) => s + g.pearls, 0);
+    this.flat = better || met.length ? 0 : this.flat + 1;
     this.save();
     return met;
   }
@@ -113,6 +140,7 @@ export class Harbour {
     if (p === null || p > this.pearls) return false;
     this.pearls -= p;
     this.lv[id] = this.level(id) + 1;
+    this.flat = 0;
     this.save();
     return true;
   }
@@ -124,20 +152,20 @@ export class Harbour {
   }
 
   private save(): void {
-    const save: HarbourSave = { pearls: this.pearls, lv: this.lv, best: { ...this.best }, totals: { ...this.totals }, done: this.done, charts: this.charts, sea: B.seas[this.sea].id };
+    const save: HarbourSave = { pearls: this.pearls, lv: this.lv, best: { ...this.best }, totals: { ...this.totals }, done: this.done, charts: this.charts, sea: B.seas[this.sea].id, flat: this.flat, daily: { ...this.daily } };
     this.store?.setItem(HARBOUR_KEY, JSON.stringify(save));
   }
 }
 
 function load(store: KeyValueStore | null): HarbourSave {
-  const empty: HarbourSave = { pearls: 0, lv: {}, best: {}, totals: {}, done: [], charts: [], sea: 'bay' };
+  const empty: HarbourSave = { pearls: 0, lv: {}, best: {}, totals: {}, done: [], charts: [], sea: 'bay', flat: 0, daily: { day: '', best: 0 } };
   const raw = store?.getItem(HARBOUR_KEY);
   if (!raw) return empty;
   try {
     const v = JSON.parse(raw) as Partial<HarbourSave>;
     const pearls = Number.isSafeInteger(v.pearls) && (v.pearls as number) > 0 ? (v.pearls as number) : 0;
     const lv = v.lv && typeof v.lv === 'object' ? (v.lv as Record<string, number>) : {};
-    return { pearls, lv, best: numbers(v.best), totals: numbers(v.totals), done: strings(v.done), charts: strings(v.charts), sea: typeof v.sea === 'string' ? v.sea : 'bay' };
+    return { pearls, lv, best: numbers(v.best), totals: numbers(v.totals), done: strings(v.done), charts: strings(v.charts), sea: typeof v.sea === 'string' ? v.sea : 'bay', flat: Number.isSafeInteger(v.flat) && (v.flat as number) > 0 ? (v.flat as number) : 0, daily: dailyOf(v.daily) };
   } catch {
     return empty;
   }
@@ -149,6 +177,13 @@ function numbers(v: unknown): Record<string, number> {
   if (!v || typeof v !== 'object') return out;
   for (const [k, n] of Object.entries(v)) if (Number.isSafeInteger(n) && (n as number) >= 0) out[k] = n as number;
   return out;
+}
+
+/** A saved daily best, or none. */
+function dailyOf(v: unknown): HarbourSave['daily'] {
+  const d = v as Partial<HarbourSave['daily']> | null;
+  const ok = !!d && typeof d.day === 'string' && Number.isSafeInteger(d.best) && (d.best as number) > 0;
+  return ok ? { day: d.day as string, best: d.best as number } : { day: '', best: 0 };
 }
 
 /** The strings in a saved list; anything else is dropped. */

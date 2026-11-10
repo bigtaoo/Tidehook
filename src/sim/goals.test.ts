@@ -18,7 +18,7 @@ describe("the captain's log", () => {
   it("asks only for what a game counts", () => {
     const c = counts(newWorld(1));
     const seas = B.seas.map((s) => s.id);
-    for (const g of B.goals) expect(g.stat in c || seas.includes(g.stat)).toBe(true);
+    for (const g of B.goals) expect(g.stat in c || seas.includes(g.stat) || seas.some((s) => g.stat === `${s}Voyage`)).toBe(true);
   });
 
   it('keeps bests and totals apart', () => {

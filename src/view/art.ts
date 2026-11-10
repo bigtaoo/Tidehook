@@ -11,21 +11,25 @@ export const ART_NAMES = Object.keys(FIT) as ArtName[];
 
 const textures = new Map<ArtName, Texture>();
 
-/** The chart sea behind the lane, pier on the left (public/art/sea.webp, tools/build_sea.py). It
- *  is not a sprite: no area fit, drawn to the lane's rectangle by field.ts. */
-let sea: Texture | undefined;
+/** The backdrops, not sprites (no area fit): the chart sea behind the lane, pier on the left
+ *  (public/art/sea.webp, tools/build_sea.py), drawn to the lane's rectangle by field.ts; and the
+ *  harbour behind the lobby panel (public/art/harbour.webp, docs/00-art-direction.md). */
+const BACKDROPS = ['sea', 'harbour'] as const;
+type Backdrop = (typeof BACKDROPS)[number];
+const backdrops = new Map<Backdrop, Texture>();
 
 /** Fetches every sprite. Never rejects: a missing file is logged and left to its placeholder. */
 export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<void> {
-  const backdrop = Assets.load<Texture>(`${base}art/sea.webp`).then(
-    (t) => {
-      t.source.autoGarbageCollect = false;
-      sea = t;
-    },
-    (err) => console.warn('art: the sea failed to load, keeping the flat bands', err),
-  );
   await Promise.all([
-    backdrop,
+    ...BACKDROPS.map((n) =>
+      Assets.load<Texture>(`${base}art/${n}.webp`).then(
+        (t) => {
+          t.source.autoGarbageCollect = false;
+          backdrops.set(n, t);
+        },
+        (err) => console.warn(`art: the ${n} backdrop failed to load, keeping flat colour`, err),
+      ),
+    ),
     ...ART_NAMES.map(async (n) => {
       try {
         const t = await Assets.load<Texture>(`${base}art/${n}.webp`);
@@ -40,7 +44,11 @@ export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<
 }
 
 export function seaTex(): Texture | undefined {
-  return sea;
+  return backdrops.get('sea');
+}
+
+export function harbourTex(): Texture | undefined {
+  return backdrops.get('harbour');
 }
 
 export function tex(n: ArtName): Texture | undefined {

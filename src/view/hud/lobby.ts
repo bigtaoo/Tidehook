@@ -1,26 +1,34 @@
 // The harbour between games (game/meta/harbour.ts, docs/02-onboarding.md section 7): the pearls the
 // player has, the last voyage, and two tabs of cards bought with pearls that last from game to
 // game: the harbour's upgrades, and blueprints that let the shop offer locked cards
-// (docs/04-content.md); the seas (lobbySeas.ts) and the captain's log (lobbyLog.ts). Then Set sail. It covers the lane like the shop, over a dim; rebuilt when
+// (docs/04-content.md); the seas (lobbySeas.ts), the daily voyage (lobbyDaily.ts), the captain's
+// log (lobbyLog.ts) and the codex of monsters met (lobbyCodex.ts); where the host sells it, the remove-ads card after the upgrades
+// (lobbyNoAds.ts). Then Set sail. It covers the lane like the shop, over a dim; rebuilt when
 // something it shows changes.
 
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import type { Harbour } from '../../game/meta/harbour';
 import { t, type TextKey } from '../../i18n';
 import { B, type UpgradeSpec } from '../../sim/balance';
-import { artSprite, aspect } from '../art';
+import { artSprite, aspect, harbourTex } from '../art';
+import { drawCodex } from './lobbyCodex';
+import { drawDaily, type DailyActions, type DailyView } from './lobbyDaily';
 import { drawLog } from './lobbyLog';
+import { drawNoAds, NO_SALE, type NoAdsView } from './lobbyNoAds';
 import { drawSeas, seaName, type SeaActions } from './lobbySeas';
+import { harbourTip } from '../../game/meta/tip';
 import { Button, drawPearl } from '../kit/button';
 import { P } from '../kit/palette';
 import { fitIn, fitWrap, label } from '../kit/text';
 import type { Frame, Rect } from './frame';
 
-export interface LobbyActions extends SeaActions {
+export interface LobbyActions extends SeaActions, DailyActions {
   buy(id: string): void;
   sail(): void;
   /** A press on something the player cannot buy. */
   denied?(): void;
+  /** A press on the remove-ads card's price (lobbyNoAds.ts). */
+  noAds?(): void;
 }
 
 /** The voyage just ended; wave 0: none yet this sitting. */
@@ -40,13 +48,17 @@ const COLS = 3;
 const WIDE_PORTRAIT = 1300;
 const CAPTAIN_H = 150;
 const TAB_H = 84;
+const RADIUS = 32;
+/** How much of the panel's walnut lies over the harbour picture, so the cards and words read. */
+const SHADE = 0.64;
 
-export type LobbyTab = 'gear' | 'plans' | 'seas' | 'log';
-export const LOBBY_TABS: readonly LobbyTab[] = ['gear', 'plans', 'seas', 'log'];
+export type LobbyTab = 'gear' | 'plans' | 'seas' | 'daily' | 'log' | 'codex';
+export const LOBBY_TABS: readonly LobbyTab[] = ['gear', 'plans', 'seas', 'daily', 'log', 'codex'];
 
-/** The upgrade cards on a tab, in order (none on the seas and the log, which draw their own). */
+/** The upgrade cards on a tab, in order (none on the seas, the daily voyage, the log and the
+ *  codex, which draw their own). */
 export function tabCards(tab: LobbyTab): UpgradeSpec[] {
-  if (tab === 'seas' || tab === 'log') return [];
+  if (tab === 'seas' || tab === 'daily' || tab === 'log' || tab === 'codex') return [];
   return B.meta.upgrades.filter((u) => (tab === 'plans') === !!u.unlock);
 }
 
@@ -64,17 +76,17 @@ export class LobbyPanel extends Container {
     this.visible = false;
   }
 
-  update(h: Harbour | null, show: boolean, voyage: Voyage): void {
+  update(h: Harbour | null, show: boolean, voyage: Voyage, daily: DailyView = { day: '' }, noAds: NoAdsView = NO_SALE): void {
     this.visible = show && !!h;
     if (!this.visible || !h) {
       this.last = '';
       return;
     }
-    const key = [this.tab, h.pearls, voyage.wave, voyage.pearls, h.done.length, h.sea, h.charts.length, ...B.meta.upgrades.map((u) => h.level(u.id))].join('|');
+    const key = [this.tab, h.pearls, voyage.wave, voyage.pearls, h.done.length, h.sea, h.charts.length, h.flat, daily.day, h.dailyBest(daily.day), daily.rows === undefined ? '-' : (daily.rows?.length ?? 'x'), daily.rows?.map((r) => r.name + r.wave).join(), noAds.state, noAds.price, noAds.busy, h.totals.games, h.totals.golds, ...B.meta.upgrades.map((u) => h.level(u.id))].join('|');
     if (key === this.last) return;
     this.last = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
-    this.build(h, voyage);
+    this.build(h, voyage, daily, noAds);
   }
 
   /** The panel: the whole lane between the bars. Between games the lane has nothing to show, and
@@ -86,7 +98,7 @@ export class LobbyPanel extends Container {
     return { x: shop.x, y: top, w: shop.w, h: shop.y + shop.h - top };
   }
 
-  private build(h: Harbour, voyage: Voyage): void {
+  private build(h: Harbour, voyage: Voyage, daily: DailyView, noAds: NoAdsView): void {
     const { fit } = this.fr;
     const k = this.fr.boost;
     const r = this.rect();
@@ -97,8 +109,11 @@ export class LobbyPanel extends Container {
     const dim = new Graphics();
     dim.rect(0, 0, fit.w, fit.h).fill({ color: P.line, alpha: 0.6 });
     const bg = new Graphics();
-    bg.roundRect(r.x, r.y, r.w, r.h, 32).fill(P.woodDark).stroke({ color: P.line, width: 6 });
+    bg.roundRect(r.x, r.y, r.w, r.h, RADIUS).fill(P.woodDark);
     this.addChild(dim, bg);
+    const pic = backdrop(r);
+    if (pic) this.addChild(pic);
+    this.addChild(new Graphics().roundRect(r.x, r.y, r.w, r.h, RADIUS).stroke({ color: P.line, width: 6 }));
 
     const inner = r.w - PAD * 2;
     const capW = CAPTAIN_H * aspect('captain') + 12;
@@ -124,7 +139,7 @@ export class LobbyPanel extends Container {
     this.addChild(pearls, pearl);
 
     const lineY = r.y + PAD + HEAD + 8;
-    const said = voyage.wave > 0 ? t('lobby.earned', { wave: voyage.wave, n: voyage.pearls }) : t('lobby.hint');
+    const said = tipLine(h) ?? (voyage.wave > 0 ? t('lobby.earned', { wave: voyage.wave, n: voyage.pearls }) : t('lobby.hint'));
     const sailW = wide ? inner / 2 : inner;
     const line = label(said, 36 * k, { fill: P.brassLight, weight: '700', wrap: wide ? sailW - GAP * 2 : undefined });
     line.anchor.set(0, 0.5);
@@ -160,18 +175,24 @@ export class LobbyPanel extends Container {
     const gridY = wide ? r.y + PAD + HEAD + GAP : tabY + TAB_H + 20;
     const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - rowH - GAP - gridY };
     if (this.tab === 'log') this.addChild(drawLog(h, area, k));
+    if (this.tab === 'codex') this.addChild(drawCodex(h, area, k, wide));
     if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, this.act));
+    if (this.tab === 'daily') this.addChild(drawDaily(h, daily, area, k, wide, this.act));
     // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read; a
     // widened portrait (a square embed) takes a fourth column, so its cards grow taller too.
-    const cols = fit.wide ? Math.max(COLS, Math.ceil(ups.length / 2)) : fit.w >= WIDE_PORTRAIT ? COLS + 1 : COLS;
+    // the remove-ads card takes the slot after the upgrades (there are 7: a free one in the last row)
+    const sale = this.tab === 'gear' && noAds.state !== 'none';
+    const slots = ups.length + (sale ? 1 : 0);
+    const cols = fit.wide ? Math.max(COLS, Math.ceil(slots / 2)) : fit.w >= WIDE_PORTRAIT ? COLS + 1 : COLS;
     const cardW = (inner - GAP * (cols - 1)) / cols;
-    const rows = Math.max(1, Math.ceil(ups.length / cols));
+    const rows = Math.max(1, Math.ceil(slots / cols));
     const cardH = (area.h - GAP * (rows - 1)) / rows;
-    ups.forEach((u, i) => {
-      const card = this.card(h, u, cardW, cardH);
+    const place = (card: Container, i: number) => {
       card.position.set(r.x + PAD + (i % cols) * (cardW + GAP), gridY + Math.floor(i / cols) * (cardH + GAP));
       this.addChild(card);
-    });
+    };
+    ups.forEach((u, i) => place(this.card(h, u, cardW, cardH), i));
+    if (sale) place(drawNoAds(noAds, cardW, cardH, k, wide, () => this.act.noAds?.()), ups.length);
     const sail = new Button({ w: sailW, h: rowH, text: h.sea ? t('lobby.sailTo', { sea: seaName(h.sea) }) : t('lobby.sail'), size: 60 * k, color: P.go, onPress: () => this.act.sail() });
     sail.position.set(r.x + r.w - PAD - sailW, r.y + r.h - PAD - rowH);
     this.addChild(sail);
@@ -225,4 +246,30 @@ export class LobbyPanel extends Container {
     box.addChild(b);
     return box;
   }
+}
+
+/** The harbour picture (art.ts harbourTex) filling the panel from the bottom, under a walnut shade;
+ *  null when it is not loaded, and the panel stays plain walnut. */
+function backdrop(r: Rect): Container | null {
+  const t = harbourTex();
+  if (!t) return null;
+  const box = new Container();
+  const pic = new Sprite(t);
+  const scale = Math.max(r.w / t.width, r.h / t.height);
+  pic.scale.set(scale);
+  pic.position.set(r.x + (r.w - t.width * scale) / 2, r.y + r.h - t.height * scale);
+  const mask = new Graphics().roundRect(r.x, r.y, r.w, r.h, RADIUS).fill(0xffffff);
+  pic.mask = mask;
+  const shade = new Graphics().roundRect(r.x, r.y, r.w, r.h, RADIUS).fill({ color: P.woodDark, alpha: SHADE });
+  box.addChild(pic, mask, shade);
+  return box;
+}
+
+/** The harbour's tip for a stuck player (game/meta/tip.ts), or null. */
+function tipLine(h: Harbour): string | null {
+  const tip = harbourTip(h);
+  if (!tip) return null;
+  if (tip.kind === 'sea' || tip.kind === 'chart') return t(`lobby.tips.${tip.kind}`, { sea: seaName(tip.sea) });
+  if (tip.kind === 'save') return t('lobby.tips.save', { sea: seaName(tip.sea), n: tip.n });
+  return t(`lobby.tips.${tip.kind}`);
 }

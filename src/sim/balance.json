@@ -42,7 +42,9 @@
     "hermit": { "hp": 2, "speed": 30, "radius": 15, "dmg": 1, "shell": true },
     "ray": { "hp": 2, "speed": 44, "radius": 16, "dmg": 2, "dives": true },
     "boss": { "hp": 28, "speed": 14, "radius": 26, "dmg": 4, "boss": true },
-    "kraken": { "hp": 40, "speed": 12, "radius": 30, "dmg": 6, "boss": true }
+    "kraken": { "hp": 40, "speed": 12, "radius": 30, "dmg": 6, "boss": true },
+    "puffer": { "hp": 1, "speed": 32, "radius": 14, "dmg": 1, "bursts": true },
+    "moray": { "hp": 2, "speed": 40, "radius": 12, "dmg": 2, "tugs": true }
   },
   "boss": { "every": 5, "chest": 30, "knock": 0.35, "pearls": 4 },
   "kraken": { "from": 20, "every": 10, "chest": 1.5, "summon": 5, "brood": 2, "max": 8, "pearls": 8 },
@@ -76,7 +78,9 @@
       "brute": { "from": 3, "base": 0, "offset": 1, "per": 2 },
       "glutton": { "from": 4, "base": 0, "offset": 1, "per": 3 },
       "hermit": { "from": 7, "base": 0, "offset": 4, "per": 3 },
-      "ray": { "from": 9, "base": 0, "offset": 6, "per": 3 }
+      "ray": { "from": 9, "base": 0, "offset": 6, "per": 3 },
+      "puffer": { "from": 6, "base": 0, "offset": 3, "per": 3 },
+      "moray": { "from": 8, "base": 0, "offset": 5, "per": 4 }
     },
     "debutSlot": 2,
     "firstDelay": 1.2,
@@ -88,6 +92,8 @@
     "clearDelay": 1
   },
   "tide": { "waves": 30, "pace": 0.55 },
+  "daily": { "ease": 10 },
+  "weather": { "fogBand": 60, "gustSecs": 7 },
   "catch": {
     "startFish": 9,
     "startJunk": 6,
@@ -143,7 +149,12 @@
     "magnet": 0,
     "grounds": 0,
     "tar": 0,
-    "salvage": 0
+    "salvage": 0,
+    "scatter": 0,
+    "keg": 0,
+    "shanty": 0,
+    "barnacle": 0,
+    "golden": 0
   },
   "upgrades": [
     { "id": "grip", "base": 20, "max": 8, "growth": 1.7, "core": true, "effects": [{ "stat": "grip", "add": 1 }] },
@@ -160,7 +171,12 @@
     { "id": "magnet", "base": 30, "max": 3, "growth": 1.8, "ability": true, "effects": [{ "stat": "magnet", "add": 1 }] },
     { "id": "grounds", "base": 35, "max": 3, "growth": 1.8, "ability": true, "locked": true, "effects": [{ "stat": "grounds", "add": 1 }] },
     { "id": "tar", "base": 16, "max": 2, "locked": true, "effects": [{ "stat": "tar", "add": 0.5 }] },
-    { "id": "salvage", "base": 22, "max": 2, "growth": 1.6, "ability": true, "locked": true, "effects": [{ "stat": "salvage", "add": 1 }] }
+    { "id": "salvage", "base": 22, "max": 2, "growth": 1.6, "ability": true, "locked": true, "effects": [{ "stat": "salvage", "add": 1 }] },
+    { "id": "scatter", "base": 45, "max": 1, "rare": true, "pairs": ["pierce", "heft"], "effects": [{ "stat": "scatter", "add": 1 }] },
+    { "id": "keg", "base": 40, "max": 1, "rare": true, "pairs": ["blast", "salvage"], "effects": [{ "stat": "keg", "add": 1 }] },
+    { "id": "shanty", "base": 35, "max": 1, "rare": true, "pairs": ["multi", "winch"], "effects": [{ "stat": "shanty", "add": 1 }] },
+    { "id": "barnacle", "base": 40, "max": 1, "rare": true, "pairs": ["grip", "planks"], "effects": [{ "stat": "barnacle", "add": 1 }] },
+    { "id": "golden", "base": 35, "max": 1, "rare": true, "pairs": ["grounds", "magnet"], "effects": [{ "stat": "golden", "add": 1 }] }
   ],
   "meta": {
     "perWave": 4,
@@ -182,10 +198,23 @@
   },
   "grounds": { "valueBonus": 0.3, "restockBonus": 2, "capBonus": 2 },
   "salvage": { "every": 4 },
+  "_fun": "The fun layer (docs/04-content.md section 3.10): kill streaks, the perfect cast, rare cards, sea events, the voyage's end, gold fish and the two odd monsters.",
+  "combo": { "span": 1.6, "coins": 1, "cap": 2 },
+  "perfect": { "share": 0.35, "boost": 1.3 },
+  "rare": { "from": 4, "chance": 0.15, "max": 1 },
+  "events": { "from": 4, "chance": 0.3, "frenzySpeed": 1.3, "frenzyCoins": 2, "goldPay": 1.5, "bountyHp": 2.5, "bountyCoins": 25, "swarm": 4, "swarmPer": 5, "swarmCoins": 1 },
+  "voyage": { "wave": 30, "home": 25 },
+  "gold": { "chance": 0.03, "mult": 3, "goldenChance": 0.08, "goldenMult": 4.5 },
+  "puffer": { "burst": 70, "burstDmg": 2, "boom": 120, "boomDmg": 8 },
+  "moray": { "coins": 12, "tug": 1.4, "tugSpeed": 120, "yank": 0.35 },
+  "scatter": { "spread": 0.16 },
+  "keg": { "every": 20 },
+  "barnacle": { "every": 12 },
+  "shanty": { "span": 1.5, "coins": 2 },
   "seas": [
-    { "id": "bay", "lead": 0, "pearls": 1000, "speed": 1000, "gap": 1000, "price": 0, "needs": 0 },
-    { "id": "fog", "lead": 3, "pearls": 1500, "speed": 1000, "gap": 700, "price": 120, "needs": 12 },
-    { "id": "storm", "lead": 4, "pearls": 2000, "speed": 1100, "gap": 1000, "price": 240, "needs": 12 }
+    { "id": "bay", "lead": 0, "pearls": 1000, "speed": 1000, "gap": 1000, "price": 0, "needs": 0, "fog": 0, "wind": 0 },
+    { "id": "fog", "lead": 3, "pearls": 1500, "speed": 1000, "gap": 700, "price": 120, "needs": 12, "fog": 520, "wind": 0 },
+    { "id": "storm", "lead": 4, "pearls": 2000, "speed": 1100, "gap": 1000, "price": 240, "needs": 12, "fog": 0, "wind": 1500 }
   ],
   "goals": [
     ["game", "wave", 5, 10], ["game", "wave", 8, 15], ["game", "wave", 10, 20], ["game", "wave", 15, 30],
@@ -196,6 +225,9 @@
     ["game", "fog", 10, 40], ["game", "fog", 20, 80], ["game", "storm", 10, 60], ["game", "storm", 20, 120],
     ["total", "games", 5, 10], ["total", "games", 20, 30], ["total", "kills", 500, 25], ["total", "kills", 2000, 50],
     ["total", "kills", 5000, 80], ["total", "bosses", 5, 30], ["total", "bosses", 20, 60], ["total", "krakens", 5, 60], ["total", "crush", 300, 30],
-    ["total", "junkKills", 200, 30], ["total", "mines", 30, 25], ["total", "mined", 5000, 40]
+    ["total", "junkKills", 200, 30], ["total", "mines", 30, 25], ["total", "mined", 5000, 40],
+    ["game", "combo", 5, 5], ["game", "combo", 8, 10], ["game", "perfects", 25, 5], ["game", "bounties", 2, 10], ["game", "puffs", 3, 10],
+    ["game", "bayVoyage", 1, 50], ["game", "fogVoyage", 1, 80], ["game", "stormVoyage", 1, 120],
+    ["total", "golds", 10, 5], ["total", "golds", 50, 15], ["total", "morays", 20, 10]
   ]
 }

@@ -2,7 +2,9 @@
 // in the game can be broken by it: the script is missing under an adblocker and in tests, so every
 // call is a no-op without it, every throw or rejection is swallowed, initialize() is bounded
 // (BRIDGE_WAIT_MS), and an ad whose states stop coming is given up (AD_START_MS, AD_PLAY_MS).
-// After Potion Siege's platform/playgama/bridge.ts, without the leaderboards (Tidehook v1 has none).
+// After Potion Siege's platform/playgama/bridge.ts; leaderboards only where the game draws them
+// itself (type in_game, Bridge SaaS on Playgama); payments for the one permanent product, the
+// remove-ads purchase (game/noAds.ts).
 
 export type BridgeData = Record<string, string | number | boolean>;
 
@@ -34,7 +36,25 @@ export interface BridgeShape {
     checkAdBlock?: () => unknown;
   };
   device?: { type?: string };
+  leaderboards?: {
+    type?: string;
+    setScore?: (id: string, score: number) => unknown;
+    getEntries?: (id: string) => unknown;
+  };
   analytics?: { send?: (event: string, data?: BridgeData) => unknown };
+  payments?: {
+    isSupported?: boolean;
+    purchase?: (id: string) => unknown;
+    getPurchases?: () => unknown;
+    getCatalog?: () => unknown;
+  };
+}
+
+/** One leaderboard entry, as much as the game shows. */
+export interface BoardRow {
+  name: string;
+  score: number;
+  rank: number;
 }
 
 export interface BridgeGlobal {
@@ -51,6 +71,15 @@ export const AD_PLAY_MS = 120_000;
 export const ADBLOCK_WAIT_MS = 1500;
 
 export type Wait = (ms: number) => Promise<void>;
+
+/** The string `id`s in a list of objects Bridge gave back. */
+function ids(got: unknown): string[] {
+  if (!Array.isArray(got)) return [];
+  return got.flatMap((e: unknown) => {
+    const id = (e as Record<string, unknown> | null)?.id;
+    return typeof id === 'string' ? [id] : [];
+  });
+}
 
 async function settle(fn: () => unknown): Promise<unknown> {
   try {
@@ -166,6 +195,67 @@ export class PlaygamaBridge {
 
   save(entries: Map<string, string>): void {
     void settle(() => this.sdk?.storage?.set?.([...entries.keys()], [...entries.values()]));
+  }
+
+  /** Whether leaderboard `id` can be both written and read here: Bridge's type in_game (on Playgama
+   *  that takes a Bridge SaaS leaderboard in the config). Native or popup boards are left alone. */
+  boardReady(): boolean {
+    const b = this.sdk?.leaderboards;
+    return b?.type === 'in_game' && typeof b.setScore === 'function' && typeof b.getEntries === 'function';
+  }
+
+  /** Resolves once Bridge has answered (or failed). */
+  async setScore(id: string, score: number): Promise<void> {
+    if (this.boardReady()) await settle(() => this.sdk?.leaderboards?.setScore?.(id, score));
+  }
+
+  /** Leaderboard `id`'s entries, best first; empty on any trouble. */
+  async entries(id: string): Promise<BoardRow[]> {
+    if (!this.boardReady()) return [];
+    const got = await settle(() => this.sdk?.leaderboards?.getEntries?.(id));
+    if (!Array.isArray(got)) return [];
+    return got.flatMap((e: unknown): BoardRow[] => {
+      const r = (e ?? {}) as Record<string, unknown>;
+      const score = Number(r.score);
+      const rank = Number(r.rank);
+      if (!Number.isSafeInteger(score) || !Number.isSafeInteger(rank)) return [];
+      return [{ name: typeof r.name === 'string' ? r.name.slice(0, 40) : '', score, rank }];
+    });
+  }
+
+  /** Whether the platform sells the game's products (Bridge payments, ids in the config). */
+  paymentsReady(): boolean {
+    const p = this.sdk?.payments;
+    return p?.isSupported === true && typeof p.purchase === 'function' && typeof p.getPurchases === 'function' && typeof p.getCatalog === 'function';
+  }
+
+  /** The ids of the products the player owns; empty on any trouble. Read on every launch: a
+   *  permanent product is never consumed, so it stays on this list. */
+  async purchases(): Promise<string[]> {
+    if (!this.paymentsReady()) return [];
+    return ids(await settle(() => this.sdk?.payments?.getPurchases?.()));
+  }
+
+  /** Product `id`'s price as the platform words it, in the player's currency; '' when the
+   *  catalog has no such product (it is described in the developer console, not in the config). */
+  async price(id: string): Promise<string> {
+    if (!this.paymentsReady()) return '';
+    const got = await settle(() => this.sdk?.payments?.getCatalog?.());
+    if (!Array.isArray(got)) return '';
+    const item = got.find((e: unknown) => (e as Record<string, unknown> | null)?.id === id) as Record<string, unknown> | undefined;
+    return typeof item?.price === 'string' ? item.price.slice(0, 24) : '';
+  }
+
+  /** Buys product `id`, from a player's press only; true once the platform says it is bought,
+   *  false when the player backs out or anything fails. */
+  async purchase(id: string): Promise<boolean> {
+    if (!this.paymentsReady()) return false;
+    try {
+      await this.sdk?.payments?.purchase?.(id);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   hasAdblock(): boolean {

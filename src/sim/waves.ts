@@ -7,6 +7,8 @@ import { restockAfterWave } from './items';
 import { muldiv, TICK_RATE, times } from './math/fixed';
 import { spawn } from './monsters';
 import { seaOf } from './seas';
+import { BF } from './balanceFun';
+import { eventSpawn, rollEvent } from './seaEvents';
 import { rollShop } from './shop';
 import { level, mendAfterWave } from './tide';
 import type { World } from './world';
@@ -70,6 +72,7 @@ export function startWave(w: World): void {
       emit(w, { e: 'debut', kind: boss });
     }
   }
+  rollEvent(w, list, !!boss);
   w.queue = list;
   w.spawnT = V.firstDelay;
   emit(w, { e: 'waveStart', wave: w.wave });
@@ -80,7 +83,7 @@ export function updateWave(w: World): void {
   if (w.queue.length) {
     if (w.calm === 1 || (w.calm === 2 && w.mons.length)) return;
     if (--w.spawnT <= 0) {
-      spawn(w, w.queue.shift() as MonsterKind);
+      eventSpawn(w, spawn(w, w.queue.shift() as MonsterKind));
       const jitter = V.jitterMin + w.rng.spawn.int(V.jitterMax - V.jitterMin);
       w.spawnT = Math.max(1, muldiv(times(spawnGap(level(w)), jitter), seaOf(w).gap, 1000));
     }
@@ -94,6 +97,15 @@ function endWave(w: World): void {
   mendAfterWave(w);
   w.phase = 'shop';
   w.rerolls = 0;
+  w.event = '';
+  w.bounty = -1;
+  w.combo = 0;
+  w.comboT = 0;
   emit(w, { e: 'waveClear', wave: w.wave });
+  // the voyage's last wave: the session offers the way home (game/session.ts)
+  if (w.wave === BF.voyage.wave && !w.st.voyage) {
+    w.st.voyage = 1;
+    emit(w, { e: 'voyage', wave: w.wave });
+  }
   rollShop(w);
 }

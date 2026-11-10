@@ -47,7 +47,7 @@ describe('hermit', () => {
     const m = spawn(w, 'hermit');
     m.d = toFp(400);
     m.w = B.crane.w;
-    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false };
+    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, gold: false };
     castStraight(w);
     expect(w.mons).toHaveLength(1);
     expect(m.shell).toBe(0);
@@ -78,7 +78,7 @@ describe('ray', () => {
     const m = spawn(w, 'ray');
     m.d = toFp(400);
     m.w = B.crane.w;
-    w.items.push({ id: w.nextId++, kind: 'fish', chest: false, d: toFp(380), w: B.crane.w + toFp(60), r: B.catch.fishRadius, val: 5, wt: 1, dropped: false });
+    w.items.push({ id: w.nextId++, kind: 'fish', chest: false, d: toFp(380), w: B.crane.w + toFp(60), r: B.catch.fishRadius, val: 5, wt: 1, dropped: false, gold: false });
     for (let i = 0; i < 60; i++) step(w);
     expect(w.items).toHaveLength(1);
     expect(m.eat).toBe(0);
@@ -119,7 +119,7 @@ describe('kraken', () => {
     k.hp = 1;
     k.d = toFp(500);
     k.w = B.crane.w;
-    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false };
+    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, gold: false };
     castStraight(w);
     expect(w.st.bosses).toBe(1);
     expect(w.st.krakens).toBe(1);

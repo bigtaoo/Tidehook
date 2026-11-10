@@ -8,11 +8,14 @@ import { Prng } from './math/prng';
 
 export type Phase = 'wave' | 'shop' | 'over';
 export type Calm = 0 | 1 | 2;
+/** A wave's sea event (seaEvents.ts), '' for an ordinary wave. */
+export type SeaEvent = '' | 'frenzy' | 'gold' | 'bounty' | 'swarm';
 
-/** Something in the water the hook can catch: a fish, a chest (a big fish) or junk to throw. */
+/** Something in the water the hook can catch: a fish, a chest (a big fish) or junk to throw; or a
+ *  crushed pufferfish in the crane's hand, a bomb to throw (never in the water). */
 export interface Item {
   id: number;
-  kind: 'fish' | 'junk';
+  kind: 'fish' | 'junk' | 'puffer';
   /** A treasure chest: a big, heavy, valuable catch. Only for fish. */
   chest: boolean;
   d: number;
@@ -24,6 +27,8 @@ export interface Item {
   wt: number;
   /** Spilled by a glutton killed at sea: the coins it had eaten, back in the water. */
   dropped: boolean;
+  /** A gold fish: rare, shining, worth several times a fish (fun.ts). */
+  gold: boolean;
 }
 
 export interface Monster {
@@ -54,6 +59,10 @@ export interface Monster {
   /** The kraken's ticks until it next calls up crabs, and how many it has called. */
   cd: number;
   brood: number;
+  /** The bounty event's marked monster: tougher, and pays a purse when sunk (seaEvents.ts). */
+  bounty: boolean;
+  /** A caught moray's ticks left fighting the hook (fun.ts). */
+  tug: number;
 }
 
 export type Grab = { t: 'item'; item: Item } | { t: 'mon'; id: number };
@@ -71,6 +80,8 @@ export interface Hook {
   /** Rope length, FP. */
   len: number;
   grabs: Grab[];
+  /** This cast was aimed dead on its target: it flies and reels faster (fun.ts). */
+  perfect: boolean;
 }
 
 /** A piece of junk thrown from the crane. */
@@ -81,6 +92,10 @@ export interface Shot {
   ud: number;
   uw: number;
   pierce: number;
+  /** Damage it does: the heft, less for a scattershot's side throws. */
+  dmg: number;
+  /** A pufferfish bomb: blows up over this many FP on the first hit; 0 for junk. */
+  boom: number;
   /** Monsters already hit. */
   hit: number[];
 }
@@ -112,6 +127,15 @@ export interface Tally {
   /** Hermit shells knocked off, and rays sunk. */
   shells: number;
   rays: number;
+  /** The fun layer (fun.ts): the longest kill streak, perfect casts, gold fish landed, the voyage's
+   *  end reached (1), pufferfish bombs thrown, bounties sunk and morays landed. */
+  combo: number;
+  perfects: number;
+  golds: number;
+  voyage: number;
+  puffs: number;
+  bounties: number;
+  morays: number;
 }
 
 export interface World {
@@ -158,14 +182,23 @@ export interface World {
   mended: number;
   nextId: number;
   st: Tally;
-  /** One stream per concern, so a change in one does not shift the others. */
-  rng: { spawn: Prng; catch: Prng; shop: Prng };
+  /** The kill streak so far, and ticks left for the next kill to carry it on (fun.ts). */
+  combo: number;
+  comboT: number;
+  /** This wave's sea event, and the spawns left before the bounty's mark (seaEvents.ts). */
+  event: SeaEvent;
+  bounty: number;
+  /** Monsters sunk this game, by kind: the harbour's codex adds them up (goals.ts counts). */
+  sunk: Record<string, number>;
+  /** One stream per concern, so a change in one does not shift the others; `luck` draws the fun
+   *  layer's chances (gold fish, rare cards, sea events). */
+  rng: { spawn: Prng; catch: Prng; shop: Prng; luck: Prng };
   /** What happened this tick, for the view and audio; cleared at the start of each step. */
   events: SimEvent[];
 }
 
 export function newTally(): Tally {
-  return { kills: 0, crush: 0, leak: 0, mined: 0, spat: 0, eaten: 0, spent: 0, casts: 0, throws: 0, bounce: 0, junkKills: 0, mines: 0, dropped: 0, recaught: 0, bosses: 0, krakens: 0, shells: 0, rays: 0 };
+  return { kills: 0, crush: 0, leak: 0, mined: 0, spat: 0, eaten: 0, spent: 0, casts: 0, throws: 0, bounce: 0, junkKills: 0, mines: 0, dropped: 0, recaught: 0, bosses: 0, krakens: 0, shells: 0, rays: 0, combo: 0, perfects: 0, golds: 0, voyage: 0, puffs: 0, bounties: 0, morays: 0 };
 }
 
 /** A fresh world before wave 1: the starting catch is in the water, the hook at rest. */
@@ -182,7 +215,7 @@ export function newWorld(seed: number, ease = 0): World {
     items: [],
     mons: [],
     shots: [],
-    hook: { st: 'swing', ang: 0, ph: 0, rate: B.hook.swingRate, len: 0, grabs: [] },
+    hook: { st: 'swing', ang: 0, ph: 0, rate: B.hook.swingRate, len: 0, grabs: [], perfect: false },
     held: null,
     up: { ...B.start },
     lv: {},
@@ -201,7 +234,12 @@ export function newWorld(seed: number, ease = 0): World {
     mended: 0,
     nextId: 1,
     st: newTally(),
-    rng: { spawn: new Prng(seed * 3 + 1), catch: new Prng(seed * 3 + 2), shop: new Prng(seed * 3 + 3) },
+    combo: 0,
+    comboT: 0,
+    event: '',
+    bounty: -1,
+    sunk: {},
+    rng: { spawn: new Prng(seed * 3 + 1), catch: new Prng(seed * 3 + 2), shop: new Prng(seed * 3 + 3), luck: new Prng(seed * 3 + 0x51ed27) },
     events: [],
   };
 }

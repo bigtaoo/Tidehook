@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import credits from '../../art/audio/credits.json';
 import { StubPlatform } from '../platform/stub';
+import { B } from '../sim/balance';
 import type { SimEvent } from '../sim/events';
 import { Session } from '../game/session';
 import { startGame } from '../sim/step';
-import { CUES, cueFile, cueFor, MUSIC_FILE, VARIANTS, type Cue } from './cues';
+import { CUES, cueFile, cueFor, MUSIC, musicFile, seaMusic, VARIANTS, type Cue, type Music } from './cues';
 import { CLICK_LEN, ReelClock, reelRate } from './reel';
 import { Sound, SOUND_KEY, type AudioOut } from './sound';
 
@@ -14,11 +15,15 @@ const built = Object.keys(import.meta.glob('../../public/audio/*.mp3')).map((p) 
 class FakeOut implements AudioOut {
   played: { cue: Cue; i: number; rate: number }[] = [];
   audible: boolean[] = [];
+  tracks: Music[] = [];
   play(cue: Cue, i: number, rate: number): void {
     this.played.push({ cue, i, rate });
   }
   setAudible(on: boolean): void {
     this.audible.push(on);
+  }
+  setMusic(track: Music): void {
+    this.tracks.push(track);
   }
 }
 
@@ -32,7 +37,7 @@ function setup(stored: string | null = null, rand = () => 0.5) {
 
 describe('the sound files', () => {
   it('has a built file for every variant of every cue, and nothing else', () => {
-    const want = [...CUES.flatMap((c) => Array.from({ length: VARIANTS[c] }, (_, i) => cueFile(c, i))), MUSIC_FILE];
+    const want = [...CUES.flatMap((c) => Array.from({ length: VARIANTS[c] }, (_, i) => cueFile(c, i))), ...MUSIC.map(musicFile)];
     expect(built.sort()).toEqual(want.sort());
   });
 
@@ -41,6 +46,25 @@ describe('the sound files', () => {
     expect(files.map((f) => f.file).sort()).toEqual([...built].sort());
     const packs = credits.packs as Record<string, { license: string }>;
     for (const f of files) expect(packs[f.source.split('/')[0]]?.license).toBe('CC0-1.0');
+  });
+});
+
+describe('the music', () => {
+  it('has a track for the harbour and every sea, a bay one for any other', () => {
+    for (const sea of B.seas) expect(seaMusic(sea.id)).toBe(sea.id);
+    expect(seaMusic('harbour')).toBe('bay');
+    expect(seaMusic('kraken')).toBe('bay');
+  });
+
+  it('tells the speakers only when the track changes', () => {
+    const { out, sound } = setup();
+    expect(sound.music(true, 'bay')).toBe('harbour');
+    sound.music(true, 'fog');
+    expect(sound.music(false, 'fog')).toBe('fog');
+    sound.music(false, 'fog');
+    sound.music(false, 'storm');
+    sound.music(true, 'storm');
+    expect(out.tracks).toEqual(['harbour', 'fog', 'storm', 'harbour']);
   });
 });
 
@@ -139,7 +163,7 @@ describe('the reel ratchet', () => {
   it('drops in pitch under weight', () => {
     const w = startGame(3);
     expect(reelRate(w)).toBe(1);
-    const item = { id: 99, kind: 'junk' as const, chest: false, d: 0, w: 0, r: 10, val: 0, wt: 6, dropped: false };
+    const item = { id: 99, kind: 'junk' as const, chest: false, d: 0, w: 0, r: 10, val: 0, wt: 6, dropped: false, gold: false };
     w.hook.grabs = [{ t: 'item', item }];
     const heavy = reelRate(w);
     expect(heavy).toBeLessThan(1);

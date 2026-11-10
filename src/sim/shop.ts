@@ -3,6 +3,7 @@
 // rollShop, buy, buyFix, reroll and their prices).
 
 import { B, type Effect, type UpgradeSpec } from './balance';
+import { BF } from './balanceFun';
 import { roundDiv, times } from './math/fixed';
 import type { World } from './world';
 
@@ -56,7 +57,7 @@ export function offered(w: World, u: UpgradeSpec): boolean {
 
 export function rollShop(w: World): void {
   const rng = w.rng.shop;
-  const pool = B.upgrades.filter((u) => level(w, u.id) < u.max && offered(w, u));
+  const pool = B.upgrades.filter((u) => !u.rare && level(w, u.id) < u.max && offered(w, u));
   w.cards = [];
   const core = pool.filter((u) => u.core);
   if (core.length) {
@@ -68,6 +69,24 @@ export function rollShop(w: World): void {
     const u = pool.splice(rng.int(pool.length), 1)[0];
     w.cards.push({ id: u.id, bought: false });
   }
+  rareCard(w);
+}
+
+/** Now and then a rare card as an extra one, from the luck stream so the usual deal stays put; a
+ *  captain owns `rare.max` of them at most, so each game is shaped by a pick, not all five. */
+function rareCard(w: World): void {
+  if (w.wave < BF.rare.from) return;
+  const luck = w.rng.luck;
+  if (luck.int(1000) >= BF.rare.chance) return;
+  const all = B.upgrades.filter((u) => u.rare);
+  if (all.filter((u) => level(w, u.id) > 0).length >= BF.rare.max) return;
+  const rares = all.filter((u) => level(w, u.id) < u.max);
+  if (rares.length) w.cards.push({ id: rares[luck.int(rares.length)].id, bought: false });
+}
+
+/** An owned card that `id` works well with, or null. */
+export function pairedWith(w: World, id: string): string | null {
+  return upgrade(id).pairs.find((p) => level(w, p) > 0) ?? null;
 }
 
 function pay(w: World, cost: number): boolean {

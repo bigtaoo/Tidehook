@@ -17,6 +17,8 @@ import { revive } from '../sim/revive';
 import type { Shot, World } from '../sim/world';
 import { FixedStep } from '../view/fixedStep';
 import type { Guide } from './guide/guide';
+import { BF } from '../sim/balanceFun';
+import { dailySea, daySeed } from './meta/daily';
 import type { Harbour } from './meta/harbour';
 
 export type Mode = 'title' | 'play' | 'over' | 'lobby';
@@ -31,6 +33,10 @@ export interface LastGame {
   /** The sea sailed (sim/seas.ts), and whether the wave beat that sea's best before it. */
   sea: number;
   record: boolean;
+  /** A daily voyage (meta/daily.ts): `record` is then the day's best. */
+  daily: boolean;
+  /** The captain took the way home at the voyage's end (sim/waves.ts), with its pearls. */
+  home: boolean;
 }
 
 export interface SessionOptions {
@@ -103,9 +109,11 @@ export class Session {
   private shopWait = 0;
   private events: SimEvent[] = [];
   private overMs = 0;
+  /** Waiting on the captain's choice at the voyage's end (atVoyageEnd). */
+  private finish = false;
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
-  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false };
+  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false };
   /** An ad is on screen (game/ads.ts): nothing runs and taps do nothing, with no pause cover. */
   hold = false;
   /** Whether a fallen dock may be revived (a rewarded ad is there to watch); set by game/ads.ts. */
@@ -116,6 +124,8 @@ export class Session {
   revived = false;
   doubled = false;
   freeRerolled = false;
+  /** The day of the daily voyage being sailed (meta/daily.ts), or null for a plain voyage. */
+  daily: string | null = null;
 
   /** The tutorial and the harbour; null for the bot and in tests that do not ask for them. */
   constructor(
@@ -135,6 +145,7 @@ export class Session {
   /** The next game's world: the first on the first seed, then a new seed each time; with the
    *  harbour's upgrades as they are now. */
   private newWorld(): World {
+    if (this.daily) return startGame(daySeed(this.daily), B.daily.ease, {}, dailySea(this.daily));
     const seed = this.games === 0 ? (this.opts.firstSeed ?? this.opts.seed) : this.opts.seed + this.games;
     return startGame(seed, this.ease(), this.harbour?.levels ?? {}, this.harbour?.sea ?? 0);
   }
@@ -152,7 +163,7 @@ export class Session {
     this.paused = false;
     this.pilot = this.opts.autoplay ? new Pilot(this.world.seed, this.opts.autoplay) : null;
     this.shopWait = 0;
-    this.pending = this.revived = this.doubled = this.freeRerolled = false;
+    this.pending = this.revived = this.doubled = this.freeRerolled = this.finish = false;
     this.guide?.begin();
     this.guide?.update(this.world, true, 0);
     this.snapshot();
@@ -198,15 +209,44 @@ export class Session {
     return n;
   }
 
-  /** Counts the game that just ended: its pearls, the captain's log, the sea's best. */
-  private settle(): void {
+  /** Counts the game that just ended: its pearls, the captain's log, the sea's best. `home`: the
+   *  captain sailed home at the voyage's end, which brings its own pearls. */
+  private settle(home = false): void {
     const w = this.world;
-    const pearls = pearlsFor(w);
+    const pearls = pearlsFor(w) + (home ? BF.voyage.home : 0);
     this.harbour?.earn(pearls);
-    const was = this.harbour?.best[seaOf(w).id] ?? 0;
-    const log = this.harbour?.logGame(counts(w)) ?? [];
-    const record = was > 0 && w.wave > was;
-    this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), won: pearls, log, sea: w.sea, record };
+    const id = seaOf(w).id;
+    const was = this.harbour?.best[id] ?? 0;
+    const c: Record<string, number> = { ...counts(w) };
+    // a daily voyage sails a sea that may not be owned: it counts for the log but not the sea's best
+    if (this.daily) delete c[id];
+    const log = this.harbour?.logGame(c) ?? [];
+    const record = this.daily ? !!this.harbour?.logDaily(this.daily, w.wave) : was > 0 && w.wave > was;
+    this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), won: pearls, log, sea: w.sea, record, daily: !!this.daily, home };
+  }
+
+  /** The voyage's last wave is cleared: the captain chooses home (the game ends, with pearls) or
+   *  sails on (the shop opens as after any wave). */
+  atVoyageEnd(): boolean {
+    return this.finish && this.mode === 'play';
+  }
+
+  /** Home at the voyage's end: the game is over and counted, nothing lost. */
+  home(): boolean {
+    if (!this.atVoyageEnd()) return false;
+    this.finish = false;
+    this.mode = 'over';
+    this.overMs = 0;
+    this.pending = false;
+    this.settle(true);
+    return true;
+  }
+
+  /** Sails on past the voyage's end: the shop opens and the sea keeps climbing. */
+  sailOn(): boolean {
+    if (!this.atVoyageEnd()) return false;
+    this.finish = false;
+    return true;
   }
 
   /** Turns down the revive: the game ends and is counted. */
@@ -308,6 +348,15 @@ export class Session {
   /** Leaves the harbour for a new game; false when not in it. */
   sail(): boolean {
     if (this.mode !== 'lobby') return false;
+    this.daily = null;
+    this.start();
+    return true;
+  }
+
+  /** Leaves the harbour for `day`'s daily voyage (meta/daily.ts); false when not in it. */
+  sailDaily(day: string): boolean {
+    if (this.mode !== 'lobby') return false;
+    this.daily = day;
     this.start();
     return true;
   }
@@ -362,7 +411,7 @@ export class Session {
 
   /** The player may shop: in the shop, not paused, not the bot's turn. */
   shopping(): boolean {
-    return this.mode === 'play' && !this.paused && !this.hold && !this.pilot && this.world.phase === 'shop';
+    return this.mode === 'play' && !this.paused && !this.hold && !this.pilot && !this.finish && this.world.phase === 'shop';
   }
 
   /** Takes the events a command raised outside a step (a cast, a throw, the wave starting), which
@@ -374,6 +423,8 @@ export class Session {
 
   private take(events: SimEvent[]): void {
     this.events.push(...events);
+    // the bots and a game without a harbour (no pearls to take home) sail straight on
+    if (!this.pilot && this.harbour && events.some((e) => e.e === 'voyage')) this.finish = true;
     this.guide?.observe(events, this.world);
   }
 
