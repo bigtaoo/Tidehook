@@ -13,7 +13,7 @@ import { drawLog } from './lobbyLog';
 import { drawSeas, seaName, type SeaActions } from './lobbySeas';
 import { Button, drawPearl } from '../kit/button';
 import { P } from '../kit/palette';
-import { fitIn, label } from '../kit/text';
+import { fitIn, fitWrap, label } from '../kit/text';
 import type { Frame, Rect } from './frame';
 
 export interface LobbyActions extends SeaActions {
@@ -34,6 +34,7 @@ const GAP = 20;
 const HEAD = 90;
 const LINE = 56;
 const ROW = 140;
+const ROW_WIDE = 112;
 const COLS = 3;
 const CAPTAIN_H = 150;
 const TAB_H = 84;
@@ -74,10 +75,11 @@ export class LobbyPanel extends Container {
     this.build(h, voyage);
   }
 
-  /** The panel: the shop's place in landscape; in portrait the whole lane between the bars. */
+  /** The panel: the whole lane between the bars. Between games the lane has nothing to show, and
+   *  a phone's landscape needs the width: the shop's 1000 units left the cards' words 7 pixels tall. */
   private rect(): Rect {
     const { fit, shop, bars } = this.fr;
-    if (fit.wide) return shop;
+    if (fit.wide) return { x: shop.y, y: shop.y, w: shop.x + shop.w - shop.y, h: shop.h };
     const top = bars[0].y + bars[0].h + GAP;
     return { x: shop.x, y: top, w: shop.w, h: shop.y + shop.h - top };
   }
@@ -86,6 +88,10 @@ export class LobbyPanel extends Container {
     const { fit } = this.fr;
     const k = this.fr.boost;
     const r = this.rect();
+    // landscape is short: the tabs take the title's place (the first tab names the harbour), the
+    // line shares a row with Set sail, so the cards get the height
+    const wide = fit.wide;
+    const rowH = wide ? ROW_WIDE : ROW;
     const dim = new Graphics();
     dim.rect(0, 0, fit.w, fit.h).fill({ color: P.line, alpha: 0.6 });
     const bg = new Graphics();
@@ -99,10 +105,13 @@ export class LobbyPanel extends Container {
       captain.position.set(r.x + PAD, r.y + PAD + HEAD + 8);
       this.addChild(captain);
     }
-    const title = label(t('lobby.title'), 56 * k);
-    fitIn(title, inner * 0.6 - capW, HEAD);
-    title.anchor.set(0, 0.5);
-    title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
+    if (!wide) {
+      const title = label(t('lobby.title'), 56 * k);
+      fitIn(title, inner * 0.6 - capW, HEAD);
+      title.anchor.set(0, 0.5);
+      title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
+      this.addChild(title);
+    }
     const pearls = label(String(h.pearls), 52 * k, { fill: P.cream });
     fitIn(pearls, inner * 0.3, HEAD);
     pearls.anchor.set(1, 0.5);
@@ -110,18 +119,27 @@ export class LobbyPanel extends Container {
     const pearl = new Graphics();
     const pr = 18 * k;
     drawPearl(pearl, pearls.x - pearls.width - pr * 1.6, pearls.y, pr);
-    this.addChild(title, pearls, pearl);
+    this.addChild(pearls, pearl);
 
     const lineY = r.y + PAD + HEAD + 8;
     const said = voyage.wave > 0 ? t('lobby.earned', { wave: voyage.wave, n: voyage.pearls }) : t('lobby.hint');
-    const line = label(said, 36 * k, { fill: P.brassLight, weight: '700' });
-    fitIn(line, inner - capW, LINE);
+    const sailW = wide ? inner / 2 : inner;
+    const line = label(said, 36 * k, { fill: P.brassLight, weight: '700', wrap: wide ? sailW - GAP * 2 : undefined });
     line.anchor.set(0, 0.5);
-    line.position.set(r.x + PAD + capW, lineY + LINE / 2);
+    if (wide) {
+      fitWrap(line, sailW - GAP * 2, rowH);
+      line.position.set(r.x + PAD + GAP, r.y + r.h - PAD - rowH / 2);
+    } else {
+      fitIn(line, inner - capW, LINE);
+      line.position.set(r.x + PAD + capW, lineY + LINE / 2);
+    }
     this.addChild(line);
 
-    const tabY = lineY + LINE + 16;
-    const tabW = (inner - GAP * (LOBBY_TABS.length - 1)) / LOBBY_TABS.length;
+    // landscape: the tabs sit in the title row, between the captain and the pearls
+    const tabX = wide ? r.x + PAD + capW : r.x + PAD;
+    const tabsW = wide ? pearl.getLocalBounds().x - 40 - tabX : inner;
+    const tabY = wide ? r.y + PAD + (HEAD - TAB_H) / 2 : lineY + LINE + 16;
+    const tabW = (tabsW - GAP * (LOBBY_TABS.length - 1)) / LOBBY_TABS.length;
     LOBBY_TABS.forEach((tab, i) => {
       const on = tab === this.tab;
       const b = new Button({
@@ -132,25 +150,27 @@ export class LobbyPanel extends Container {
         color: on ? P.brass : P.wood,
         onPress: () => this.show(tab),
       });
-      b.position.set(r.x + PAD + i * (tabW + GAP), tabY);
+      b.position.set(tabX + i * (tabW + GAP), tabY);
       this.addChild(b);
     });
 
     const ups = tabCards(this.tab);
-    const gridY = tabY + TAB_H + 20;
-    const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - ROW - GAP - gridY };
+    const gridY = wide ? r.y + PAD + HEAD + GAP : tabY + TAB_H + 20;
+    const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - rowH - GAP - gridY };
     if (this.tab === 'log') this.addChild(drawLog(h, area, k));
     if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, this.act));
-    const cardW = (inner - GAP * (COLS - 1)) / COLS;
-    const rows = Math.max(1, Math.ceil(ups.length / COLS));
-    const cardH = (r.y + r.h - PAD - ROW - GAP - gridY - GAP * (rows - 1)) / rows;
+    // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read.
+    const cols = fit.wide ? Math.max(COLS, Math.ceil(ups.length / 2)) : COLS;
+    const cardW = (inner - GAP * (cols - 1)) / cols;
+    const rows = Math.max(1, Math.ceil(ups.length / cols));
+    const cardH = (area.h - GAP * (rows - 1)) / rows;
     ups.forEach((u, i) => {
       const card = this.card(h, u, cardW, cardH);
-      card.position.set(r.x + PAD + (i % COLS) * (cardW + GAP), gridY + Math.floor(i / COLS) * (cardH + GAP));
+      card.position.set(r.x + PAD + (i % cols) * (cardW + GAP), gridY + Math.floor(i / cols) * (cardH + GAP));
       this.addChild(card);
     });
-    const sail = new Button({ w: inner, h: ROW, text: h.sea ? t('lobby.sailTo', { sea: seaName(h.sea) }) : t('lobby.sail'), size: 60 * k, color: P.go, onPress: () => this.act.sail() });
-    sail.position.set(r.x + PAD, r.y + r.h - PAD - ROW);
+    const sail = new Button({ w: sailW, h: rowH, text: h.sea ? t('lobby.sailTo', { sea: seaName(h.sea) }) : t('lobby.sail'), size: 60 * k, color: P.go, onPress: () => this.act.sail() });
+    sail.position.set(r.x + r.w - PAD - sailW, r.y + r.h - PAD - rowH);
     this.addChild(sail);
   }
 
@@ -173,22 +193,24 @@ export class LobbyPanel extends Container {
     paper.roundRect(0, 0, cw, ch, 24).fill(cost === null ? P.paperDark : P.paper).stroke({ color: P.line, width: 5 });
     box.addChild(paper);
     const text = 16;
-    const btnH = Math.min(100, ch * 0.26);
-    const nameH = ch * 0.2;
+    const btnH = Math.min(100, ch * (this.fr.fit.wide ? 0.18 : 0.22));
+    const nameH = ch * (this.fr.fit.wide ? 0.23 : 0.2);
     const said = plan
       ? { name: t(`cards.${plan}.name` as TextKey), lv: t('lobby.planNew'), desc: t(`cards.${plan}.desc` as TextKey) }
       : { name: t(`meta.${id}.name` as TextKey), lv: t('shop.level', { n: h.level(id), max: u.max }), desc: t(`meta.${id}.desc` as TextKey) };
     const name = label(said.name, 40 * k, { fill: P.ink, stroke: false, wrap: cw - text * 2 });
-    fitIn(name, cw - text * 2, nameH);
+    fitWrap(name, cw - text * 2, nameH);
     name.anchor.set(0.5);
     name.position.set(cw / 2, text + nameH / 2);
     const lv = label(said.lv, 28 * k, { fill: P.brassDark, stroke: false });
-    fitIn(lv, cw - text * 2, ch * 0.1);
+    // a landscape card is short, so its level line takes a bigger share to stay readable
+    const lvH = ch * (this.fr.fit.wide ? 0.12 : 0.1);
+    fitIn(lv, cw - text * 2, lvH);
     lv.anchor.set(0.5);
-    lv.position.set(cw / 2, text + nameH + ch * 0.06);
-    const descTop = text + nameH + ch * 0.13;
+    lv.position.set(cw / 2, text + nameH + lvH * 0.6);
+    const descTop = text + nameH + lvH + ch * 0.03;
     const desc = label(said.desc, 28 * k, { fill: P.ink, stroke: false, weight: '600', wrap: cw - text * 2 });
-    fitIn(desc, cw - text * 2, ch - descTop - btnH - text * 2);
+    fitWrap(desc, cw - text * 2, ch - descTop - btnH - text * 1.5);
     desc.anchor.set(0.5, 0);
     desc.position.set(cw / 2, descTop);
     box.addChild(name, lv, desc);

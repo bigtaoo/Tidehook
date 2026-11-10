@@ -49,9 +49,10 @@ export function drawLog(h: Harbour, r: Rect, k: number): Container {
   const goals = openGoals(h);
   const top = r.y + HEAD + GAP;
   const room = r.h - HEAD - GAP;
-  const n = Math.min(goals.length, Math.floor((room + GAP) / (MIN_ROW + GAP)));
+  // rows grow with the text boost: a phone's landscape shows fewer entries, but readable ones
+  const n = Math.min(goals.length, Math.floor((room + GAP) / (MIN_ROW * k + GAP)));
   if (n === 0) return box;
-  const rowH = Math.min(MAX_ROW, (room + GAP) / n - GAP);
+  const rowH = Math.min(MAX_ROW * k, (room + GAP) / n - GAP);
   goals.slice(0, n).forEach((g, i) => box.addChild(row(h, g, r.x, top + i * (rowH + GAP), r.w, rowH, k)));
   return box;
 }
@@ -76,7 +77,7 @@ function row(h: Harbour, g: GoalSpec, x: number, y: number, w: number, rh: numbe
   bar.roundRect(x + pad, barY, barW, barH, barH / 2).fill(P.paperDark).stroke({ color: P.line, width: 2 });
   if (have > 0) bar.roundRect(x + pad, barY, Math.max(barH, (barW * have) / g.n), barH, barH / 2).fill(P.brass);
   const count = label(`${have}/${g.n}`, 24 * k, { fill: P.brassDark, stroke: false, weight: '700' });
-  fitIn(count, textW - barW - pad, barH * 2.4);
+  fitIn(count, textW - barW - pad, rh * 0.42);
   count.anchor.set(0, 0.5);
   count.position.set(x + pad * 2 + barW, barY + barH / 2);
   const pay = label(String(g.pearls), 36 * k, { fill: P.ink, stroke: false });

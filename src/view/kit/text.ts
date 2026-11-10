@@ -46,3 +46,17 @@ export function fitIn<T extends Text>(t: T, w: number, h = Infinity): T {
   t.scale.set(k);
   return t;
 }
+
+/** fitIn for a wrapped label: each smaller size wraps again at the width it now has, so a long
+ *  line spreads across the box instead of shrinking as a narrow column. */
+export function fitWrap<T extends Text>(t: T, w: number, h: number): T {
+  let k = 1;
+  for (let i = 0; i < 30; i++) {
+    t.style.wordWrapWidth = w / k;
+    t.scale.set(1);
+    if (t.width * k <= w && t.height * k <= h) break;
+    k *= 0.93;
+  }
+  t.scale.set(Math.min(k, w / Math.max(1, t.width), h / Math.max(1, t.height)));
+  return t;
+}

@@ -4,12 +4,18 @@ import { en, type Table } from './en';
 // languages are their own chunks, fetched while the game starts when the player's language is
 // one of them. A new language is a table typed as Table plus a line in MORE.
 
-export type Locale = 'en' | 'zh';
+export type Locale = 'en' | 'zh' | 'ru' | 'es' | 'pt' | 'tr' | 'de' | 'fr';
 /** Every language, in the picker's order. */
-export const LOCALES: readonly Locale[] = ['en', 'zh'];
+export const LOCALES: readonly Locale[] = ['en', 'zh', 'ru', 'es', 'pt', 'tr', 'de', 'fr'];
 
 const MORE: Record<Exclude<Locale, 'en'>, () => Promise<Table>> = {
   zh: () => import('./zh').then((m) => m.zh),
+  ru: () => import('./ru').then((m) => m.ru),
+  es: () => import('./es').then((m) => m.es),
+  pt: () => import('./pt').then((m) => m.pt),
+  tr: () => import('./tr').then((m) => m.tr),
+  de: () => import('./de').then((m) => m.de),
+  fr: () => import('./fr').then((m) => m.fr),
 };
 
 /** The tables in hand: en always, the others once loadLocale fetched them. */

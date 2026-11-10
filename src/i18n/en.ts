@@ -87,11 +87,11 @@ export const en = {
     logMany: "Captain's log: {n} new entries",
   },
   ads: {
-    revive: '▶ Patch the dock',
+    revive: 'Patch the dock',
     reviveNote: 'Watch an ad: the dock mends to half and the wave goes on',
     giveUp: 'Give up',
-    double: '▶ Pearls ×2',
-    reroll: '▶ Free stock',
+    double: 'Pearls ×2',
+    reroll: 'Free stock',
   },
   goals: {
     game: {

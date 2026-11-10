@@ -48,10 +48,10 @@ export class OverAds extends Container {
     const buttons =
       offer === 'revive'
         ? [
-            new Button({ w, h, text: t('ads.revive'), size: 44 * k, color: P.go, onPress: () => this.act.revive() }),
+            new Button({ w, h, text: t('ads.revive'), size: 44 * k, color: P.go, icon: 'play', onPress: () => this.act.revive() }),
             new Button({ w, h, text: t('ads.giveUp'), size: 44 * k, onPress: () => this.act.giveUp() }),
           ]
-        : [new Button({ w, h, text: t('ads.double'), size: 44 * k, color: P.go, onPress: () => this.act.double() })];
+        : [new Button({ w, h, text: t('ads.double'), size: 44 * k, color: P.go, icon: 'play', onPress: () => this.act.double() })];
     const total = buttons.length * w + (buttons.length - 1) * GAP;
     buttons.forEach((b, i) => {
       b.position.set(slot.x - total / 2 + i * (w + GAP), slot.y - h / 2);

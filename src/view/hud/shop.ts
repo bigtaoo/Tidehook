@@ -119,12 +119,13 @@ export class ShopPanel extends Container {
       { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: w.hp < w.maxHp && w.coins >= cost.repair, onPress: () => this.act.repair() },
       { text: t('shop.mine', { n: w.mines, max: B.mine.max }), price: cost.mine, ok: w.mines < B.mine.max && w.coins >= cost.mine, onPress: () => this.act.mine() },
       free
-        ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go }
+        ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go, icon: 'play' as const }
         : { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
     small.forEach((s, i) => {
       const color = 'color' in s ? s.color : undefined;
-      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, color, enabled: mine && s.ok, onPress: s.onPress, onDenied: this.deny });
+      const icon = 'icon' in s ? s.icon : undefined;
+      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, color, icon, enabled: mine && s.ok, onPress: s.onPress, onDenied: this.deny });
       b.position.set(r.x + PAD + i * (cardW + GAP), rowY);
       this.addChild(b);
       if (i === 0) this.spots.set('repair', { x: b.x, y: rowY, w: cardW, h: ROW });

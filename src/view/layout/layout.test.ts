@@ -30,6 +30,8 @@ const SIZES: [number, number][] = [
   [768, 1024],
   [1280, 720],
   [800, 450],
+  // a square embed: portrait, scaled by its height (viewport.ts isWide)
+  [600, 600],
 ];
 
 const noop: ShopActions = { buy() {}, repair() {}, mine() {}, reroll() {}, next() {} };

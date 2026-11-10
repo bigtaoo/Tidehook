@@ -3,7 +3,7 @@
 // also reaches the lane and casts the hook.
 
 import { Container, Graphics, type FederatedPointerEvent } from 'pixi.js';
-import { P } from './palette';
+import { P, TEXT_STROKE } from './palette';
 import { fitIn, label } from './text';
 
 export interface ButtonOpts {
@@ -16,6 +16,9 @@ export interface ButtonOpts {
   /** The price is in pearls (the harbour's, between games): a pearl instead of the coin. */
   pearl?: boolean;
   color?: number;
+  /** A mark drawn before the words: 'play' for a button that shows an ad. Drawn, not a ▶ glyph,
+   *  which some systems turn into a colour emoji. */
+  icon?: 'play';
   enabled?: boolean;
   onPress: () => void;
   /** A press while disabled (the shop's "can't afford" sound). */
@@ -37,10 +40,17 @@ export class Button extends Container {
     const hasPrice = o.price !== undefined;
     const twoLines = hasPrice && o.text !== '';
     if (o.text) {
-      const main = fitIn(label(o.text, o.size), o.w - pad * 2, twoLines ? o.h * 0.5 : o.h - 12);
+      const y = twoLines ? o.h * 0.34 : o.h / 2;
+      // the play mark: a triangle a little taller than the words' capitals, before them
+      const icon = o.icon ? o.size * 0.8 : 0;
+      const room = icon * 1.25; // the mark's width and the gap after it
+      const main = fitIn(label(o.text, o.size), o.w - pad * 2 - room, twoLines ? o.h * 0.5 : o.h - 12);
+      const k = main.scale.y; // the mark shrinks with the words
+      const left = o.w / 2 - (room * k + main.width) / 2;
       main.anchor.set(0.5);
-      main.position.set(o.w / 2, twoLines ? o.h * 0.34 : o.h / 2);
+      main.position.set(left + room * k + main.width / 2, y);
       this.addChild(main);
+      if (o.icon) this.addChild(playMark(left, y, icon * k));
     }
     if (hasPrice) this.price(String(o.price), o, pad, twoLines ? o.h * 0.72 : o.h / 2, twoLines ? 0.8 : 1);
     this.eventMode = 'static';
@@ -65,6 +75,16 @@ export class Button extends Container {
     n.position.set(left + coin * 2.6, y);
     this.addChild(g, n);
   }
+}
+
+/** The play mark: a cream triangle `s` tall, outlined like the words, its left edge at `x`. */
+export function playMark(x: number, y: number, s: number): Graphics {
+  const g = new Graphics();
+  const w = s * 0.9;
+  g.poly([x, y - s / 2, x + w, y, x, y + s / 2])
+    .fill(P.cream)
+    .stroke({ color: TEXT_STROKE, width: Math.max(2, s / 9), join: 'round' });
+  return g;
 }
 
 /** A pearl of radius `r` at (x, y): cream with a glint. */

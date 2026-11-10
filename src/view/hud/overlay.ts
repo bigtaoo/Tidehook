@@ -9,7 +9,7 @@ import type { Mode } from '../../game/session';
 import type { SimEvent } from '../../sim/events';
 import { artSprite, aspect } from '../art';
 import { P } from '../kit/palette';
-import { fitIn, label } from '../kit/text';
+import { fitIn, fitWrap, label } from '../kit/text';
 import { toDesign } from '../orient';
 import type { Frame } from './frame';
 import type { Slot } from './overAds';
@@ -20,6 +20,8 @@ const BANNER_MS = 4000;
 const CAPTAIN_H = 340;
 /** The gap the game over card leaves for the ad buttons (hud/overAds.ts), design units. */
 const SLOT_H = 150;
+/** Card lines this size and up (the headline) shrink to one line; smaller ones wrap onto two. */
+const WRAP_BELOW = 90;
 
 type Cover = 'title' | 'paused' | 'over' | null;
 type Line = [string, number, number];
@@ -131,30 +133,41 @@ export class Overlay extends Container {
           : this.overLines();
     const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
     let maxW = Math.min(f.w, fit.w) - 80;
-    let y = mid.y - (lines.length - 1) * 70;
-    if (this.cover === 'over') {
-      // the words stay centred; in landscape they give up the captain's width on both sides
+    const over = this.cover === 'over';
+    const tall = over && !fit.wide;
+    if (over && fit.wide) maxW -= CAPTAIN_H * aspect('captain') * 2 + 40;
+    // each line's words, null for the ad buttons' row, then the block laid out by their real heights
+    const items = lines.map(([text, size, fill]) => (text ? words(text, size * k, fill, maxW, size < WRAP_BELOW) : null));
+    const gap = (i: number) => 20 + lines[i][1] * k * 0.05;
+    const slotH = SLOT_H * k;
+    const fixed = items.reduce((n, tx, i) => n + (tx ? gap(i) : slotH), 0);
+    const textH = () => items.reduce((n, tx) => n + (tx?.height ?? 0), 0);
+    // inside the field, and below the captain in portrait; a card too tall for it shrinks its words
+    const lo = Math.max(0, f.y) + 20 + (tall ? CAPTAIN_H + 10 : 0);
+    const hi = Math.min(fit.h, f.y + f.h) - 20;
+    const squeeze = Math.min(1, (hi - lo - fixed) / Math.max(1, textH()));
+    if (squeeze < 1) for (const tx of items) tx?.scale.set(tx.scale.x * squeeze);
+    const total = fixed + textH();
+    const want = mid.y - (lines.length - 1) * 70 - lines[0][1] * k * 0.6 + (tall ? CAPTAIN_H / 2 : 0);
+    let y = Math.max(lo, Math.min(want, hi - total));
+    if (over) {
+      // the words stay centred; in landscape the captain stands beside them
       const capW = CAPTAIN_H * aspect('captain');
-      if (fit.wide) maxW -= capW * 2 + 40;
-      else y += CAPTAIN_H / 2;
-      const top = y - lines[0][1] * k * 0.6;
       const captain = artSprite('captain', CAPTAIN_H, 0.5, fit.wide ? 0.5 : 1);
-      captain?.position.set(fit.wide ? cx - maxW / 2 - capW / 2 - 20 : cx, fit.wide ? mid.y : top - 10);
+      captain?.position.set(fit.wide ? cx - maxW / 2 - capW / 2 - 20 : cx, fit.wide ? mid.y : y - 10);
       if (captain) this.coverBox.addChild(captain);
     }
-    for (const [text, size, fill] of lines) {
-      if (!text) {
-        // the ad buttons' row
-        this.slot = { x: cx, y: y + (SLOT_H * k) / 2 - 30 * k };
-        y += SLOT_H * k;
-        continue;
+    items.forEach((tx, i) => {
+      if (!tx) {
+        this.slot = { x: cx, y: y + slotH / 2 - 10 * k };
+        y += slotH;
+        return;
       }
-      const tx: Text = fitIn(label(text, size * k, { fill }), maxW);
       tx.anchor.set(0.5);
-      tx.position.set(cx, y);
+      tx.position.set(cx, y + tx.height / 2);
       this.coverBox.addChild(tx);
-      y += size * k * 1.3 + 20;
-    }
+      y += tx.height + gap(i);
+    });
   }
 
   /** The game over card's lines; an empty line is the ad buttons' slot. While the revive is on
@@ -171,4 +184,13 @@ export class Overlay extends Container {
       [t(this.pearls === null ? 'overlay.again' : 'overlay.harbour'), 56, P.cream],
     ];
   }
+}
+
+/** A card line: one line shrunk to `maxW`, or, when `wrap` and too long, two lines rather than
+ *  smaller words (the revive note was 9 pixels tall on a phone). */
+function words(text: string, size: number, fill: number, maxW: number, wrap: boolean): Text {
+  const tx = label(text, size, { fill });
+  if (tx.width <= maxW || !wrap) return fitIn(tx, maxW);
+  tx.destroy();
+  return fitWrap(label(text, size, { fill, wrap: maxW }), maxW, size * 1.2 * 2);
 }

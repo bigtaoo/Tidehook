@@ -8,7 +8,7 @@ import { t, type TextKey } from '../../i18n';
 import { B } from '../../sim/balance';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
-import { fitIn, label } from '../kit/text';
+import { fitIn, fitWrap, label } from '../kit/text';
 import type { Rect } from './frame';
 
 export interface SeaActions {
@@ -50,7 +50,7 @@ function card(h: Harbour, i: number, cw: number, ch: number, k: number, act: Sea
   const btnH = Math.min(100, ch * 0.2);
   const nameH = ch * 0.16;
   const name = label(seaName(i), 40 * k, { fill: P.ink, stroke: false, wrap: inner });
-  fitIn(name, inner, nameH);
+  fitWrap(name, inner, nameH);
   name.anchor.set(0.5);
   name.position.set(cw / 2, PAD + nameH / 2);
   const best = h.best[s.id] ?? 0;
@@ -61,7 +61,7 @@ function card(h: Harbour, i: number, cw: number, ch: number, k: number, act: Sea
   const descTop = PAD + nameH + ch * 0.11;
   const locked = !own && h.chartPrice(i) === null;
   const desc = label(t(`seas.${s.id}.desc` as TextKey), 28 * k, { fill: P.ink, stroke: false, weight: '600', wrap: inner });
-  fitIn(desc, inner, ch - descTop - btnH - PAD * 2 - (locked ? ch * 0.15 : 0));
+  fitWrap(desc, inner, ch - descTop - btnH - PAD * 2 - (locked ? ch * 0.15 : 0));
   desc.anchor.set(0.5, 0);
   desc.position.set(cw / 2, descTop);
   box.addChild(name, rec, desc);
@@ -75,7 +75,7 @@ function card(h: Harbour, i: number, cw: number, ch: number, k: number, act: Sea
   if (locked) {
     // the condition sits above the price, in words big enough to read
     const needs = label(t('lobby.needs', { n: s.needs, sea: seaName(i - 1) }), 26 * k, { fill: P.red, stroke: false, wrap: inner });
-    fitIn(needs, inner, ch * 0.14);
+    fitWrap(needs, inner, ch * 0.14);
     needs.anchor.set(0.5, 1);
     needs.position.set(cw / 2, ch - btnH - PAD * 2);
     box.addChild(needs);

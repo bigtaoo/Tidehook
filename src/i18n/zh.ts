@@ -87,11 +87,11 @@ export const zh: Table = {
     logMany: '船长日志新记了 {n} 条',
   },
   ads: {
-    revive: '▶ 修好码头',
+    revive: '修好码头',
     reviveNote: '看段广告：码头修回一半，这一波接着打',
     giveUp: '算了',
-    double: '▶ 珍珠×2',
-    reroll: '▶ 免费换牌',
+    double: '珍珠×2',
+    reroll: '免费换牌',
   },
   goals: {
     game: {
