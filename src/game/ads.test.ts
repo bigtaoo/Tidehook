@@ -67,11 +67,13 @@ describe('Ads', () => {
     s.world.wave = 6;
     sink(s);
     a.giveUp();
-    const won = s.last.pearls;
+    const { pearls, won } = s.last;
+    expect(pearls).toBeGreaterThan(won); // the first game meets log entries too
     expect(won).toBeGreaterThan(0);
     expect(a.offer()).toBe('double');
     expect(await a.double()).toBe(true);
-    expect([s.last.pearls, s.harbour?.pearls, a.offer()]).toEqual([won * 2, won * 2, null]);
+    // Only the game's own pearls are doubled, not the captain's log's.
+    expect([s.last.pearls, s.harbour?.pearls, a.offer()]).toEqual([pearls + won, pearls + won, null]);
     expect(await a.double()).toBe(false);
   });
 

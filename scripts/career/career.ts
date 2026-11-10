@@ -41,12 +41,12 @@ export interface CareerOptions {
 }
 
 /** A sea chart's id on the shopping list and in `lv`. */
-const chart = (i: number) => `sea:${B.seas[i].id}`;
+export const chart = (i: number) => `sea:${B.seas[i].id}`;
 
 /** What is left to buy, cheapest first, as [id, price]: the harbour's upgrades, and the sea charts
  *  on sale (`best`: each stat's best game, as the harbour keeps it). With `all`, every chart not
  *  owned, on sale or not: the list is done only when it is empty. */
-function shoppingList(lv: MetaLevels, best: Counts, all = false): [string, number][] {
+export function shoppingList(lv: MetaLevels, best: Counts, all = false): [string, number][] {
   const out: [string, number][] = [];
   for (const u of B.meta.upgrades) {
     const p = metaPrice(lv, u.id);
@@ -72,7 +72,7 @@ export function spend(lv: Record<string, number>, pearls: number, best: Counts =
 }
 
 /** The hardest sea owned. */
-function seaFor(lv: MetaLevels): number {
+export function seaFor(lv: MetaLevels): number {
   let sea = 0;
   B.seas.forEach((_, i) => {
     if (i > 0 && lv[chart(i)]) sea = i;

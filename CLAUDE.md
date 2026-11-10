@@ -29,7 +29,9 @@ The gameplay reference is `prototype/v2.html` with its balance sim `prototype/to
 Run it before every commit. It ends with `npm run build:playgama` (dist-playgama/ plus
 `tidehook-playgama.zip`; `npm run dev:playgama` serves it on port 5191, launch.json "playgama").
 Never upload to Playgama or publish a sandbox without an explicit yes. The balance guard (`npm run check:balance`, scripts/guard/) plays the
-bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
+bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. `npm run sim:players`
+(scripts/players/, a report, not in check) plays a population of skills and habits through whole
+careers; findings in docs/04-content.md section 4. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
 
 URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`, `?seed`, `?speed`,
 `?autoplay`, `?lag` (ms a tap looks back, default 0; see docs/01-tech-plan.md section 5),

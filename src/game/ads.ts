@@ -40,7 +40,7 @@ export class Ads {
     const s = this.session;
     if (s.mode !== 'over' || this.on) return null;
     if (s.pending) return 'revive';
-    return !s.doubled && s.last.pearls > 0 && this.rewardedReady() ? 'double' : null;
+    return !s.doubled && s.last.won > 0 && this.rewardedReady() ? 'double' : null;
   }
 
   /** Whether the shop's reroll button offers its free, ad-paid deal. */

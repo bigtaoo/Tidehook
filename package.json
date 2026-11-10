@@ -18,6 +18,7 @@
     "check:filelength": "node scripts/checkFileLength.mjs",
     "check:size": "node scripts/checkSize.mjs",
     "check:balance": "vitest run --config scripts/vitest.guard.config.js",
+    "sim:players": "vitest run --config scripts/vitest.players.config.js",
     "check": "npm run typecheck && npm run check:filelength && npm run test && npm run check:balance && npm run build && npm run check:size && npm run build:playgama"
   },
   "dependencies": {

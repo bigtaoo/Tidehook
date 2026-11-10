@@ -24,7 +24,9 @@ export type Mode = 'title' | 'play' | 'over' | 'lobby';
 /** How the last game went: its wave, the pearls it brought home and the log entries it met. */
 export interface LastGame {
   wave: number;
+  /** Everything it brought home; `won` is the game's own share (waves and bosses), without the log. */
   pearls: number;
+  won: number;
   log: GoalSpec[];
   /** The sea sailed (sim/seas.ts), and whether the wave beat that sea's best before it. */
   sea: number;
@@ -103,7 +105,7 @@ export class Session {
   private overMs = 0;
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
-  last: LastGame = { wave: 0, pearls: 0, log: [], sea: 0, record: false };
+  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false };
   /** An ad is on screen (game/ads.ts): nothing runs and taps do nothing, with no pause cover. */
   hold = false;
   /** Whether a fallen dock may be revived (a rewarded ad is there to watch); set by game/ads.ts. */
@@ -204,7 +206,7 @@ export class Session {
     const was = this.harbour?.best[seaOf(w).id] ?? 0;
     const log = this.harbour?.logGame(counts(w)) ?? [];
     const record = was > 0 && w.wave > was;
-    this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), log, sea: w.sea, record };
+    this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), won: pearls, log, sea: w.sea, record };
   }
 
   /** Turns down the revive: the game ends and is counted. */
@@ -228,12 +230,14 @@ export class Session {
     return true;
   }
 
-  /** The pearl doubling's ad paid: the game's pearls come home twice. */
+  /** The pearl doubling's ad paid: the game's own pearls come home twice. The captain's log's
+   *  are left alone: doubled, they halved the content for a player who watches every game
+   *  (docs/04-content.md section 4). */
   double(): boolean {
     if (this.mode !== 'over' || this.pending || this.doubled || !this.harbour) return false;
     this.doubled = true;
-    this.harbour.earn(this.last.pearls);
-    this.last = { ...this.last, pearls: this.last.pearls * 2 };
+    this.harbour.earn(this.last.won);
+    this.last = { ...this.last, pearls: this.last.pearls + this.last.won, won: this.last.won * 2 };
     return true;
   }
 
