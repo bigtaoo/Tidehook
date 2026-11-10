@@ -1,4 +1,4 @@
-import { SafeStore, type Platform, type TrackData } from './types';
+import { SafeStore, type BreakPlacement, type Platform, type RewardedPlacement, type TrackData } from './types';
 
 /** A platform for tests and headless runs: memory storage, no ads, and a log of the calls the
  *  game made, so a test can check it told the host about gameplay starting and stopping. */
@@ -6,6 +6,8 @@ export class StubPlatform implements Platform {
   readonly name = 'stub';
   storage = new SafeStore(null);
   readonly calls: string[] = [];
+  /** Each ad's placement, in order. */
+  readonly placements: string[] = [];
   /** The telemetry the game sent. */
   readonly tracked: [string, TrackData][] = [];
   /** Whether rewarded ads answer, and with what. */
@@ -42,17 +44,19 @@ export class StubPlatform implements Platform {
     return this.ads !== 'none';
   }
 
-  async rewarded(onStart: () => void): Promise<boolean> {
+  async rewarded(onStart: () => void, placement?: RewardedPlacement): Promise<boolean> {
     if (this.ads === 'none') return false;
     onStart();
     this.calls.push('rewarded');
+    this.placements.push(placement ?? '');
     return this.ads === 'reward';
   }
 
-  async midgame(onStart: () => void): Promise<void> {
+  async midgame(onStart: () => void, placement?: BreakPlacement): Promise<void> {
     if (this.ads === 'none') return;
     onStart();
     this.calls.push('midgame');
+    this.placements.push(placement ?? '');
   }
 
   onHostMute(listener: (muted: boolean) => void): void {

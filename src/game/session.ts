@@ -182,7 +182,9 @@ export class Session {
       this.pilot?.tick(w);
       this.collect();
       step(w);
-      this.take(w.events);
+      // collect, not take: the step's events stay in w.events until the next step clears them,
+      // so taking them without clearing handed every one on twice (sounds, telemetry, the guide)
+      this.collect();
       if (w.phase === 'over') {
         this.mode = 'over';
         this.overMs = 0;

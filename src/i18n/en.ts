@@ -127,7 +127,7 @@ export const en = {
     hint: 'What pearls buy sails with you every time',
     sail: 'Set sail',
     max: 'Topped out',
-    planNew: 'Blueprint: a new shop card',
+    planNew: 'New shop card',
     owned: 'In the shop',
     tabs: { gear: 'Harbour', plans: 'Blueprints', seas: 'Seas', log: 'Log' },
     best: 'Best: wave {n}',

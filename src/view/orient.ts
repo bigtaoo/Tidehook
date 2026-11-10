@@ -23,10 +23,11 @@ export interface Field {
   h: number;
 }
 
-/** Where the lane sits in the design, as large as it fits beside the bars, centred in the rest. */
-export function fieldFor(wide: boolean): Field {
-  const roomW = wide ? DESIGN_LONG - LANDSCAPE_SIDE : DESIGN_SHORT;
-  const roomH = wide ? DESIGN_SHORT : DESIGN_LONG - PORTRAIT_TOP - PORTRAIT_BOTTOM;
+/** Where the lane sits in a design `designW` wide and `designH` tall (viewport.ts fitDesign), as
+ *  large as it fits beside the bars, centred in the rest. */
+export function fieldFor(wide: boolean, designW = wide ? DESIGN_LONG : DESIGN_SHORT, designH = wide ? DESIGN_SHORT : DESIGN_LONG): Field {
+  const roomW = wide ? designW - LANDSCAPE_SIDE : designW;
+  const roomH = wide ? designH : designH - PORTRAIT_TOP - PORTRAIT_BOTTOM;
   const along = wide ? roomW : roomH;
   const across = wide ? roomH : roomW;
   const scale = Math.min(along / LANE_LEN, across / LANE_WIDTH);

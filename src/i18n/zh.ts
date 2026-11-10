@@ -127,7 +127,7 @@ export const zh: Table = {
     hint: '珍珠换来的东西，每次出海都带着',
     sail: '出海',
     max: '到顶了',
-    planNew: '图纸：商店多一张新卡',
+    planNew: '商店新卡',
     owned: '已进商店',
     tabs: { gear: '港口', plans: '图纸', seas: '海图', log: '日志' },
     best: '最好：第 {n} 波',

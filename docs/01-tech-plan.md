@@ -148,7 +148,12 @@ Tidehook/
 - 安全区：平台层提供 safe-area insets，HUD 避开。
 - 横屏港口面板矮，卡片按 `ceil(张数/2)` 列排（至少 3 列），只排两行；卡片名和说明用 `fitWrap`（`view/kit/text.ts`）：缩小时按新宽度重新换行，长句铺满卡片，不会缩成窄条。
 - 手机横屏（2026-11 修）：港口面板铺满整条航道（不再只占商店那 1000 宽）；没有标题行，四个标签页放在标题位置，提示语放在“出海”按钮左边、可换两行；日志行高跟着 `textBoost` 放大，矮屏少显示几条，但每条都看得清。结算卡按真实高度排版，小字（< 90）放不下时换成两行，不缩成一行小字，整块太高时再统一缩小。844×390 英文最小字：港口 11–14 px，商店 13 px，局内 16 px 以上，复活说明 22 px；竖屏 390×844 的复活说明从 9 px 涨到 15 px。
-- 1:1 窗口（2026-11 测）：`isWide` 要求 w ≥ 1.1·h，所以正方形窗口走竖屏，按高度缩放，左右空出海面。600×600 和 800×800 下港口、商店、结算卡、教学都没有遮挡和裁切；字号只取决于高度，600 高时港口最小 7–8 px、商店 9 px，800 高时港口 9–11 px，和手机竖屏（390×844：港口 8–9 px）同一档。不改成横屏：横屏在正方形里航道更小，上下空白更多。600×600 已加进布局测试。
+- 1:1 窗口（2026-11 测）：`isWide` 要求 w ≥ 1.1·h，所以正方形窗口走竖屏，按高度缩放。不改成横屏：横屏在正方形里航道更小，上下空白更多。
+  - 竖屏设计宽度随窗口变宽：`viewport.ts` 的 `fitDesign` 取 `1920·屏宽/屏高`，夹在 1080 到 `PORTRAIT_MAX_W` = 1440（3:4）之间。航道受高度限制，大小不变、居中；多出的宽度给顶栏、底栏、商店、港口和结算卡。手机（390×844）仍是 1080。
+  - 竖屏的字号放大 `textBoost` = `min(设计宽/1080, max(1, 0.45/scale))`：600×600 为 1.33，800×800 为 1.08，平板和手机为 1。
+  - 港口设计宽 ≥ 1300 时排 4 列（`lobby.ts` 的 `WIDE_PORTRAIT`），卡片更高；等级行占卡高 12%（原来 9 px）。结算卡的字可以越出航道、铺在暗幕上（宽度到设计宽减 192）。
+  - 实测最小字号：600×600 港口 10–11 px、商店 11 px、结算卡 15 px（改前港口 7–8 px、商店 9 px）；390×844 港口 8.7 px、等级行 10 px（改前 7.7 px）；844×390 横屏不变（11–14 px）。
+  - 蓝图卡的说明缩短为 "New shop card"（zh "商店新卡"，de、tr 同改），手机上不再被压到 8 px。600×600 已加进布局测试。
 - 验证：Playwright 跑 `sweep:layout`，尺寸为 390×844、844×390、768×1024、1280×720、800×450、600×600，加上 `layout/check.ts` 溢出检查，进 CI。
 
 ## 5. 输入
@@ -173,7 +178,7 @@ Tidehook/
 - `Platform` 接口统一管理：广告、存储、静音和暂停、gameplay start/stop、庆祝、遥测。每个目标一个入口文件和一个 vite 配置。
 - **首发只做 Playgama**（2026-11 决定；CrazyGames 不做）。自有网页（`main.ts`）留作开发和试玩用。
   - 入口 `src/main.playgama.ts`，实现在 `src/platform/playgama/`，配置 `vite.playgama.config.js`：把 Bridge v2 的 CDN 脚本插到 `</title>` 后，作为 head 里第一个脚本，并输出 `playgama-bridge-config.json`（`minimumDelayBetweenInterstitial: 60`）。构建时如果 HTML 没被改写就直接报错。
-  - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/pack_playgama.py`）。`npm run check` 最后也会跑一遍。
+  - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/packPlaygama.mjs`，纯 Node，不再需要 Python）。`npm run check` 最后也会跑一遍。
   - 存档只走 Bridge storage（语言、声音、教程、港口四个 key）。
   - 上传和发布沙盒都要先问过人。
 - **激励广告**（`src/game/ads.ts`），每局各一次，都由玩家自己点：
@@ -185,18 +190,25 @@ Tidehook/
 - **插屏广告**只放在自然断点：一波打完、商店打开时，以及从结算回港口时。新玩家的第一局不放；看过激励广告后，到下一波开始之前也不放。频率交给 Bridge 的 `minimumDelayBetweenInterstitial`，游戏里不另外计时。
 - 广告播放期间 `Session.hold` 冻结模拟、吞掉点击，声音静音。
 - **遥测**（`src/game/telemetry.ts`，按 Playgama telemetry guide v1.1.2）：
-  - `progression_started` / `_completed` / `_failed`：step_id 为 `wave`，带 step_index 和 sea；
+  - `progression_started` / `_completed` / `_failed`：step_id 为 `wave`，带 step_index、sea 和 game（玩家的第几局，跨会话累计，封顶 20，20 表示 20 及以上）；
+  - `progression_failed` 另带 `reason: dock_fell`、`revive`（offered / used / none：这次失败有没有给复活、是不是复活后又输了），
+    以及第一次输时卡片上给的提示 `lesson`（junk / cards / fish / near），用来看新手卡在哪；
+  - `harbour_purchase`：港口每买一级发一次，带 item_id（升级 id，或 `chart_<海>`）、level 和 game。看“第几局买了什么”、海图有没有人买；
+  - 激励和插屏广告带 placement 传给 Bridge（`revive` / `double` / `reroll`，`shop` / `harbour`），广告收入和次数由 Bridge 自己统计，游戏不重复发；
   - `tutorial_step` / `tutorial_completed`；
   - 每 30 秒有效游玩发一次 `performance_sample`（`src/game/perf.ts`）；
   - 出现新纪录或完成船长日志目标时调用 `celebrate()`（`player_got_achievement`）。
   - 不发任何玩家个人信息。
+  - 2026-11-10 修掉一个 bug：每个模拟事件都被交出去两次（`Session.run` 用了 take 而不是 collect），
+    遥测的波次事件翻倍、复活后又补发一次失败，音效、粒子和教程观察也都是双份。`session.test.ts` 钉住“每个事件只交一次”。
 - **之后再说**：iOS（Capacitor 8 + AdMob + 去广告内购 + Game Center + Capgo OTA，照 Potion Siege 的 `docs/ios.md`），以及微信小游戏（竖屏天然适配，参考 Blight Bloom 的 Pixi DOMAdapter 方案，主包 4 MB）。
 - 包体：首包 ≤ 5 MB，图片用 WebP。目前 `dist-playgama` 2.17 MB，zip 1.6 MB。
 
 ## 7. 后端
 
-- **v1 不做服务器**。存档在本地，使用平台存储。
-- 需要排行榜或遥测时，复用 Potion Siege 的 collector（Node + NDJSON，Hetzner + cloudflared），模拟是确定性的，可以用回放校验分数。
+- **v1 不自建服务器**（2026-11-10 定）。存档走 Bridge storage，遥测走 Playgama 的 telemetry。
+- 排行榜放到上线以后，看真实数据再决定。要做时不自建：Playgama 平台没有原生排行榜（`bridge.leaderboards.type` 为 `not_available`），但可以在 Bridge 配置的 `saas` 块里打开 Playgama 托管的 SaaS 排行榜，模块按 `in_game` 工作（`setScore` + `getEntries` 自己画），榜在开发者后台建。只建“最远波次”，每片海一个榜。
+- 真要防作弊时：模拟是确定性的，可以用录像回放校验分数（复用 Potion Siege 的 collector，Node + NDJSON）。
 
 ## 8. 工程规范（沿用）
 
@@ -214,11 +226,14 @@ Tidehook/
 2. **M1 模拟移植**（完成）：sim 定点化，bot 在 CI 中复现原型的波次分布。
 3. **M2 灰盒视图**（完成）：色块和描边，横竖屏布局与 sweep 通过。
 4. **M3 Style frame**（完成）：r2 定稿，19 张精灵（`public/art/`，约 150 kB）和 21 个音效 cue + 1 段音乐（`public/audio/`，约 1.1 MB）接进游戏，HUD 加声音开关。管线见 `00-art-direction.md` 第 6、7 节。包体 1.9 MB。
-5. **M4 平台接入**（代码完成，未提交，未上传）：只做 Playgama，包括 Bridge 存档、激励和插屏广告、遥测，见第 6 节。
+5. **M4 平台接入**（完成，已提交，未上传）：只做 Playgama，包括 Bridge 存档、激励和插屏广告、遥测，见第 6 节。
 6. **M5 上线**：网页 → 门户提审。
 
 ## 10. 待你确认
 
 1. ~~首发平台~~：已定，只做 Playgama。
-2. v1 是否完全不要服务器（排行榜放到后面）？
-3. 正式版是否要关卡制，还是只做无尽波次？现在原型是无尽模式。
+2. ~~服务器~~：已定（2026-11-10），v1 不自建服务器，排行榜上线后再看，见第 7 节。
+3. ~~关卡还是无尽~~：已定（2026-11-10），保持无尽波次，不做手工关卡。
+   - 关卡的节奏已经由别的东西给了：三片海是三章，每 5 波一个首领是关底，船长日志的目标是关卡任务，港口升级是关与关之间的成长（生涯模拟 3.5 小时）。
+   - 手工关卡要编辑器、逐关设计和逐关调平衡，平衡守卫也要重写，还会切碎“一局越走越远”的乐趣；网页玩家习惯“打开就玩、死了再来”。
+   - 上线后的候选更新：“每日海域”，按日期算种子，所有人当天打同一局，不要服务器；和排行榜一起做效果最好。

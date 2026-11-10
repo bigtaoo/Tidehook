@@ -127,7 +127,7 @@ export const de: Table = {
     hint: 'Was Perlen kaufen, fährt jedes Mal mit',
     sail: 'In See stechen',
     max: 'Ausgebaut',
-    planNew: 'Neue Karte im Laden',
+    planNew: 'Neue Ladenkarte',
     owned: 'Im Laden',
     tabs: { gear: 'Hafen', plans: 'Baupläne', seas: 'Meere', log: 'Logbuch' },
     best: 'Rekord: Welle {n}',

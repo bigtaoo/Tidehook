@@ -6,7 +6,7 @@
 // so there is no timer here. While an ad is on screen the session holds and the sound is off.
 
 import type { SimEvent } from '../sim/events';
-import type { Platform } from '../platform/types';
+import type { BreakPlacement, Platform, RewardedPlacement } from '../platform/types';
 import type { Mode, Session } from './session';
 
 /** What the game-over card offers under it. */
@@ -52,7 +52,7 @@ export class Ads {
   async revive(): Promise<boolean> {
     const s = this.session;
     if (!s.pending || this.on) return false;
-    const r = await this.rewarded();
+    const r = await this.rewarded('revive');
     if (r.paid) return s.revive();
     if (!r.started) s.giveUp();
     return false;
@@ -65,12 +65,12 @@ export class Ads {
 
   async double(): Promise<boolean> {
     if (this.offer() !== 'double') return false;
-    return (await this.rewarded()).paid && this.session.double();
+    return (await this.rewarded('double')).paid && this.session.double();
   }
 
   async reroll(): Promise<boolean> {
     if (!this.freeReroll() || !this.session.shopping()) return false;
-    return (await this.rewarded()).paid && this.session.freeReroll();
+    return (await this.rewarded('reroll')).paid && this.session.freeReroll();
   }
 
   /** Each frame's events and the session's mode: finds the breaks an interstitial may fill. */
@@ -83,22 +83,23 @@ export class Ads {
     const from = this.mode;
     this.mode = this.session.mode;
     const lobby = from === 'over' && this.mode === 'lobby';
-    if ((shop && this.session.world.phase === 'shop') || lobby) void this.interstitial();
+    if (shop && this.session.world.phase === 'shop') void this.interstitial('shop');
+    else if (lobby) void this.interstitial('harbour');
   }
 
-  private async interstitial(): Promise<void> {
+  private async interstitial(placement: BreakPlacement): Promise<void> {
     const s = this.session;
     if (this.on || this.rewardedLately || s.opts.autoplay || (s.guide && s.guide.games <= 1)) return;
-    await this.play(() => this.platform.midgame(() => this.hold(true)).then(() => true));
+    await this.play(() => this.platform.midgame(() => this.hold(true), placement).then(() => true));
   }
 
-  private async rewarded(): Promise<{ paid: boolean; started: boolean }> {
+  private async rewarded(placement: RewardedPlacement): Promise<{ paid: boolean; started: boolean }> {
     let started = false;
     const paid = await this.play(() =>
       this.platform.rewarded(() => {
         started = true;
         this.hold(true);
-      }),
+      }, placement),
     );
     if (paid) this.rewardedLately = true;
     return { paid, started };

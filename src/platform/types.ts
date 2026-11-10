@@ -11,6 +11,11 @@ export interface KeyValueStore {
   setItem(key: string, value: string): void;
 }
 
+/** What a rewarded ad pays for (game/ads.ts). */
+export type RewardedPlacement = 'revive' | 'double' | 'reroll';
+/** Where an interstitial plays: the shop opening, or on the way back to the harbour. */
+export type BreakPlacement = 'shop' | 'harbour';
+
 export interface Platform {
   /** Short id for telemetry, e.g. 'web' or 'playgama'. */
   readonly name: string;
@@ -25,10 +30,11 @@ export interface Platform {
   rewardedAvailable(): boolean;
   /** An adblocker keeps the host's rewarded ads off; absent: never. */
   adBlocked?(): boolean;
-  /** Plays a rewarded ad; true only if the player earned the reward. */
-  rewarded(onStart: () => void): Promise<boolean>;
+  /** Plays a rewarded ad; true only if the player earned the reward. `placement` names the offer
+   *  for the host's own ad reports (Bridge's showRewarded), so the game sends no ad events itself. */
+  rewarded(onStart: () => void, placement?: RewardedPlacement): Promise<boolean>;
   /** Plays an interstitial at a natural break; resolves when it is over (or skipped). */
-  midgame(onStart: () => void): Promise<void>;
+  midgame(onStart: () => void, placement?: BreakPlacement): Promise<void>;
   /** The player did something worth a cheer (a new best, a log goal); the host may show it. */
   celebrate(): void;
   /** One telemetry event for the host (game/telemetry.ts). */

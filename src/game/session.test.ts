@@ -77,6 +77,29 @@ describe('Session', () => {
     expect(s.drain().map((e) => e.e)).toContain('cast');
   });
 
+  it('hands on each event once, over to a game over and a revive', () => {
+    const s = new Session({ seed: 3, speed: 1, autoplay: 'good' });
+    s.start();
+    let kills = 0;
+    for (let t = 0; t < 90_000; t += FRAME) {
+      s.update(FRAME);
+      kills += s.drain().filter((e) => e.e === 'kill').length;
+    }
+    expect(s.world.st.kills).toBeGreaterThan(5);
+    expect(kills).toBe(s.world.st.kills);
+
+    const h = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+    h.canRevive = () => true;
+    h.start();
+    run(h, 200);
+    gameOver(h.world);
+    run(h, 50);
+    expect(h.drain().filter((e) => e.e === 'over')).toHaveLength(1);
+    expect(h.mode).toBe('over');
+    expect(h.pending && h.revive()).toBe(true);
+    expect(h.drain().filter((e) => e.e === 'over')).toHaveLength(0);
+  });
+
   it("opens every player's game on the slow tide, and not the bot's", () => {
     const store = new SafeStore(null);
     const s = new Session({ seed: 3, speed: 1, autoplay: null }, new Guide(store));

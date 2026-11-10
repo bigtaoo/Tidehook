@@ -4,7 +4,7 @@ import { recSink } from './scripts/rec/sink.mjs';
 
 // The Playgama build, after Potion Siege's (D:\fang\vite.playgama.config.js): `npm run
 // build:playgama` writes dist-playgama/ and zips it into tidehook-playgama.zip
-// (scripts/pack_playgama.py), index.html at the archive's root.
+// (scripts/packPlaygama.mjs), index.html at the archive's root.
 //  1. base './': the portal serves the upload from a path of its choosing;
 //  2. the entry is src/main.playgama.ts instead of src/main.ts;
 //  3. the Bridge SDK <script> (Playgama's CDN, its current stable v2) is the first script in

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LANE_LEN, LANE_WIDTH } from '../sim/lane';
 import { fieldFor, LANDSCAPE_SIDE, PORTRAIT_BOTTOM, PORTRAIT_TOP, toDesign, toLane } from './orient';
-import { DESIGN_LONG, DESIGN_SHORT, fitDesign, isWide, textBoost } from './viewport';
+import { DESIGN_LONG, DESIGN_SHORT, fitDesign, isWide, PORTRAIT_MAX_W, textBoost } from './viewport';
 
 describe('fitDesign', () => {
   it('picks the orientation from the screen and fits the design whole', () => {
@@ -22,10 +22,22 @@ describe('fitDesign', () => {
     expect(Number.isFinite(fitDesign(NaN, 300).scale)).toBe(true);
   });
 
-  it('boosts words only in small landscape embeds', () => {
+  it('boosts words only in small embeds, in portrait as far as the design widened', () => {
     expect(textBoost(fitDesign(1280, 720))).toBe(1);
     expect(textBoost(fitDesign(800, 450))).toBeGreaterThan(1);
     expect(textBoost(fitDesign(390, 844))).toBe(1);
+    expect(textBoost(fitDesign(768, 1024))).toBe(1);
+    expect(textBoost(fitDesign(600, 600))).toBeCloseTo(PORTRAIT_MAX_W / DESIGN_SHORT);
+  });
+
+  it('widens the portrait design for a square-ish screen, never past 3:4', () => {
+    expect(fitDesign(390, 844).w).toBe(DESIGN_SHORT);
+    expect(fitDesign(600, 600).w).toBe(PORTRAIT_MAX_W);
+    const f = fitDesign(700, 1000);
+    expect(f.w).toBe(1344);
+    expect(f.h).toBe(DESIGN_LONG);
+    const field = fieldFor(false, f.w, f.h);
+    expect(field.x + field.w / 2).toBeCloseTo(f.w / 2);
   });
 });
 

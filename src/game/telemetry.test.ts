@@ -40,7 +40,7 @@ describe('Telemetry', () => {
     tel.frame(16, false, s.drain());
     tel.frame(16, false, []);
     expect(p.tracked.map(([e]) => e)).toEqual(['progression_started', 'progression_failed']);
-    expect(p.tracked[1][1]).toMatchObject({ step_id: 'wave', step_index: 1, reason: 'dock_fell' });
+    expect(p.tracked[1][1]).toMatchObject({ step_id: 'wave', step_index: 1, reason: 'dock_fell', game: 1, revive: 'none' });
     expect(p.calls.filter((c) => c === 'celebrate')).toHaveLength(1);
   });
 
@@ -56,5 +56,36 @@ describe('Telemetry', () => {
     expect(names.filter((e) => e === 'tutorial_step').length).toBeGreaterThan(0);
     expect(names.at(-1)).toBe('tutorial_completed');
     expect(p.tracked[0][1]).toMatchObject({ step_index: 1, skipped: true });
+  });
+
+  it("marks a failure with the revive's state and the first lesson, and sends each purchase", () => {
+    const p = new StubPlatform();
+    const store = new SafeStore(null);
+    const harbour = new Harbour(store);
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, new Guide(store), harbour);
+    s.canRevive = () => true;
+    const tel = new Telemetry(p, s, 'b');
+    s.start();
+    s.update(16);
+    tel.frame(16, true, s.drain());
+    gameOver(s.world);
+    s.update(50);
+    tel.frame(16, false, s.drain());
+    const fail = p.tracked.find(([e]) => e === 'progression_failed');
+    expect(fail?.[1]).toMatchObject({ game: 1, revive: 'offered' });
+    expect(typeof fail?.[1].lesson).toBe('string');
+
+    s.giveUp();
+    harbour.earn(1000);
+    s.openLobby();
+    expect(s.buyChart(1)).toBe(false);
+    expect(s.buyMeta('hull') && s.buyMeta('hull')).toBe(true);
+    tel.frame(16, false, []);
+    tel.frame(16, false, []);
+    const buys = p.tracked.filter(([e]) => e === 'harbour_purchase').map(([, d]) => d);
+    expect(buys).toEqual([
+      { item_id: 'hull', level: 1, game: 1 },
+      { item_id: 'hull', level: 2, game: 1 },
+    ]);
   });
 });

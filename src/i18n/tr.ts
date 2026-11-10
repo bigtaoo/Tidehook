@@ -128,7 +128,7 @@ export const tr: Table = {
     hint: 'İncilerle aldıkların her seferinde seninle gelir',
     sail: 'Denize açıl',
     max: 'Son seviye',
-    planNew: 'Plan: dükkâna yeni kart',
+    planNew: 'Dükkâna yeni kart',
     owned: 'Dükkânda',
     tabs: { gear: 'Liman', plans: 'Planlar', seas: 'Denizler', log: 'Defter' },
     best: 'Rekor: {n}. dalga',

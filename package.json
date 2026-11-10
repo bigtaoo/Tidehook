@@ -11,7 +11,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4190 --strictPort",
     "dev:playgama": "vite --config vite.playgama.config.js",
-    "build:playgama": "tsc --noEmit && vite build --config vite.playgama.config.js && node scripts/checkSize.mjs dist-playgama && (python3 scripts/pack_playgama.py || python scripts/pack_playgama.py)",
+    "build:playgama": "tsc --noEmit && vite build --config vite.playgama.config.js && node scripts/checkSize.mjs dist-playgama && node scripts/packPlaygama.mjs",
     "preview:playgama": "vite preview --config vite.playgama.config.js --port 4191 --strictPort",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

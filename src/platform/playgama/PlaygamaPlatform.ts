@@ -4,7 +4,7 @@
 // own storage. After Potion Siege's platform/playgama/PlaygamaPlatform.ts, without its leaderboards
 // and save copies (docs/01-tech-plan.md section 6).
 
-import { SafeStore, type Platform, type TrackData } from '../types';
+import { SafeStore, type BreakPlacement, type Platform, type RewardedPlacement, type TrackData } from '../types';
 import { WebPlatform } from '../web';
 import { PlaygamaBridge } from './bridge';
 import { BridgeStore } from './bridgeStore';
@@ -115,12 +115,12 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
     return this.bridge.isReady() && this.bridge.hasAdblock();
   }
 
-  override rewarded(onStart: () => void): Promise<boolean> {
-    return this.bridge.rewarded(onStart);
+  override rewarded(onStart: () => void, placement?: RewardedPlacement): Promise<boolean> {
+    return this.bridge.rewarded(onStart, placement);
   }
 
-  override midgame(onStart: () => void): Promise<void> {
-    return this.bridge.interstitial(onStart);
+  override midgame(onStart: () => void, placement?: BreakPlacement): Promise<void> {
+    return this.bridge.interstitial(onStart, placement);
   }
 
   /** The platform's sound switch and its pause both silence the game. */

@@ -17,7 +17,7 @@ export interface Rect {
 export interface Frame {
   fit: Fit;
   field: Field;
-  /** Text grows by this in a small landscape embed (viewport.ts textBoost). */
+  /** Text grows by this in a small embed (viewport.ts textBoost). */
   boost: number;
   /** The HUD's plates: portrait top and bottom, landscape the sidebar. */
   bars: Rect[];
@@ -36,7 +36,7 @@ const SHOP_PORTRAIT_H = 1000;
 const SHOP_LANDSCAPE_W = 1000;
 
 export function frameFor(fit: Fit): Frame {
-  const field = fieldFor(fit.wide);
+  const field = fieldFor(fit.wide, fit.w, fit.h);
   const boost = textBoost(fit);
   if (fit.wide) {
     const side = { x: fit.w - LANDSCAPE_SIDE, y: 0, w: LANDSCAPE_SIDE, h: fit.h };

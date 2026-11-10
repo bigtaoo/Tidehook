@@ -132,7 +132,8 @@ export class Overlay extends Container {
           ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream]]
           : this.overLines();
     const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
-    let maxW = Math.min(f.w, fit.w) - 80;
+    // a widened portrait (a square embed) lets the words run past the lane, over the dim
+    let maxW = (fit.wide ? Math.min(f.w, fit.w) : Math.max(f.w, fit.w - 192)) - 80;
     const over = this.cover === 'over';
     const tall = over && !fit.wide;
     if (over && fit.wide) maxW -= CAPTAIN_H * aspect('captain') * 2 + 40;

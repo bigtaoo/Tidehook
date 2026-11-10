@@ -36,6 +36,8 @@ const LINE = 56;
 const ROW = 140;
 const ROW_WIDE = 112;
 const COLS = 3;
+/** A portrait design this wide (viewport.ts fitDesign) has room for a fourth column. */
+const WIDE_PORTRAIT = 1300;
 const CAPTAIN_H = 150;
 const TAB_H = 84;
 
@@ -159,8 +161,9 @@ export class LobbyPanel extends Container {
     const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - rowH - GAP - gridY };
     if (this.tab === 'log') this.addChild(drawLog(h, area, k));
     if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, this.act));
-    // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read.
-    const cols = fit.wide ? Math.max(COLS, Math.ceil(ups.length / 2)) : COLS;
+    // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read; a
+    // widened portrait (a square embed) takes a fourth column, so its cards grow taller too.
+    const cols = fit.wide ? Math.max(COLS, Math.ceil(ups.length / 2)) : fit.w >= WIDE_PORTRAIT ? COLS + 1 : COLS;
     const cardW = (inner - GAP * (cols - 1)) / cols;
     const rows = Math.max(1, Math.ceil(ups.length / cols));
     const cardH = (area.h - GAP * (rows - 1)) / rows;
@@ -203,8 +206,8 @@ export class LobbyPanel extends Container {
     name.anchor.set(0.5);
     name.position.set(cw / 2, text + nameH / 2);
     const lv = label(said.lv, 28 * k, { fill: P.brassDark, stroke: false });
-    // a landscape card is short, so its level line takes a bigger share to stay readable
-    const lvH = ch * (this.fr.fit.wide ? 0.12 : 0.1);
+    // the level line is short words: a bigger share keeps them readable (they were 9 pixels tall)
+    const lvH = ch * 0.12;
     fitIn(lv, cw - text * 2, lvH);
     lv.anchor.set(0.5);
     lv.position.set(cw / 2, text + nameH + lvH * 0.6);

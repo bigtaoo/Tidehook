@@ -185,7 +185,7 @@
   "seas": [
     { "id": "bay", "lead": 0, "pearls": 1000, "speed": 1000, "gap": 1000, "price": 0, "needs": 0 },
     { "id": "fog", "lead": 3, "pearls": 1500, "speed": 1000, "gap": 700, "price": 120, "needs": 12 },
-    { "id": "storm", "lead": 6, "pearls": 2000, "speed": 1200, "gap": 1000, "price": 240, "needs": 12 }
+    { "id": "storm", "lead": 4, "pearls": 2000, "speed": 1100, "gap": 1000, "price": 240, "needs": 12 }
   ],
   "goals": [
     ["game", "wave", 5, 10], ["game", "wave", 8, 15], ["game", "wave", 10, 20], ["game", "wave", 15, 30],

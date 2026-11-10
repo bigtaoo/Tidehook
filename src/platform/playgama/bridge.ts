@@ -177,15 +177,15 @@ export class PlaygamaBridge {
   }
 
   /** One rewarded ad: true only once Bridge said 'rewarded' and the ad then closed. */
-  rewarded(started?: () => void): Promise<boolean> {
+  rewarded(started?: () => void, placement?: string): Promise<boolean> {
     if (!this.rewardedSupported()) return Promise.resolve(false);
-    return this.show('rewarded_state_changed', (ad) => ad.showRewarded?.(), started);
+    return this.show('rewarded_state_changed', (ad) => ad.showRewarded?.(placement), started);
   }
 
   /** One interstitial; resolves when it closed or failed (a cooldown fails at once). */
-  async interstitial(started?: () => void): Promise<void> {
+  async interstitial(started?: () => void, placement?: string): Promise<void> {
     if (this.sdk?.advertisement?.isInterstitialSupported !== true) return;
-    await this.show('interstitial_state_changed', (ad) => ad.showInterstitial?.(), started);
+    await this.show('interstitial_state_changed', (ad) => ad.showInterstitial?.(placement), started);
   }
 
   private show(event: AdEvent, call: (ad: NonNullable<BridgeShape['advertisement']>) => unknown, started?: () => void): Promise<boolean> {
