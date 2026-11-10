@@ -10,6 +10,7 @@ const CJK = /[　-鿿＀-￯]/;
 /** Marks that never start a line, and those that never end one (the CJK line-breaking rules). */
 const NO_START = '，。、：；！？）》」』】”’…·%';
 const NO_END = '（《「『【“‘';
+const DIGIT = /[0-9]/;
 /** A hair space: Pixi wraps only at spaces, so CJK text gets one between characters that may part. */
 const BREAK = ' ';
 
@@ -26,6 +27,8 @@ export function cjkBreaks(text: string): string {
     if (b === undefined || a.trim() === '' || b.trim() === '') continue;
     if (!CJK.test(a) && !CJK.test(b)) continue;
     if (NO_START.includes(b) || NO_END.includes(a)) continue;
+    // a number stays with the word it counts: "30波", "第3"
+    if (DIGIT.test(a) || DIGIT.test(b)) continue;
     out += BREAK;
   }
   return out;

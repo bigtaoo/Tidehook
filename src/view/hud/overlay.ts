@@ -25,6 +25,8 @@ const SLOT_H = 150;
 const PAUSE_ROWS = 2;
 /** Card lines this size and up (the headline) shrink to one line; smaller ones wrap onto two. */
 const WRAP_BELOW = 90;
+/** Stands in the queue for the one-time sea event hint, whose words are looked up as it shows. */
+const EVENT_HINT = '\u0000event';
 
 type Cover = 'title' | 'paused' | 'over' | 'voyage' | null;
 /** How a game reached its end: at the voyage's end, choosing (`voyage`), or home from it (`home`). */
@@ -47,8 +49,8 @@ export class Overlay extends Container {
   private readonly queue: string[] = [];
   private bannerMs = 0;
   private seen = new Set<string>();
-  /** Asked at each sea event: true the first time on this save (game/guide/guide.ts once). */
-  firstEvent: (() => boolean) | null = null;
+  /** What sea events are, once a save (game/guide/guide.ts): queued while not seen, spent on show. */
+  eventHint: { seen(): boolean; spend(): void } | null = null;
   private readonly coverBox = new Container();
 
   constructor(private readonly fr: Frame) {
@@ -93,7 +95,7 @@ export class Overlay extends Container {
       // and the first on this save is followed by what sea events are
       else if (ev.e === 'seaEvent') {
         this.queue.unshift(t(`events.${ev.id}` as TextKey));
-        if (this.firstEvent?.()) this.queue.splice(1, 0, t('hints.event'));
+        if (this.eventHint && !this.eventHint.seen() && !this.queue.includes(EVENT_HINT)) this.queue.splice(1, 0, EVENT_HINT);
       }
     }
     // nor over a cover: the game over card's lines can climb up to the top
@@ -102,7 +104,9 @@ export class Overlay extends Container {
     if (!paused) this.bannerMs -= frameMs;
     if (this.bannerMs <= 0) {
       const next = this.queue.shift();
-      this.showBanner(next ?? null);
+      // the one-time hint is spent when it shows, not when queued: a reset may drop it first
+      if (next === EVENT_HINT) this.eventHint?.spend();
+      this.showBanner(next === EVENT_HINT ? t('hints.event') : (next ?? null));
     }
   }
 

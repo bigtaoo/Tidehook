@@ -11,4 +11,7 @@ describe('cjkBreaks', () => {
     expect(cjkBreaks('第 30 波（快）')).toBe(`第 30 波${H}（快）`);
     expect(cjkBreaks('Wave 30')).toBe('Wave 30');
   });
+  test('keeps a number with the word it counts', () => {
+    expect(cjkBreaks('第30波开始')).toBe(`第30波${H}开${H}始`);
+  });
 });

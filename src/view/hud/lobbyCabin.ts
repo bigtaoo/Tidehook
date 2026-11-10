@@ -8,9 +8,9 @@ import type { Harbour } from '../../game/meta/harbour';
 import { PAINTS, type PaintKind, type PaintSpec } from '../../game/meta/paint';
 import type { SettingId, Settings } from '../../game/settings';
 import { t, type TextKey } from '../../i18n';
-import { artSprite } from '../art';
+import { artSprite, aspect } from '../art';
 import { Button } from '../kit/button';
-import { P } from '../kit/palette';
+import { P, SEA } from '../kit/palette';
 import { fitIn, label } from '../kit/text';
 import type { Rect } from './frame';
 import { drawToggles } from './settingsPanel';
@@ -84,18 +84,24 @@ function drawTile(h: Harbour, p: PaintSpec, w: number, ht: number, k: number, ac
   const picH = ht - btnH - nameH - pad * 3;
   const cx = w / 2;
   const picY = pad + picH / 2;
-  const hook = p.kind === 'hook' ? artSprite('hook', picH * 0.9, 0.5, 0.5) : null;
+  // a patch of the sea the paint is seen on in the game: a white hook on cream paper did not show
+  const water = new Graphics();
+  water.roundRect(pad, pad, w - pad * 2, picH, 12).fill(SEA.mid).stroke({ color: P.line, width: 3 });
+  box.addChild(water);
+  // the hook lies on its side: it is tall and thin, and the patch of water is wide and low
+  const hook = p.kind === 'hook' ? artSprite('hook', Math.min(w - pad * 4, (picH * 0.85) / aspect('hook')), 0.5, 0.5) : null;
   if (hook) {
+    hook.rotation = -Math.PI / 2;
     hook.tint = p.color;
     hook.position.set(cx, picY);
     box.addChild(hook);
   } else {
-    // a sagging length of rope, outlined so the tarred one shows on the paper
+    // a sagging length of rope, outlined so the tarred one shows on the water
     const len = Math.min(w - pad * 4, picH * 2.2);
     const thick = Math.max(8, picH * 0.16);
     // two paths: pixi draws a second stroke on one path as nothing
     const g = new Graphics();
-    for (const [color, width] of [[P.line, thick + 5], [p.color, thick]] as const) {
+    for (const [color, width] of [[P.cream, thick + 5], [p.color, thick]] as const) {
       g.moveTo(cx - len / 2, picY - picH * 0.1)
         .quadraticCurveTo(cx, picY + picH * 0.4, cx + len / 2, picY - picH * 0.1)
         .stroke({ color, width, cap: 'round' });

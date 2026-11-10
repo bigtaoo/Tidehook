@@ -113,6 +113,7 @@ export async function boot(platform: Platform): Promise<Application> {
   const ui: SceneUi = {
     shop: (ok) => sound.cue(ok ? 'buy' : 'deny', performance.now()),
     toggleSound: () => sound.toggle(),
+    click: () => sound.cue('reel', performance.now(), 1.5),
     soundOn: () => sound.on,
     settings,
     canBuzz: haptics.able,
@@ -141,6 +142,8 @@ export async function boot(platform: Platform): Promise<Application> {
   }, __TH_BUILD__, opts.lagMs);
   let playing = false;
   app.ticker.add((tk) => {
+    // playing before this frame's steps: the step that breaks the dock ends the play, yet buzzes
+    const live = session.mode === 'play' && !session.paused && !session.hold;
     session.update(scene ? scene.feel.clock(tk.deltaMS) : tk.deltaMS);
     const events = scene?.draw(tk.deltaMS) ?? session.drain();
     record?.(tk.deltaMS, events);
@@ -151,7 +154,7 @@ export async function boot(platform: Platform): Promise<Application> {
     const ms = performance.now();
     sound.setPaused(session.mode === 'play' && session.paused);
     sound.events(events, ms);
-    if (now) haptics.events(events, ms);
+    if (live || now) haptics.events(events, ms);
     sound.reel(session.world, now, ms);
     sound.music(session.mode === 'lobby' || session.mode === 'title', seaOf(session.world).id);
     if (now !== playing) {

@@ -152,6 +152,8 @@ export class Actors extends Container {
       const ring = hook ? (HOOK_MOUTH - HOOK_RING) * hook.height * areaScale('hook', HOOK_R * k) : 0;
       const end = { x: tip.x - Math.cos(dir) * ring, y: tip.y - Math.sin(dir) * ring };
       const paint = wornColors(s.harbour?.wear);
+      // a pale halo under the rope, its own path (pixi strokes a path once), so dark paint shows on the sea
+      g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color: 0xfff6e0, width: 7 * k, alpha: 0.35 });
       g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color: paint.rope, width: 4 * k });
       if (w.mines > 0 && len > 30 + ring / k) {
         const back = 24 * k;

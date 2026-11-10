@@ -150,9 +150,20 @@ describe('Guide', () => {
     expect(old.shopTeach).toBe(false);
   });
 
+  it('keeps the shop explained once across a reload', () => {
+    const { store, g } = fresh();
+    g.begin();
+    g.observe([{ e: 'waveStart', wave: 2 }], startGame(1));
+    const again = new Guide(store);
+    again.begin();
+    expect(again.shopTeach).toBe(false);
+  });
+
   it('answers once true for each one-time hint, kept across saves', () => {
     const { store, g } = fresh();
+    expect(g.has('event')).toBe(false);
     expect(g.once('event')).toBe(true);
+    expect(g.has('event')).toBe(true);
     expect(g.once('event')).toBe(false);
     expect(new Guide(store).once('event')).toBe(false);
     expect(new Guide(store).finished).toBe(false);

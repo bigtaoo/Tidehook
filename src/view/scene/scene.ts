@@ -40,6 +40,8 @@ export interface SceneUi {
   shop(ok: boolean): void;
   toggleSound(): void;
   soundOn(): boolean;
+  /** A switch flipped (a setting): a click, not the shop's coins. */
+  click?(): void;
   /** The player's settings (game/settings.ts), null in a test. */
   settings?: Settings | null;
   /** The device can buzz, so the vibration setting shows. */
@@ -103,13 +105,13 @@ export class Scene extends Container {
       denied: () => ui.shop(false),
     });
     this.overlay = new Overlay(fr);
-    this.overlay.firstEvent = () => !!session.guide?.once('event');
+    this.overlay.eventHint = { seen: () => !session.guide || session.guide.has('event'), spend: () => void session.guide?.once('event') };
     this.overAds = new OverAds(fr, { revive: () => ads?.revive(), giveUp: () => ads?.giveUp(), double: () => ads?.double() });
     this.voyageEnd = new VoyageEnd(fr, { home: () => ui.shop(session.home()), sailOn: () => session.sailOn() });
     const settingIds = shownSettings(SETTING_IDS, !!ui.canBuzz);
     const toggle = (id: SettingId) => {
       ui.settings?.toggle(id);
-      ui.shop(true);
+      ui.click?.();
     };
     this.pauseSettings = new PauseSettings(fr.boost, ui.settings ?? null, settingIds, toggle);
     this.lobby = new LobbyPanel(fr, {

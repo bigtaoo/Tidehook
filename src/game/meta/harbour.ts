@@ -118,13 +118,12 @@ export class Harbour {
   /** A daily voyage sailed on `day`: on the day's first, the streak grows (or starts again after
    *  a day missed) and pays its pearls. Returns the streak and what it paid (0 after the first). */
   sailDaily(day: string): { n: number; pearls: number } {
-    if (this.streak.day === day) return { n: this.streak.n, pearls: 0 };
-    const next = dayIndex(day) - dayIndex(this.streak.day) === 1 ? this.streak.n + 1 : 1;
-    this.streak = { day, n: next };
-    const pearls = streakPearls(next);
+    const { n, today, pearls } = this.streakOn(day);
+    if (today) return { n, pearls: 0 };
+    this.streak = { day, n };
     this.pearls += pearls;
     this.save();
-    return { n: next, pearls };
+    return { n, pearls };
   }
 
   /** The streak as of `day`: sailed today (`today`), or what sailing today would make it. */

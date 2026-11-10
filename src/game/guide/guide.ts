@@ -20,6 +20,8 @@ export type StepId = 'cast' | 'crab' | 'throw' | 'junk' | 'shop';
 export const STEP_IDS: readonly StepId[] = ['cast', 'crab', 'throw', 'junk', 'shop'];
 /** The one-time game over lesson's id in the save. */
 const LOST = 'lost';
+/** Saved once the first shop is left, so the shop's teach line does not come back after a reload. */
+const SHOP_SEEN = 'shopSeen';
 
 /** What the aim line glows on. */
 export type Want = 'fish' | 'mon' | 'junk';
@@ -99,7 +101,21 @@ export class Guide {
   /** The first skip press is waiting for the second. */
   /** The first shop of a new player: its title says what the shop is for (fish, coins, cards). */
   get shopTeach(): boolean {
-    return !this.done.has('shop') && this.visits === 0;
+    return !this.done.has('shop') && !this.done.has(SHOP_SEEN);
+  }
+
+  /** Whether `id` was spent by once(). */
+  has(id: string): boolean {
+    return this.done.has(id);
+  }
+
+  /** A shop left: marks the teach line seen on this save (the first) and says when the hand is done. */
+  private leftShop(): boolean {
+    if (!this.done.has(SHOP_SEEN)) {
+      this.done.add(SHOP_SEEN);
+      this.save();
+    }
+    return ++this.visits >= SHOP_VISITS;
   }
 
   /** True the first time `id` is asked about on this save, never after: a one-time hint (the
@@ -154,7 +170,7 @@ export class Guide {
         this.finish('junk');
       }
       else if (ev.e === 'leak' && ev.kind === 'brute') this.bruteLeaks++;
-      else if (ev.e === 'waveStart' && ev.wave > 1 && !this.done.has('shop') && ++this.visits >= SHOP_VISITS) this.finish('shop');
+      else if (ev.e === 'waveStart' && ev.wave > 1 && !this.done.has('shop') && this.leftShop()) this.finish('shop');
       else if (ev.e === 'over' && !this.done.has(LOST)) {
         this.lesson = this.lessonFor(w);
         this.done.add(LOST);
