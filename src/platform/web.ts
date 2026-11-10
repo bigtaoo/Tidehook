@@ -1,5 +1,5 @@
 import { urlSwitches } from '../game/switches';
-import { SafeStore, type KeyValueStore, type Platform } from './types';
+import { SafeStore, type KeyValueStore, type Platform, type TrackData } from './types';
 
 export function browserStorage(): KeyValueStore | null {
   try {
@@ -23,6 +23,8 @@ export class WebPlatform implements Platform {
   loaded(): void {}
   gameplayStart(): void {}
   gameplayStop(): void {}
+  celebrate(): void {}
+  track(_event: string, _data: TrackData): void {}
 
   rewardedAvailable(): boolean {
     return this.fakeAds;
@@ -42,4 +44,5 @@ export class WebPlatform implements Platform {
   }
 
   onHostMute(_listener: (muted: boolean) => void): void {}
+  onHostPause(_listener: () => void): void {}
 }

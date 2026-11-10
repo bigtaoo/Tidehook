@@ -4,6 +4,7 @@
 // call the Session.
 
 import { Container, Graphics } from 'pixi.js';
+import type { Offer } from '../../game/ads';
 import type { Session } from '../../game/session';
 import type { SimEvent } from '../../sim/events';
 import { seaOf } from '../../sim/seas';
@@ -12,6 +13,7 @@ import { Hud } from '../hud/hud';
 import { goalText } from '../hud/lobbyLog';
 import { LobbyPanel } from '../hud/lobby';
 import { seaName } from '../hud/lobbySeas';
+import { OverAds, type AdActions } from '../hud/overAds';
 import { Overlay } from '../hud/overlay';
 import { Pointer } from '../hud/pointer';
 import { topCard } from '../../game/guide/shopPick';
@@ -30,6 +32,14 @@ export interface SceneUi {
   soundOn(): boolean;
 }
 
+/** The rewarded ads' side of the screen (game/ads.ts): what to offer and what the buttons do. */
+export interface SceneAds extends AdActions {
+  offer(): Offer;
+  /** The shop's reroll is ad-paid now. */
+  freeReroll(): boolean;
+  reroll(): void;
+}
+
 const NO_UI: SceneUi = { shop: () => {}, toggleSound: () => {}, soundOn: () => true };
 
 export class Scene extends Container {
@@ -37,6 +47,7 @@ export class Scene extends Container {
   readonly hud: Hud;
   readonly shop: ShopPanel;
   readonly overlay: Overlay;
+  readonly overAds: OverAds;
   readonly lobby: LobbyPanel;
   /** The sea's weather over the water, redrawn when the sea changes. */
   private readonly weather = new Graphics();
@@ -50,6 +61,7 @@ export class Scene extends Container {
     fit: Fit,
     private readonly session: Session,
     private readonly ui: SceneUi = NO_UI,
+    private readonly ads: SceneAds | null = null,
   ) {
     super();
     const fr = (this.frame = frameFor(fit));
@@ -61,10 +73,12 @@ export class Scene extends Container {
       repair: () => ui.shop(session.repair()),
       mine: () => ui.shop(session.mine()),
       reroll: () => ui.shop(session.reroll()),
+      freeReroll: () => ads?.reroll(),
       next: () => session.nextWave(),
       denied: () => ui.shop(false),
     });
     this.overlay = new Overlay(fr);
+    this.overAds = new OverAds(fr, { revive: () => ads?.revive(), giveUp: () => ads?.giveUp(), double: () => ads?.double() });
     this.lobby = new LobbyPanel(fr, {
       buy: (id) => ui.shop(session.buyMeta(id)),
       sail: () => session.sail(),
@@ -73,7 +87,7 @@ export class Scene extends Container {
       denied: () => ui.shop(false),
     });
     this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());
-    this.addChild(drawField(fr.field), this.weather, this.actors, this.fx, this.hud, this.shop, this.pointer, this.overlay, this.lobby);
+    this.addChild(drawField(fr.field), this.weather, this.actors, this.fx, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.lobby);
     this.scale.set(fit.scale);
     this.position.set(fit.x, fit.y);
   }
@@ -99,13 +113,15 @@ export class Scene extends Container {
     this.hud.update(w, this.ui.soundOn());
     const shop = s.mode === 'play' && w.phase === 'shop' && !s.paused;
     const g = s.guide;
-    this.shop.update(w, shop, s.shopping(), g?.tagOn && s.shopping() ? topCard(w) : null);
+    this.shop.update(w, shop, s.shopping(), g?.tagOn && s.shopping() ? topCard(w) : null, !!this.ads?.freeReroll());
     this.pointer.update(s, frameMs);
     // while the tutorial still has the throw to teach, it says so itself, not the banner
     const hints = g && !g.done.has('throw') ? events.filter((e) => e.e !== 'held') : events;
     const lesson = g?.lesson ? t(g.lesson) : null;
     const pearls = s.harbour ? s.last.pearls : null;
-    this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, overNotes(s));
+    const offer = this.ads?.offer() ?? null;
+    this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, overNotes(s), offer);
+    this.overAds.update(offer, this.overlay.slot);
     this.lobby.update(s.harbour, s.mode === 'lobby', s.last);
     return events;
   }

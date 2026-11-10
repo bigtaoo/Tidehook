@@ -98,7 +98,13 @@ export function buyMine(w: World): boolean {
   return true;
 }
 
-export function reroll(w: World): boolean {
+/** Deals fresh cards. A free one (a rewarded ad's) costs nothing and leaves the price where it was. */
+export function reroll(w: World, free = false): boolean {
+  if (free) {
+    if (w.phase !== 'shop') return false;
+    rollShop(w);
+    return true;
+  }
   if (!pay(w, rerollCost(w))) return false;
   w.rerolls++;
   rollShop(w);

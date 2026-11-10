@@ -86,6 +86,13 @@ export const en = {
     logOne: "Captain's log: {goal}",
     logMany: "Captain's log: {n} new entries",
   },
+  ads: {
+    revive: '▶ Patch the dock',
+    reviveNote: 'Watch an ad: the dock mends to half and the wave goes on',
+    giveUp: 'Give up',
+    double: '▶ Pearls ×2',
+    reroll: '▶ Free stock',
+  },
   goals: {
     game: {
       wave: 'Reach wave {n}',

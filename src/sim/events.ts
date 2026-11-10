@@ -31,7 +31,9 @@ export type SimEvent =
   | { e: 'waveClear'; wave: number }
   /** A new player's dock patched for free after an eased wave (tide.ts). */
   | { e: 'mend'; hp: number }
-  | { e: 'over'; wave: number };
+  | { e: 'over'; wave: number }
+  /** The fallen dock patched by a rewarded ad (revive.ts). */
+  | { e: 'revive'; hp: number };
 
 export function emit(w: World, ev: SimEvent): void {
   w.events.push(ev);

@@ -1,6 +1,9 @@
 // What the game needs from the page it runs in, after Potion Siege's platform/types.ts, cut to
-// what v1 uses (docs/01-tech-plan.md section 6). Each target (web, CrazyGames, Playgama) gets
-// its own implementation and entry file.
+// what v1 uses (docs/01-tech-plan.md section 6). Each target (the plain web, Playgama) gets its
+// own implementation and entry file.
+
+/** One telemetry event's fields: bounded values only, never anything about the player. */
+export type TrackData = Record<string, string | number | boolean>;
 
 /** A key/value store that behaves like localStorage. */
 export interface KeyValueStore {
@@ -9,7 +12,7 @@ export interface KeyValueStore {
 }
 
 export interface Platform {
-  /** Short id for telemetry, e.g. 'web' or 'crazygames'. */
+  /** Short id for telemetry, e.g. 'web' or 'playgama'. */
   readonly name: string;
   storage: KeyValueStore;
   /** Preferred languages, most preferred first. */
@@ -26,6 +29,10 @@ export interface Platform {
   rewarded(onStart: () => void): Promise<boolean>;
   /** Plays an interstitial at a natural break; resolves when it is over (or skipped). */
   midgame(onStart: () => void): Promise<void>;
+  /** The player did something worth a cheer (a new best, a log goal); the host may show it. */
+  celebrate(): void;
+  /** One telemetry event for the host (game/telemetry.ts). */
+  track(event: string, data: TrackData): void;
   /** Called with the host's mute state now and whenever it changes. */
   onHostMute(listener: (muted: boolean) => void): void;
   /** Called whenever the host pauses the game; absent: never. */

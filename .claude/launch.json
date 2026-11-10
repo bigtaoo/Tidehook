@@ -4,14 +4,29 @@
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5190
     },
     {
       "name": "web-dist",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview"],
+      "runtimeArgs": [
+        "run",
+        "preview"
+      ],
       "port": 4190
+    },
+    {
+      "name": "playgama",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:playgama"
+      ],
+      "port": 5191
     }
   ]
 }

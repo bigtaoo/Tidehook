@@ -10,12 +10,15 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --port 4190 --strictPort",
+    "dev:playgama": "vite --config vite.playgama.config.js",
+    "build:playgama": "tsc --noEmit && vite build --config vite.playgama.config.js && node scripts/checkSize.mjs dist-playgama && (python3 scripts/pack_playgama.py || python scripts/pack_playgama.py)",
+    "preview:playgama": "vite preview --config vite.playgama.config.js --port 4191 --strictPort",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:filelength": "node scripts/checkFileLength.mjs",
     "check:size": "node scripts/checkSize.mjs",
     "check:balance": "vitest run --config scripts/vitest.guard.config.js",
-    "check": "npm run typecheck && npm run check:filelength && npm run test && npm run check:balance && npm run build && npm run check:size"
+    "check": "npm run typecheck && npm run check:filelength && npm run test && npm run check:balance && npm run build && npm run check:size && npm run build:playgama"
   },
   "dependencies": {
     "pixi.js": "^8.6.6"

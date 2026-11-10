@@ -18,6 +18,8 @@ export interface ShopActions {
   repair(): void;
   mine(): void;
   reroll(): void;
+  /** The ad-paid free reroll (game/ads.ts), when the host has one. */
+  freeReroll?(): void;
   next(): void;
   /** A press on something the player cannot buy. */
   denied?(): void;
@@ -46,18 +48,18 @@ export class ShopPanel extends Container {
   }
 
   /** Shows the shop while the world is in it; `mine` is whether the player may buy (not the bot);
-   *  `tag` is the card to mark as the Top pick, or null. */
-  update(w: World, show: boolean, mine: boolean, tag: number | null = null): void {
+   *  `tag` is the card to mark as the Top pick, or null; `free`: the reroll is ad-paid instead. */
+  update(w: World, show: boolean, mine: boolean, tag: number | null = null, free = false): void {
     this.visible = show;
     if (!show) {
       this.last = '';
       return;
     }
-    const key = [w.wave, w.coins, w.hp, w.maxHp, w.mines, w.rerolls, mine, tag, ...w.cards.map((c) => `${c.id}${c.bought}`)].join('|');
+    const key = [w.wave, w.coins, w.hp, w.maxHp, w.mines, w.rerolls, mine, tag, free, ...w.cards.map((c) => `${c.id}${c.bought}`)].join('|');
     if (key === this.last) return;
     this.last = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
-    this.build(w, mine, tag);
+    this.build(w, mine, tag, free);
   }
 
   /** The button for a shop pick, design units; null while the shop is shut. */
@@ -66,7 +68,7 @@ export class ShopPanel extends Container {
     return this.spots.get(p.t === 'card' ? `card${p.i}` : p.t) ?? null;
   }
 
-  private build(w: World, mine: boolean, tag: number | null): void {
+  private build(w: World, mine: boolean, tag: number | null, free: boolean): void {
     this.spots.clear();
     const r = this.fr.shop;
     const k = this.fr.boost;
@@ -116,10 +118,13 @@ export class ShopPanel extends Container {
     const small = [
       { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: w.hp < w.maxHp && w.coins >= cost.repair, onPress: () => this.act.repair() },
       { text: t('shop.mine', { n: w.mines, max: B.mine.max }), price: cost.mine, ok: w.mines < B.mine.max && w.coins >= cost.mine, onPress: () => this.act.mine() },
-      { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
+      free
+        ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go }
+        : { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
     small.forEach((s, i) => {
-      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, enabled: mine && s.ok, onPress: s.onPress, onDenied: this.deny });
+      const color = 'color' in s ? s.color : undefined;
+      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, color, enabled: mine && s.ok, onPress: s.onPress, onDenied: this.deny });
       b.position.set(r.x + PAD + i * (cardW + GAP), rowY);
       this.addChild(b);
       if (i === 0) this.spots.set('repair', { x: b.x, y: rowY, w: cardW, h: ROW });

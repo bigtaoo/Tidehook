@@ -12,7 +12,8 @@ The gameplay reference is `prototype/v2.html` with its balance sim `prototype/to
   480 wide), so its numbers carry over unchanged.
 - `src/view/`: Pixi rendering. `orient.ts` is the only place that maps lane (d, w) to the screen
   (portrait: dock at the bottom; landscape: dock on the left). HUD and shop are never rotated.
-- `src/platform/`: one `Platform` per target (web, later CrazyGames and Playgama); `stub.ts` for tests.
+- `src/platform/`: one `Platform` per target: `web.ts` (dev and plain web) and `playgama/` (the only
+  portal, Bridge v2); `stub.ts` for tests. Ads live in `src/game/ads.ts`, telemetry in `src/game/telemetry.ts`.
 - `src/i18n/`: `t()` with `en.ts` as the source; other tables are typed `Table`, so a missing key
   is a compile error. No literal player-facing strings in code.
 
@@ -25,7 +26,9 @@ The gameplay reference is `prototype/v2.html` with its balance sim `prototype/to
 ## Checks
 
 `npm run check` = typecheck + file length + tests + balance guard + build + bundle size (≤ 5 MB).
-Run it before every commit. The balance guard (`npm run check:balance`, scripts/guard/) plays the
+Run it before every commit. It ends with `npm run build:playgama` (dist-playgama/ plus
+`tidehook-playgama.zip`; `npm run dev:playgama` serves it on port 5191, launch.json "playgama").
+Never upload to Playgama or publish a sandbox without an explicit yes. The balance guard (`npm run check:balance`, scripts/guard/) plays the
 bot personas in `src/sim/bot/` on fixed seeds and pins their median waves. Dev server: `npm run dev` (port 5190; `.claude/launch.json` "web").
 
 URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`, `?seed`, `?speed`,

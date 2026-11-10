@@ -13,6 +13,7 @@ import { B, type GoalSpec } from '../sim/balance';
 import { counts } from '../sim/goals';
 import { seaOf } from '../sim/seas';
 import { pearlsFor } from '../sim/meta';
+import { revive } from '../sim/revive';
 import type { Shot, World } from '../sim/world';
 import { FixedStep } from '../view/fixedStep';
 import type { Guide } from './guide/guide';
@@ -103,6 +104,16 @@ export class Session {
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
   last: LastGame = { wave: 0, pearls: 0, log: [], sea: 0, record: false };
+  /** An ad is on screen (game/ads.ts): nothing runs and taps do nothing, with no pause cover. */
+  hold = false;
+  /** Whether a fallen dock may be revived (a rewarded ad is there to watch); set by game/ads.ts. */
+  canRevive: () => boolean = () => false;
+  /** The dock fell and the revive is on offer: the game's pearls are not counted yet. */
+  pending = false;
+  /** This game's one revive, pearl doubling and free reroll, once used. */
+  revived = false;
+  doubled = false;
+  freeRerolled = false;
 
   /** The tutorial and the harbour; null for the bot and in tests that do not ask for them. */
   constructor(
@@ -139,6 +150,7 @@ export class Session {
     this.paused = false;
     this.pilot = this.opts.autoplay ? new Pilot(this.world.seed, this.opts.autoplay) : null;
     this.shopWait = 0;
+    this.pending = this.revived = this.doubled = this.freeRerolled = false;
     this.guide?.begin();
     this.guide?.update(this.world, true, 0);
     this.snapshot();
@@ -154,7 +166,7 @@ export class Session {
 
   private run(frameMs: number): number {
     if (this.mode === 'over') this.overMs += frameMs;
-    if (this.mode !== 'play' || this.paused) return 0;
+    if (this.mode !== 'play' || this.paused || this.hold) return 0;
     const n = this.fixed.advance(frameMs, this.opts.speed);
     for (let i = 0; i < n; i++) {
       const w = this.world;
@@ -174,16 +186,60 @@ export class Session {
       if (w.phase === 'over') {
         this.mode = 'over';
         this.overMs = 0;
-        const pearls = pearlsFor(w);
-        this.harbour?.earn(pearls);
-        const was = this.harbour?.best[seaOf(w).id] ?? 0;
-        const log = this.harbour?.logGame(counts(w)) ?? [];
-        const record = was > 0 && w.wave > was;
-        this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), log, sea: w.sea, record };
+        this.pending = !this.revived && !this.pilot && !!this.harbour && this.canRevive();
+        if (!this.pending) this.settle();
         break;
       }
     }
     return n;
+  }
+
+  /** Counts the game that just ended: its pearls, the captain's log, the sea's best. */
+  private settle(): void {
+    const w = this.world;
+    const pearls = pearlsFor(w);
+    this.harbour?.earn(pearls);
+    const was = this.harbour?.best[seaOf(w).id] ?? 0;
+    const log = this.harbour?.logGame(counts(w)) ?? [];
+    const record = was > 0 && w.wave > was;
+    this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), log, sea: w.sea, record };
+  }
+
+  /** Turns down the revive: the game ends and is counted. */
+  giveUp(): boolean {
+    if (this.mode !== 'over' || !this.pending) return false;
+    this.pending = false;
+    this.overMs = 0;
+    this.settle();
+    return true;
+  }
+
+  /** The revive's ad paid: the dock is patched and the wave goes on (sim/revive.ts). */
+  revive(): boolean {
+    if (this.mode !== 'over' || !this.pending || !revive(this.world)) return false;
+    this.pending = false;
+    this.revived = true;
+    this.mode = 'play';
+    this.paused = false;
+    this.snapshot();
+    this.collect();
+    return true;
+  }
+
+  /** The pearl doubling's ad paid: the game's pearls come home twice. */
+  double(): boolean {
+    if (this.mode !== 'over' || this.pending || this.doubled || !this.harbour) return false;
+    this.doubled = true;
+    this.harbour.earn(this.last.pearls);
+    this.last = { ...this.last, pearls: this.last.pearls * 2 };
+    return true;
+  }
+
+  /** The free reroll's ad paid: fresh cards at no cost, once a game. */
+  freeReroll(): boolean {
+    if (this.freeRerolled || !this.shopping() || !reroll(this.world, true)) return false;
+    this.freeRerolled = true;
+    return true;
   }
 
   /** The events since the last drain, for the view and audio. */
@@ -197,8 +253,8 @@ export class Session {
    *  In the harbour only its buttons do anything. `ageMs`: how long the input waited before it got
    *  here (the event's own time stamp). */
   tap(ageMs = 0): void {
-    if (this.mode === 'lobby') return;
-    if (this.mode === 'over' && this.overMs < OVER_LOCK_MS) return;
+    if (this.mode === 'lobby' || this.hold) return;
+    if (this.mode === 'over' && (this.pending || this.overMs < OVER_LOCK_MS)) return;
     if (this.mode === 'over' && this.harbour) this.openLobby();
     else if (this.mode !== 'play') this.start();
     else if (this.paused) this.paused = false;
@@ -300,7 +356,7 @@ export class Session {
 
   /** The player may shop: in the shop, not paused, not the bot's turn. */
   shopping(): boolean {
-    return this.mode === 'play' && !this.paused && !this.pilot && this.world.phase === 'shop';
+    return this.mode === 'play' && !this.paused && !this.hold && !this.pilot && this.world.phase === 'shop';
   }
 
   /** Takes the events a command raised outside a step (a cast, a throw, the wave starting), which

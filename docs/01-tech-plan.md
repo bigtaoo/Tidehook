@@ -167,12 +167,27 @@ Tidehook/
 
 ## 6. 平台与变现
 
-- `Platform` 接口统一管理：广告、存储、静音和暂停、gameplay start/stop、商店。每个目标一个入口文件和一个 vite 配置。
-- **首发**：自有网页（Cloudflare，域名建议 `t.gamestao.com`）+ CrazyGames SDK v3 + Playgama Bridge v2。
-- **激励广告**：码头被毁后复活一次；结算收益 ×2；商店免费刷新一次。检测到广告拦截时隐藏激励按钮。
-- **插屏广告**：波次之间，按 `adPacing` 控制频率。
+- `Platform` 接口统一管理：广告、存储、静音和暂停、gameplay start/stop、庆祝、遥测。每个目标一个入口文件和一个 vite 配置。
+- **首发只做 Playgama**（2026-11 决定；CrazyGames 不做）。自有网页（`main.ts`）留作开发和试玩用。
+  - 入口 `src/main.playgama.ts`，实现在 `src/platform/playgama/`，配置 `vite.playgama.config.js`：把 Bridge v2 的 CDN 脚本插到 `</title>` 后，作为 head 里第一个脚本，并输出 `playgama-bridge-config.json`（`minimumDelayBetweenInterstitial: 60`）。构建时如果 HTML 没被改写就直接报错。
+  - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/pack_playgama.py`）。`npm run check` 最后也会跑一遍。
+  - 存档只走 Bridge storage（语言、声音、教程、港口四个 key）。
+  - 上传和发布沙盒都要先问过人。
+- **激励广告**（`src/game/ads.ts`），每局各一次，都由玩家自己点：
+  - **修好码头**：码头被毁后，结算先挂起（`Session.pending`），卡片上只有“修好码头”和“算了”。看完广告后，码头回到一半血，离码头 300 内的怪被推回 300，所有怪晕 2 秒（`sim/revive.ts`），这一波接着打。点“算了”或者没有广告可放时，才正式结算。广告开始了但没看完，按钮保留。
+  - **珍珠 ×2**：结算后，本局珍珠大于 0 时出现在卡片上。
+  - **免费换牌**：商店的换牌按钮变绿，看广告免费换一次，不花金币，也不涨换牌价。
+  - 平台说没有激励广告时（比如检测到广告拦截，或在 mock 平台上），三个按钮都不出现。autoplay 局和没有港口的局也不出现。
+- **插屏广告**只放在自然断点：一波打完、商店打开时，以及从结算回港口时。新玩家的第一局不放；看过激励广告后，到下一波开始之前也不放。频率交给 Bridge 的 `minimumDelayBetweenInterstitial`，游戏里不另外计时。
+- 广告播放期间 `Session.hold` 冻结模拟、吞掉点击，声音静音。
+- **遥测**（`src/game/telemetry.ts`，按 Playgama telemetry guide v1.1.2）：
+  - `progression_started` / `_completed` / `_failed`：step_id 为 `wave`，带 step_index 和 sea；
+  - `tutorial_step` / `tutorial_completed`；
+  - 每 30 秒有效游玩发一次 `performance_sample`（`src/game/perf.ts`）；
+  - 出现新纪录或完成船长日志目标时调用 `celebrate()`（`player_got_achievement`）。
+  - 不发任何玩家个人信息。
 - **之后再说**：iOS（Capacitor 8 + AdMob + 去广告内购 + Game Center + Capgo OTA，照 Potion Siege 的 `docs/ios.md`），以及微信小游戏（竖屏天然适配，参考 Blight Bloom 的 Pixi DOMAdapter 方案，主包 4 MB）。
-- 包体：首包 ≤ 5 MB，图片用 WebP。门户上传前先测子路径部署。
+- 包体：首包 ≤ 5 MB，图片用 WebP。目前 `dist-playgama` 2.13 MB，zip 1.5 MB。
 
 ## 7. 后端
 
@@ -194,11 +209,11 @@ Tidehook/
 2. **M1 模拟移植**（完成）：sim 定点化，bot 在 CI 中复现原型的波次分布。
 3. **M2 灰盒视图**（完成）：色块和描边，横竖屏布局与 sweep 通过。
 4. **M3 Style frame**（完成）：r2 定稿，19 张精灵（`public/art/`，约 150 kB）和 21 个音效 cue + 1 段音乐（`public/audio/`，约 1.1 MB）接进游戏，HUD 加声音开关。管线见 `00-art-direction.md` 第 6、7 节。包体 1.9 MB。
-5. **M4 平台接入**：CrazyGames 和 Playgama、广告、存档、分析。
+5. **M4 平台接入**（代码完成，未提交，未上传）：只做 Playgama，包括 Bridge 存档、激励和插屏广告、遥测，见第 6 节。
 6. **M5 上线**：网页 → 门户提审。
 
 ## 10. 待你确认
 
-1. 首发平台：CrazyGames + Playgama + 自有网页，还是也要微信？
+1. ~~首发平台~~：已定，只做 Playgama。
 2. v1 是否完全不要服务器（排行榜放到后面）？
 3. 正式版是否要关卡制，还是只做无尽波次？现在原型是无尽模式。
