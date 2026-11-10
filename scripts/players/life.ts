@@ -8,7 +8,8 @@
 import { FIRST_SEED } from '../../src/game/guide/firstSeed';
 import { B } from '../../src/sim/balance';
 import { personaFrom, Pilot } from '../../src/sim/bot/bot';
-import { addCounts, bestCounts, newlyMet, type Counts } from '../../src/sim/goals';
+import { addCounts, bestCounts, firstSunk, newlyMet, sunkCounts, type Counts } from '../../src/sim/goals';
+import { BF } from '../../src/sim/balanceFun';
 import { TICK_RATE } from '../../src/sim/math/fixed';
 import { pearlsFor } from '../../src/sim/meta';
 import { revive } from '../../src/sim/revive';
@@ -112,14 +113,16 @@ export function live(pl: Player, base: number, opts: LifeOptions = {}): Life {
     const { w, secs, revived } = play(pl, n, base, lv, sea, cap);
     const id = B.seas[sea].id;
     const record = w.wave > (best[id] ?? 0);
-    const c = { ...w.st, wave: w.wave, games: 1, [id]: w.wave };
+    const c = { ...w.st, ...sunkCounts(w.sunk), wave: w.wave, games: 1, [id]: w.wave };
+    // the codex pays for each kind first sunk (game/meta/harbour.ts)
+    const codex = firstSunk(totals, c).length * BF.codex.pearls;
     best = bestCounts(best, c);
     totals = addCounts(totals, c);
     const met = newlyMet(logged, best, totals);
     logged.push(...met.map((g) => g.id));
     // The doubling ad doubles the game's own pearls, not the captain's log (game/session.ts).
     const won = pearlsFor(w);
-    const got = won * (pl.double ? 2 : 1) + met.reduce((s, g) => s + g.pearls, 0);
+    const got = won * (pl.double ? 2 : 1) + met.reduce((s, g) => s + g.pearls, 0) + codex;
     pearls += got;
     total += secs / 60;
     const s = shopHarbour(pl, lv, pearls, best);

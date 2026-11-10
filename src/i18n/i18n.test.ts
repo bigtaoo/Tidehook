@@ -8,6 +8,7 @@ import { pt } from './pt';
 import { ru } from './ru';
 import { tr } from './tr';
 import { zh } from './zh';
+import balance from '../sim/balance.json';
 
 const OTHERS = { zh, ru, es, pt, tr, de, fr };
 
@@ -68,5 +69,15 @@ describe('i18n', () => {
     expect(pluralCategory(2, 'en')).toBe('other');
     expect(pluralCategory(3, 'ru')).toBe('few');
     expect(pluralCategory(5, 'ru')).toBe('many');
+  });
+
+  it('quotes the balance numbers the cards name, in every language', () => {
+    // a card that says a number must say the one the sim plays (balance.json); these drifted once
+    const n = (x: number) => new RegExp(`(?<![0-9.,])${String(x).replace('.', '[.,]')}(?![0-9])`);
+    for (const tab of [en, de, es, fr, pt, ru, tr, zh]) {
+      expect(tab.cards.keg.desc).toMatch(n(balance.keg.every));
+      expect(tab.cards.barnacle.desc).toMatch(n(balance.barnacle.every));
+      expect(tab.cards.golden.desc).toMatch(n(balance.gold.goldenMult));
+    }
   });
 });

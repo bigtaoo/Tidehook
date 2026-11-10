@@ -25,6 +25,10 @@ class FakeOut implements AudioOut {
   setMusic(track: Music): void {
     this.tracks.push(track);
   }
+  musicOn: boolean[] = [];
+  setMusicOn(on: boolean): void {
+    this.musicOn.push(on);
+  }
 }
 
 /** A Sound on a fake output with a fixed run of random numbers. */
@@ -65,6 +69,17 @@ describe('the music', () => {
     sound.music(false, 'storm');
     sound.music(true, 'storm');
     expect(out.tracks).toEqual(['harbour', 'fog', 'storm', 'harbour']);
+  });
+});
+
+describe('the mix', () => {
+  it('silences the effects with their setting and passes the music one to the speakers', () => {
+    const { out, sound } = setup();
+    sound.setMix(false, false);
+    expect(out.musicOn).toEqual([false]);
+    expect(sound.cue('buy', 0)).toBe(false);
+    sound.setMix(false, true);
+    expect(sound.cue('buy', 1000)).toBe(true);
   });
 });
 

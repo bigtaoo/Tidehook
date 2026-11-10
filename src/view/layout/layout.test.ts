@@ -17,6 +17,9 @@ import { LOBBY_TABS, LobbyPanel } from '../hud/lobby';
 import { Overlay } from '../hud/overlay';
 import { Harbour } from '../../game/meta/harbour';
 import { SafeStore } from '../../platform/types';
+import { SETTING_IDS, Settings } from '../../game/settings';
+import { PauseSettings } from '../hud/settingsPanel';
+import { Container as Box } from 'pixi.js';
 import { ShopPanel, type ShopActions } from '../hud/shop';
 import { Button } from '../kit/button';
 import { fitDesign } from '../viewport';
@@ -108,6 +111,14 @@ function screens(fr: Frame): Screen[] {
       return p;
     },
   });
+  out.push({
+    name: 'shop/first, explained',
+    build: () => {
+      const p = new ShopPanel(fr, noop);
+      p.update(firstShop(), true, true, 0, false, true);
+      return p;
+    },
+  });
 
   // the covers, and every hint the banner can carry
   const cover = (name: string, mode: 'title' | 'play' | 'over', paused: boolean): Screen => ({
@@ -119,6 +130,18 @@ function screens(fr: Frame): Screen[] {
     },
   });
   out.push(cover('title', 'title', false), cover('paused', 'play', true), cover('over', 'over', false));
+  out.push({
+    name: 'cover/paused with settings',
+    build: () => {
+      const box = new Box();
+      const o = new Overlay(fr);
+      o.update('play', true, false, 188, [], 16);
+      const ps = new PauseSettings(fr.boost, new Settings(null), SETTING_IDS, () => {});
+      ps.update(o.slot);
+      box.addChild(o, ps);
+      return box;
+    },
+  });
   out.push({
     name: 'cover/over with pearls',
     build: () => {
@@ -132,7 +155,7 @@ function screens(fr: Frame): Screen[] {
     name: 'over/daily',
     build: () => {
       const o = new Overlay(fr);
-      o.update('over', false, false, 188, [], 16, false, t('guide.lesson.fish'), 9_876, [t('overlay.daily', { n: 188 }), t('overlay.logMany', { n: 12 })]);
+      o.update('over', false, false, 188, [], 16, false, t('guide.lesson.fish'), 9_876, [t('overlay.daily', { n: 188 }), t('overlay.logMany', { n: 12 }), t('overlay.codex', { n: 15 }), t('overlay.streak', { n: 7, p: 35 })]);
       return o;
     },
   });
@@ -150,8 +173,11 @@ function screens(fr: Frame): Screen[] {
           // stuck: the line under the title gives the chart tip, with a sea's name in it
           h.flat = 9;
           h.logDaily(DAY, 188);
+          h.sailDaily(DAY);
+          h.buyPaint('midnight');
+          h.buyPaint('gold');
         }
-        const p = new LobbyPanel(fr, { buy() {}, sail() {}, chart() {}, pick() {}, daily() {} });
+        const p = new LobbyPanel(fr, { buy() {}, sail() {}, chart() {}, pick() {}, daily() {}, paint() {}, toggle() {} }, { s: new Settings(null), ids: SETTING_IDS });
         p.tab = tab;
         // the board: a new harbour still reading it, a rich one with long names and big waves
         const rows = rich ? [...Array(10).keys()].map((i) => ({ rank: i + 1, name: i === 2 ? '' : 'Old Barnacle Jim of the Northern Reaches', wave: 999 - i })) : null;
@@ -164,6 +190,7 @@ function screens(fr: Frame): Screen[] {
     ...MONSTER_KINDS.map((k) => t('hints.debut', { name: t(`monsters.${k}.name` as TextKey), tip: t(`monsters.${k}.tip` as TextKey) })),
     t('hints.held'),
     t('hints.eat'),
+    t('hints.event'),
   ];
   for (const [i, text] of hints.entries()) {
     out.push({

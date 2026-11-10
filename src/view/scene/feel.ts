@@ -1,7 +1,8 @@
 // Game feel (docs/04-content.md section 3.10): the big moments land. A boss or kraken sunk stops
 // the sea for a beat and runs it slow for a moment after; a brute sunk, or a long streak, a
 // shorter beat. Blasts, booms and leaks shake the sea (never the HUD or the shop). Only the view's
-// clock is touched: the sim still steps whole ticks, so a game plays out the same.
+// clock is touched: the sim still steps whole ticks, so a game plays out the same. Calm motion
+// (game/settings.ts) turns all of it off.
 
 import type { SimEvent } from '../../sim/events';
 import type { Container } from 'pixi.js';
@@ -30,9 +31,12 @@ export class Feel {
   private rate = 1;
   private shake = 0;
   private t = 0;
+  /** Calm motion: no stops, no shake. */
+  calm = false;
 
   /** Takes in a frame's events. */
   observe(events: readonly SimEvent[]): void {
+    if (this.calm) return;
     for (const ev of events) {
       if (ev.e === 'kill' && (ev.kind === 'boss' || ev.kind === 'kraken')) {
         this.stop(BOSS);

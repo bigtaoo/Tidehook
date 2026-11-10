@@ -139,6 +139,25 @@ describe('Guide', () => {
     }
   });
 
+  it('explains the shop on the first visit only', () => {
+    const { g } = fresh();
+    g.begin();
+    expect(g.shopTeach).toBe(true);
+    g.observe([{ e: 'waveStart', wave: 2 }], startGame(1));
+    expect(g.shopTeach).toBe(false);
+    const old = fresh().g;
+    for (const s of STEP_IDS) old.observe(eventFor(s), startGame(1));
+    expect(old.shopTeach).toBe(false);
+  });
+
+  it('answers once true for each one-time hint, kept across saves', () => {
+    const { store, g } = fresh();
+    expect(g.once('event')).toBe(true);
+    expect(g.once('event')).toBe(false);
+    expect(new Guide(store).once('event')).toBe(false);
+    expect(new Guide(store).finished).toBe(false);
+  });
+
   it('tags the Top pick for the first three games only', () => {
     const { g } = fresh();
     for (let i = 0; i < 3; i++) g.begin();

@@ -97,6 +97,20 @@ export class Guide {
   }
 
   /** The first skip press is waiting for the second. */
+  /** The first shop of a new player: its title says what the shop is for (fish, coins, cards). */
+  get shopTeach(): boolean {
+    return !this.done.has('shop') && this.visits === 0;
+  }
+
+  /** True the first time `id` is asked about on this save, never after: a one-time hint (the
+   *  first sea event's explanation). */
+  once(id: string): boolean {
+    if (this.done.has(id)) return false;
+    this.done.add(id);
+    this.save();
+    return true;
+  }
+
   get skipArmed(): boolean {
     return this.realMs - this.skipAt <= SKIP_MS;
   }

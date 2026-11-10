@@ -16,10 +16,19 @@ export interface AdActions {
   double(): void;
 }
 
-/** The slot the card leaves: its centre, design units. */
+/** The slot the card leaves: its centre and the width its buttons may take, design units (in
+ *  landscape the captain stands beside the card, so less than the lane). */
 export interface Slot {
   x: number;
   y: number;
+  w: number;
+  /** Its height (the pause cover's settings take two rows). */
+  h: number;
+}
+
+/** The width of each of two buttons side by side in `slot`. */
+export function slotButtonW(slot: Slot, most: number, gap: number): number {
+  return Math.min(most, (slot.w - gap) / 2);
 }
 
 const BTN_W = 420;
@@ -37,13 +46,13 @@ export class OverAds extends Container {
   }
 
   update(offer: Offer, slot: Slot | null): void {
-    const key = offer && slot ? `${offer}|${slot.x}|${slot.y}` : '';
+    const key = offer && slot ? `${offer}|${slot.x}|${slot.y}|${slot.w}` : '';
     if (key === this.key) return;
     this.key = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
     if (!offer || !slot) return;
     const k = this.fr.boost;
-    const w = Math.min(BTN_W * k, (this.fr.fit.w - 3 * GAP) / 2);
+    const w = slotButtonW(slot, BTN_W * k, GAP);
     const h = BTN_H * k;
     const buttons =
       offer === 'revive'

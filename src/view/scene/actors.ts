@@ -10,6 +10,7 @@
 
 import { Container, Graphics } from 'pixi.js';
 import { aimFinds } from '../../game/guide/guide';
+import { wornColors } from '../../game/meta/paint';
 import type { Session } from '../../game/session';
 import { B } from '../../sim/balance';
 import { FP } from '../../sim/math/fixed';
@@ -22,7 +23,7 @@ import { LANE_LEN } from '../../sim/lane';
 import { bandRect } from './field';
 import { isBoss, diving } from '../../sim/kinds';
 import { clarity } from '../../sim/weather';
-import { fishArt, hasOwnArt, itemTint, lookRadius, monsterArt, pips, step } from './look';
+import { fishArt, hasOwnArt, lookRadius, monsterArt, pips, step } from './look';
 import { inDanger, lowDock } from './danger';
 import { throwSight } from './sight';
 import { SpritePool } from './sprites';
@@ -94,7 +95,7 @@ export class Actors extends Container {
       const bob = Math.sin(time * 2.2 + it.id) * 0.06;
       const art = fishArt(w, it, f.wide);
       const r = lookRadius(art, (it.r / FP) * k, f.wide);
-      const pose = { rot: it.kind === 'junk' ? 0 : bob, flip: it.kind === 'fish' && !it.chest && it.id % 2 === 1, alpha: seen, tint: itemTint(it) };
+      const pose = { rot: it.kind === 'junk' ? 0 : bob, flip: it.kind === 'fish' && !it.chest && it.id % 2 === 1, alpha: seen };
       // a gold fish shines, with a glint going round it
       if (it.gold) {
         const pulse = 0.5 + 0.5 * Math.sin(time * 6 + it.id);
@@ -150,12 +151,13 @@ export class Actors extends Container {
       const hook = tex('hook');
       const ring = hook ? (HOOK_MOUTH - HOOK_RING) * hook.height * areaScale('hook', HOOK_R * k) : 0;
       const end = { x: tip.x - Math.cos(dir) * ring, y: tip.y - Math.sin(dir) * ring };
-      g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color: P.rope, width: 4 * k });
+      const paint = wornColors(s.harbour?.wear);
+      g.moveTo(hub.x, hub.y).lineTo(end.x, end.y).stroke({ color: paint.rope, width: 4 * k });
       if (w.mines > 0 && len > 30 + ring / k) {
         const back = 24 * k;
         bodies.put('mine', end.x - Math.cos(dir) * back, end.y - Math.sin(dir) * back, MINE_R * k);
       }
-      if (!bodies.put('hook', tip.x, tip.y, HOOK_R * k, { rot: dir - Math.PI / 2, ay: HOOK_MOUTH })) {
+      if (!bodies.put('hook', tip.x, tip.y, HOOK_R * k, { rot: dir - Math.PI / 2, ay: HOOK_MOUTH, tint: paint.hook })) {
         g.circle(tip.x, tip.y, 7 * k).fill(P.brassDark).stroke({ color: P.line, width: 2.5 * k });
       }
       for (const gr of h.grabs) if (gr.t === 'item') item(gr.item, at(gr.item.id, gr.item.d, gr.item.w));
@@ -182,7 +184,7 @@ export class Actors extends Container {
     }
     if (w.held) {
       const r = HELD_R * k;
-      if (!bodies.put(fishArt(w, w.held, f.wide), hub.x, hub.y, r, { tint: itemTint(w.held) })) {
+      if (!bodies.put(fishArt(w, w.held, f.wide), hub.x, hub.y, r)) {
         g.roundRect(hub.x - r, hub.y - r, r * 2, r * 2, r / 3).fill(CATCH.junk).stroke({ color: P.line, width: 2.5 * k });
       }
     }

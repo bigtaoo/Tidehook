@@ -8,11 +8,13 @@ import { Ads } from './game/ads';
 import { DailyBoard } from './game/board';
 import { FIRST_SEED } from './game/guide/firstSeed';
 import { Guide } from './game/guide/guide';
+import { Haptics, webBuzz } from './game/haptics';
 import { bindKeys, eventAge } from './game/input';
 import { today } from './game/meta/daily';
 import { Harbour } from './game/meta/harbour';
 import { startRecording } from './game/rec/wire';
 import { SEEN_MS, Session, type SessionOptions } from './game/session';
+import { Settings } from './game/settings';
 import { urlSwitches } from './game/switches';
 import { Telemetry } from './game/telemetry';
 import { detectLocale, loadLocale, setLocale } from './i18n';
@@ -88,6 +90,12 @@ export async function boot(platform: Platform): Promise<Application> {
   const out = new WebAudioOut();
   out.listen(window);
   const sound = new Sound(out, platform.storage);
+  // the music, the sounds, the buzz and calm motion apart (game/settings.ts)
+  const settings = new Settings(platform.storage);
+  const mix = () => sound.setMix(settings.get('music'), settings.get('sfx'));
+  settings.onChange = mix;
+  mix();
+  const haptics = new Haptics(webBuzz(navigator), () => settings.get('buzz'));
   // silent while the host says so or an ad is on screen
   let hostMuted = false;
   const ads = new Ads(platform, session, () => sound.hostMute(hostMuted || ads.on));
@@ -106,6 +114,8 @@ export async function boot(platform: Platform): Promise<Application> {
     shop: (ok) => sound.cue(ok ? 'buy' : 'deny', performance.now()),
     toggleSound: () => sound.toggle(),
     soundOn: () => sound.on,
+    settings,
+    canBuzz: haptics.able,
   };
   bindKeys(window, session, (key) => key === 'm' && (sound.toggle(), true));
   const pause = () => session.pause();
@@ -141,6 +151,7 @@ export async function boot(platform: Platform): Promise<Application> {
     const ms = performance.now();
     sound.setPaused(session.mode === 'play' && session.paused);
     sound.events(events, ms);
+    if (now) haptics.events(events, ms);
     sound.reel(session.world, now, ms);
     sound.music(session.mode === 'lobby' || session.mode === 'title', seaOf(session.world).id);
     if (now !== playing) {
@@ -150,7 +161,7 @@ export async function boot(platform: Platform): Promise<Application> {
     }
   });
 
-  if (import.meta.env.DEV) Object.assign(window, { __th: { app, session, sound, ads, noAds, build: __TH_BUILD__ } });
+  if (import.meta.env.DEV) Object.assign(window, { __th: { app, session, sound, settings, ads, noAds, build: __TH_BUILD__ } });
   platform.loaded();
   return app;
 }

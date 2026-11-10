@@ -39,11 +39,6 @@ export function fishArt(w: World, it: Item, wide = false): ArtName {
   return FISH[it.val >= far ? 2 : it.val >= mid ? 1 : 0];
 }
 
-/** The tint over a catch's sprite: a pufferfish keeps its yellow. */
-export function itemTint(it: Item): number {
-  return it.kind === 'puffer' ? (STAND_IN.puffer?.tint ?? 0xffffff) : 0xffffff;
-}
-
 /** Kinds drawn with another kind's sprite, tinted (a new kind's own art may not be built yet):
  *  the boss is the turtle grown huge (drawn bigger by its radius), with a chest on its back. */
 const STAND_IN: Partial<Record<MonsterKind, { k: MonsterKind; tint: number }>> = {
@@ -51,8 +46,6 @@ const STAND_IN: Partial<Record<MonsterKind, { k: MonsterKind; tint: number }>> =
   hermit: { k: 'grunt', tint: 0x9fd8d0 },
   ray: { k: 'darter', tint: 0x8f98e8 },
   kraken: { k: 'glutton', tint: 0xc49ad8 },
-  puffer: { k: 'glutton', tint: 0xf6d860 },
-  moray: { k: 'darter', tint: 0x9fd07a },
 };
 
 const own = (k: MonsterKind, wide: boolean) => `enemy_${k}${wide ? '_side' : ''}`;

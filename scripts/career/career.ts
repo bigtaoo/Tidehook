@@ -6,7 +6,8 @@
 
 import { B } from '../../src/sim/balance';
 import { playGame } from '../../src/sim/bot/bot';
-import { addCounts, bestCounts, newlyMet, type Counts } from '../../src/sim/goals';
+import { addCounts, bestCounts, firstSunk, newlyMet, sunkCounts, type Counts } from '../../src/sim/goals';
+import { BF } from '../../src/sim/balanceFun';
 import { metaPrice, pearlsFor, type MetaLevels } from '../../src/sim/meta';
 import { chartOpen } from '../../src/sim/seas';
 import type { World } from '../../src/sim/world';
@@ -95,12 +96,14 @@ export function career(name: string, opts: CareerOptions = {}): Career {
   for (let n = 0; total < maxMins && done === null; n++) {
     const sea = seaFor(lv);
     const r = playGame(base + n, name, 1000, cap, B.tide.waves, lv, sea);
-    const c = { ...r.st, wave: r.wave, games: 1, [B.seas[sea].id]: r.wave };
+    const c = { ...r.st, ...sunkCounts(r.sunk), wave: r.wave, games: 1, [B.seas[sea].id]: r.wave };
+    // the codex pays for each kind first sunk (game/meta/harbour.ts)
+    const codex = firstSunk(totals, c).length * BF.codex.pearls;
     best = bestCounts(best, c);
     totals = addCounts(totals, c);
     const met = newlyMet(logged, best, totals);
     logged.push(...met.map((g) => g.id));
-    const log = met.reduce((s, g) => s + g.pearls, 0);
+    const log = met.reduce((s, g) => s + g.pearls, 0) + codex;
     const got = pearlsFor({ phase: r.over ? 'over' : 'shop', wave: r.wave, st: r.st, sea } as World) + log;
     pearls += got;
     total += r.secs / 60;

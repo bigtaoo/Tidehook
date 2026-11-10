@@ -30,6 +30,7 @@ export class WebAudioOut implements AudioOut {
    *  a voice for every end event a browser drops. */
   private ends: number[] = [];
   private audible = false;
+  private musicOn = true;
   private loading = false;
 
   /** Wires the unlock to the first touch, click or key on `target`. */
@@ -79,6 +80,12 @@ export class WebAudioOut implements AudioOut {
     }
   }
 
+  setMusicOn(on: boolean): void {
+    this.musicOn = on;
+    if (!on) this.music?.pause();
+    else if (this.audible) void this.music?.play().catch(() => {});
+  }
+
   setMusic(track: Music): void {
     this.track = track;
     const m = this.music;
@@ -94,7 +101,7 @@ export class WebAudioOut implements AudioOut {
       // the latest ask wins: a run of changes inside one fade loads only the last
       this.loaded = this.track;
       m.src = musicFile(this.track);
-      if (this.audible) void m.play().catch(() => {});
+      if (this.audible && this.musicOn) void m.play().catch(() => {});
       const t = ctx.currentTime;
       g.gain.cancelScheduledValues(t);
       g.gain.setValueAtTime(0, t);
@@ -131,7 +138,7 @@ export class WebAudioOut implements AudioOut {
   private wake(): void {
     void this.ctx?.resume().catch(() => {});
     // play() fails outside a gesture on some browsers; the next touch calls unlock() again
-    void this.music?.play().catch(() => {});
+    if (this.musicOn) void this.music?.play().catch(() => {});
   }
 
   private async load(): Promise<void> {

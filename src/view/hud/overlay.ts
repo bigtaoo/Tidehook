@@ -18,8 +18,11 @@ import type { Slot } from './overAds';
 const BANNER_MS = 4000;
 /** The captain on the game over card: above the words in portrait, beside them in landscape. */
 const CAPTAIN_H = 340;
-/** The gap the game over card leaves for the ad buttons (hud/overAds.ts), design units. */
+/** The gap the game over card leaves for the ad buttons (hud/overAds.ts), design units; a row of
+ *  the pause cover's settings takes as much. */
 const SLOT_H = 150;
+/** The rows of settings buttons on the pause cover (hud/settingsPanel.ts). */
+const PAUSE_ROWS = 2;
 /** Card lines this size and up (the headline) shrink to one line; smaller ones wrap onto two. */
 const WRAP_BELOW = 90;
 
@@ -44,6 +47,8 @@ export class Overlay extends Container {
   private readonly queue: string[] = [];
   private bannerMs = 0;
   private seen = new Set<string>();
+  /** Asked at each sea event: true the first time on this save (game/guide/guide.ts once). */
+  firstEvent: (() => boolean) | null = null;
   private readonly coverBox = new Container();
 
   constructor(private readonly fr: Frame) {
@@ -85,7 +90,11 @@ export class Overlay extends Container {
       else if (ev.e === 'held') this.hint('held', t('hints.held'));
       else if (ev.e === 'eatStart') this.hint('eat', t('hints.eat'));
       // every sea event says what it is, ahead of any lesson waiting (sim/seaEvents.ts)
-      else if (ev.e === 'seaEvent') this.queue.unshift(t(`events.${ev.id}` as TextKey));
+      // and the first on this save is followed by what sea events are
+      else if (ev.e === 'seaEvent') {
+        this.queue.unshift(t(`events.${ev.id}` as TextKey));
+        if (this.firstEvent?.()) this.queue.splice(1, 0, t('hints.event'));
+      }
     }
     // nor over a cover: the game over card's lines can climb up to the top
     this.banner.visible = !shop && !quiet && !this.cover;
@@ -137,7 +146,7 @@ export class Overlay extends Container {
       this.cover === 'title'
         ? [[t('title'), 120, P.brassLight], [t('boot.tapToStart'), 60, P.cream]]
         : this.cover === 'paused'
-          ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream]]
+          ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream], ['', PAUSE_ROWS, 0]]
           : this.cover === 'voyage'
             ? [[t('voyage.title'), 96, P.brassLight], [t('voyage.body', { n: this.wave }), 52, P.cream], ['', 0, 0]]
             : this.overLines();
@@ -150,8 +159,9 @@ export class Overlay extends Container {
     // each line's words, null for the ad buttons' row, then the block laid out by their real heights
     const items = lines.map(([text, size, fill]) => (text ? words(text, size * k, fill, maxW, size < WRAP_BELOW) : null));
     const gap = (i: number) => 20 + lines[i][1] * k * 0.05;
-    const slotH = SLOT_H * k;
-    const fixed = items.reduce((n, tx, i) => n + (tx ? gap(i) : slotH), 0);
+    // a slot's line says how many rows of buttons it holds (0 for one)
+    const slotH = (i: number) => SLOT_H * k * Math.max(1, lines[i][1]);
+    const fixed = items.reduce((n, tx, i) => n + (tx ? gap(i) : slotH(i)), 0);
     const textH = () => items.reduce((n, tx) => n + (tx?.height ?? 0), 0);
     // inside the field, and below the captain in portrait; a card too tall for it shrinks its words
     const lo = Math.max(0, f.y) + 20 + (tall ? CAPTAIN_H + 10 : 0);
@@ -170,8 +180,9 @@ export class Overlay extends Container {
     }
     items.forEach((tx, i) => {
       if (!tx) {
-        this.slot = { x: cx, y: y + slotH / 2 - 10 * k };
-        y += slotH;
+        const h = slotH(i);
+        this.slot = { x: cx, y: y + h / 2 - 10 * k, w: fit.wide ? maxW : fit.w - 64, h: h - 20 * k };
+        y += h;
         return;
       }
       tx.anchor.set(0.5);

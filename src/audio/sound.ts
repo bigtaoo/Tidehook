@@ -20,14 +20,18 @@ export interface AudioOut {
   setAudible(on: boolean): void;
   /** The music track to play, faded over from the one playing. */
   setMusic(track: Music): void;
+  /** The player's music setting (game/settings.ts): off stops the music, the effects play on. */
+  setMusicOn(on: boolean): void;
 }
 
 /** A small random detune, so a cue played often does not sound like a machine. */
 const DETUNE = 0.06;
 
 export class Sound {
-  /** The player's toggle. */
+  /** The player's toggle, the master switch. */
   on: boolean;
+  /** The effects setting (game/settings.ts); the music's goes straight to the speakers. */
+  private sfxOn = true;
   private hostMuted = false;
   private paused = false;
   private hidden = false;
@@ -52,6 +56,12 @@ export class Sound {
     this.store.setItem(SOUND_KEY, this.on ? 'on' : 'off');
     this.sync();
     return this.on;
+  }
+
+  /** The settings' music and effects switches, under the master one. */
+  setMix(music: boolean, sfx: boolean): void {
+    this.sfxOn = sfx;
+    this.out.setMusicOn(music);
   }
 
   hostMute(muted: boolean): void {
@@ -102,7 +112,7 @@ export class Sound {
 
   /** Plays `cue` unless it played too recently; `rate` before the random detune. */
   cue(cue: Cue, now: number, rate = 1): boolean {
-    if (!this.isAudible) return false;
+    if (!this.isAudible || !this.sfxOn) return false;
     const gap = MIN_GAP_MS[cue] ?? DEFAULT_GAP_MS;
     const last = this.lastAt.get(cue);
     if (last !== undefined && now - last < gap) return false;

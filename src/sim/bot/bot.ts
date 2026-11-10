@@ -127,6 +127,8 @@ export interface GameResult {
   lv: Record<string, number>;
   up: Stats;
   shops: ShopVisit[];
+  /** Monsters sunk by kind (the codex). */
+  sunk: Record<string, number>;
 }
 
 /** A persona at the controls of a live world: the view's ?autoplay and playGame both drive it.
@@ -175,5 +177,5 @@ export function playGame(seed: number, name: string, maxWave = 30, maxSecs = 360
     step(w);
     t++;
   }
-  return { seed, wave: w.wave, over: w.phase === 'over', secs: Math.round(t / TICK_RATE), st: w.st, lv: w.lv, up: w.up, shops };
+  return { seed, wave: w.wave, over: w.phase === 'over', secs: Math.round(t / TICK_RATE), st: w.st, lv: w.lv, up: w.up, shops, sunk: { ...w.sunk } };
 }

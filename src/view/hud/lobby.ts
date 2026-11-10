@@ -2,7 +2,7 @@
 // player has, the last voyage, and two tabs of cards bought with pearls that last from game to
 // game: the harbour's upgrades, and blueprints that let the shop offer locked cards
 // (docs/04-content.md); the seas (lobbySeas.ts), the daily voyage (lobbyDaily.ts), the captain's
-// log (lobbyLog.ts) and the codex of monsters met (lobbyCodex.ts); where the host sells it, the remove-ads card after the upgrades
+// log (lobbyLog.ts), the codex of monsters met (lobbyCodex.ts) and the cabin's settings and paint (lobbyCabin.ts); where the host sells it, the remove-ads card after the upgrades
 // (lobbyNoAds.ts). Then Set sail. It covers the lane like the shop, over a dim; rebuilt when
 // something it shows changes.
 
@@ -11,6 +11,7 @@ import type { Harbour } from '../../game/meta/harbour';
 import { t, type TextKey } from '../../i18n';
 import { B, type UpgradeSpec } from '../../sim/balance';
 import { artSprite, aspect, harbourTex } from '../art';
+import { drawCabin, type CabinActions, type CabinSettings } from './lobbyCabin';
 import { drawCodex } from './lobbyCodex';
 import { drawDaily, type DailyActions, type DailyView } from './lobbyDaily';
 import { drawLog } from './lobbyLog';
@@ -22,7 +23,7 @@ import { P } from '../kit/palette';
 import { fitIn, fitWrap, label } from '../kit/text';
 import type { Frame, Rect } from './frame';
 
-export interface LobbyActions extends SeaActions, DailyActions {
+export interface LobbyActions extends SeaActions, DailyActions, CabinActions {
   buy(id: string): void;
   sail(): void;
   /** A press on something the player cannot buy. */
@@ -52,13 +53,13 @@ const RADIUS = 32;
 /** How much of the panel's walnut lies over the harbour picture, so the cards and words read. */
 const SHADE = 0.64;
 
-export type LobbyTab = 'gear' | 'plans' | 'seas' | 'daily' | 'log' | 'codex';
-export const LOBBY_TABS: readonly LobbyTab[] = ['gear', 'plans', 'seas', 'daily', 'log', 'codex'];
+export type LobbyTab = 'gear' | 'plans' | 'seas' | 'daily' | 'log' | 'codex' | 'cabin';
+export const LOBBY_TABS: readonly LobbyTab[] = ['gear', 'plans', 'seas', 'daily', 'log', 'codex', 'cabin'];
 
-/** The upgrade cards on a tab, in order (none on the seas, the daily voyage, the log and the
- *  codex, which draw their own). */
+/** The upgrade cards on a tab, in order (none on the seas, the daily voyage, the log, the codex
+ *  and the cabin, which draw their own). */
 export function tabCards(tab: LobbyTab): UpgradeSpec[] {
-  if (tab === 'seas' || tab === 'daily' || tab === 'log' || tab === 'codex') return [];
+  if (tab !== 'gear' && tab !== 'plans') return [];
   return B.meta.upgrades.filter((u) => (tab === 'plans') === !!u.unlock);
 }
 
@@ -71,6 +72,7 @@ export class LobbyPanel extends Container {
   constructor(
     private readonly fr: Frame,
     private readonly act: LobbyActions,
+    private readonly settings: CabinSettings | null = null,
   ) {
     super();
     this.visible = false;
@@ -82,7 +84,7 @@ export class LobbyPanel extends Container {
       this.last = '';
       return;
     }
-    const key = [this.tab, h.pearls, voyage.wave, voyage.pearls, h.done.length, h.sea, h.charts.length, h.flat, daily.day, h.dailyBest(daily.day), daily.rows === undefined ? '-' : (daily.rows?.length ?? 'x'), daily.rows?.map((r) => r.name + r.wave).join(), noAds.state, noAds.price, noAds.busy, h.totals.games, h.totals.golds, ...B.meta.upgrades.map((u) => h.level(u.id))].join('|');
+    const key = [this.tab, h.pearls, voyage.wave, voyage.pearls, h.done.length, h.sea, h.charts.length, h.flat, daily.day, h.dailyBest(daily.day), daily.rows === undefined ? '-' : (daily.rows?.length ?? 'x'), daily.rows?.map((r) => r.name + r.wave).join(), noAds.state, noAds.price, noAds.busy, h.totals.games, h.totals.golds, h.paints.length, h.wear.rope, h.wear.hook, h.streak.n, h.streak.day, this.settings?.s.key ?? '', ...B.meta.upgrades.map((u) => h.level(u.id))].join('|');
     if (key === this.last) return;
     this.last = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
@@ -176,6 +178,7 @@ export class LobbyPanel extends Container {
     const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - rowH - GAP - gridY };
     if (this.tab === 'log') this.addChild(drawLog(h, area, k));
     if (this.tab === 'codex') this.addChild(drawCodex(h, area, k, wide));
+    if (this.tab === 'cabin') this.addChild(drawCabin(h, this.settings, area, k, wide, this.act));
     if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, this.act));
     if (this.tab === 'daily') this.addChild(drawDaily(h, daily, area, k, wide, this.act));
     // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read; a

@@ -9,6 +9,7 @@ import type { Offer } from '../../game/ads';
 import type { DailyBoard } from '../../game/board';
 import { today } from '../../game/meta/daily';
 import type { Session } from '../../game/session';
+import { SETTING_IDS, type SettingId, type Settings } from '../../game/settings';
 import type { SimEvent } from '../../sim/events';
 import { seaOf } from '../../sim/seas';
 import { frameFor, type Frame } from '../hud/frame';
@@ -26,18 +27,23 @@ import { Pointer } from '../hud/pointer';
 import { topCard } from '../../game/guide/shopPick';
 import { t } from '../../i18n';
 import { ShopPanel } from '../hud/shop';
+import { PauseSettings, shownSettings } from '../hud/settingsPanel';
 import type { Fit } from '../viewport';
 import { Actors } from './actors';
 import { drawField, drawWeather } from './field';
 import { WeatherTop } from './weather';
 import { Fx } from './fx';
 
-/** What the scene's buttons do beyond the Session: the sound. */
+/** What the scene's buttons do beyond the Session: the sound and the settings. */
 export interface SceneUi {
   /** A shop press: `ok` when it bought something. */
   shop(ok: boolean): void;
   toggleSound(): void;
   soundOn(): boolean;
+  /** The player's settings (game/settings.ts), null in a test. */
+  settings?: Settings | null;
+  /** The device can buzz, so the vibration setting shows. */
+  canBuzz?: boolean;
 }
 
 /** The rewarded ads' side of the screen (game/ads.ts): what to offer and what the buttons do. */
@@ -57,6 +63,7 @@ export class Scene extends Container {
   readonly overlay: Overlay;
   readonly overAds: OverAds;
   readonly voyageEnd: VoyageEnd;
+  readonly pauseSettings: PauseSettings;
   readonly lobby: LobbyPanel;
   /** The sea's weather over the water, redrawn when the sea changes. */
   private readonly weather = new Graphics();
@@ -96,8 +103,15 @@ export class Scene extends Container {
       denied: () => ui.shop(false),
     });
     this.overlay = new Overlay(fr);
+    this.overlay.firstEvent = () => !!session.guide?.once('event');
     this.overAds = new OverAds(fr, { revive: () => ads?.revive(), giveUp: () => ads?.giveUp(), double: () => ads?.double() });
     this.voyageEnd = new VoyageEnd(fr, { home: () => ui.shop(session.home()), sailOn: () => session.sailOn() });
+    const settingIds = shownSettings(SETTING_IDS, !!ui.canBuzz);
+    const toggle = (id: SettingId) => {
+      ui.settings?.toggle(id);
+      ui.shop(true);
+    };
+    this.pauseSettings = new PauseSettings(fr.boost, ui.settings ?? null, settingIds, toggle);
     this.lobby = new LobbyPanel(fr, {
       buy: (id) => ui.shop(session.buyMeta(id)),
       sail: () => session.sail(),
@@ -105,11 +119,16 @@ export class Scene extends Container {
       chart: (i) => ui.shop(session.buyChart(i)),
       pick: (i) => ui.shop(session.pickSea(i)),
       denied: () => ui.shop(false),
+      paint: (id) => {
+        const h = session.harbour;
+        ui.shop(!!h && (h.hasPaint(id) ? h.wearPaint(id) : h.buyPaint(id)));
+      },
+      toggle,
       noAds: () => void noAds?.buy().then((ok) => ok && ui.shop(true)),
-    });
+    }, ui.settings ? { s: ui.settings, ids: settingIds } : null);
     this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());
     this.field.addChild(drawField(fr.field), this.weather, this.actors, this.weatherTop, this.fx);
-    this.addChild(this.field, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.voyageEnd, this.lobby);
+    this.addChild(this.field, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.voyageEnd, this.pauseSettings, this.lobby);
     this.scale.set(fit.scale);
     this.position.set(fit.x, fit.y);
   }
@@ -124,6 +143,7 @@ export class Scene extends Container {
       this.feel.reset();
     }
     const events = s.drain();
+    this.feel.calm = !!this.ui.settings?.get('calm');
     if (s.mode === 'play' && !s.paused) this.feel.observe(events);
     else this.feel.reset();
     this.feel.apply(this.field, 0, 0, s.paused ? 0 : frameMs);
@@ -141,7 +161,7 @@ export class Scene extends Container {
     const atEnd = s.atVoyageEnd();
     const shop = s.mode === 'play' && w.phase === 'shop' && !s.paused && !atEnd;
     const g = s.guide;
-    this.shop.update(w, shop, s.shopping(), g?.tagOn && s.shopping() ? topCard(w) : null, !!this.ads?.freeReroll());
+    this.shop.update(w, shop, s.shopping(), g?.tagOn && s.shopping() ? topCard(w) : null, !!this.ads?.freeReroll(), !!g?.shopTeach && s.shopping());
     this.pointer.update(s, frameMs);
     // while the tutorial still has the throw to teach, it says so itself, not the banner
     const hints = g && !g.done.has('throw') ? events.filter((e) => e.e !== 'held') : events;
@@ -152,17 +172,21 @@ export class Scene extends Container {
     this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, overNotes(s), offer, end);
     this.overAds.update(atEnd ? null : offer, atEnd ? null : this.overlay.slot);
     this.voyageEnd.update(BF.voyage.home, atEnd && !s.paused ? this.overlay.slot : null);
+    this.pauseSettings.update(s.mode === 'play' && s.paused ? this.overlay.slot : null);
     this.lobby.update(s.harbour, s.mode === 'lobby', s.last, { day: today(), rows: this.board?.on ? this.board.rows : undefined }, this.noAds ?? NO_SALE);
     return events;
   }
 }
 
-/** The game over's extra lines: a new best on a sea, and the captain's log entries written. */
+/** The game over's extra lines: a new best on a sea, the captain's log entries written, the codex's
+ *  pearls for kinds first sunk and the daily streak's. */
 function overNotes(s: Session): string[] {
-  const { log, record, sea } = s.last;
+  const { log, record, sea, codex, streak } = s.last;
   const out: string[] = [];
   if (record) out.push(s.last.daily ? t('overlay.daily', { n: s.last.wave }) : t('overlay.record', { sea: seaName(sea) }));
   if (log.length === 1) out.push(t('overlay.logOne', { goal: goalText(log[0]) }));
   else if (log.length > 1) out.push(t('overlay.logMany', { n: log.length }));
+  if (codex) out.push(t('overlay.codex', { n: codex }));
+  if (streak?.pearls) out.push(t('overlay.streak', { n: streak.n, p: streak.pearls }));
   return out;
 }

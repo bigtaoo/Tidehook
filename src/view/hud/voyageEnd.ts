@@ -7,7 +7,7 @@ import { t } from '../../i18n';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
 import type { Frame } from './frame';
-import type { Slot } from './overAds';
+import { slotButtonW, type Slot } from './overAds';
 
 /** What the buttons do. */
 export interface VoyageActions {
@@ -31,13 +31,13 @@ export class VoyageEnd extends Container {
 
   /** `bonus`: the pearls home brings on top; `slot`: where the card left room, null for none. */
   update(bonus: number, slot: Slot | null): void {
-    const key = slot ? `${bonus}|${slot.x}|${slot.y}` : '';
+    const key = slot ? `${bonus}|${slot.x}|${slot.y}|${slot.w}` : '';
     if (key === this.key) return;
     this.key = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
     if (!slot) return;
     const k = this.fr.boost;
-    const w = Math.min(BTN_W * k, (this.fr.fit.w - 3 * GAP) / 2);
+    const w = slotButtonW(slot, BTN_W * k, GAP);
     const h = BTN_H * k;
     const buttons = [
       new Button({ w, h, text: t('voyage.goHome', { n: bonus }), size: 40 * k, color: P.go, onPress: () => this.act.home() }),

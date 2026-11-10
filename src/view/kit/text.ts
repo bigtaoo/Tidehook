@@ -7,6 +7,29 @@ import { P, TEXT_STROKE } from './palette';
 export const FONT = 'system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
 
 const CJK = /[　-鿿＀-￯]/;
+/** Marks that never start a line, and those that never end one (the CJK line-breaking rules). */
+const NO_START = '，。、：；！？）》」』】”’…·%';
+const NO_END = '（《「『【“‘';
+/** A hair space: Pixi wraps only at spaces, so CJK text gets one between characters that may part. */
+const BREAK = ' ';
+
+/** `text` with a break point wherever CJK may wrap: between two characters when one of them is
+ *  CJK, never before a closing mark or after an opening one. Without it Pixi took a whole sentence
+ *  as one word: after "第 30" it put the rest on its own line, and a colon could start a line. */
+export function cjkBreaks(text: string): string {
+  const cs = Array.from(text);
+  let out = '';
+  for (let i = 0; i < cs.length; i++) {
+    const a = cs[i];
+    const b = cs[i + 1];
+    out += a;
+    if (b === undefined || a.trim() === '' || b.trim() === '') continue;
+    if (!CJK.test(a) && !CJK.test(b)) continue;
+    if (NO_START.includes(b) || NO_END.includes(a)) continue;
+    out += BREAK;
+  }
+  return out;
+}
 
 export interface LabelOpts {
   fill?: number;
@@ -20,8 +43,9 @@ export interface LabelOpts {
 
 export function label(text: string, size: number, o: LabelOpts = {}): Text {
   const stroke = o.stroke ?? true;
+  const cjk = o.wrap !== undefined && CJK.test(text);
   return new Text({
-    text,
+    text: cjk ? cjkBreaks(text) : text,
     style: {
       fontFamily: FONT,
       fontWeight: o.weight ?? '800',
@@ -31,9 +55,9 @@ export function label(text: string, size: number, o: LabelOpts = {}): Text {
       align: o.align ?? 'center',
       wordWrap: o.wrap !== undefined,
       wordWrapWidth: o.wrap ?? 0,
-      // inside a word only where there are no spaces to break at (CJK); a Latin word too long for
-      // the line stays whole and fitIn shrinks it
-      breakWords: o.wrap !== undefined && CJK.test(text),
+      // CJK breaks at the spaces cjkBreaks put in (a run with no break point still splits); a Latin
+      // word too long for the line stays whole and fitIn shrinks it
+      breakWords: cjk,
       lineHeight: o.wrap !== undefined ? size * 1.2 : undefined,
     },
   });

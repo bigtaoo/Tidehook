@@ -12,13 +12,24 @@ import type { World } from './world';
 export type Counts = Readonly<Record<string, number>>;
 
 export function counts(w: World): Counts {
-  const sunk = Object.fromEntries(Object.entries(w.sunk).map(([k, n]) => [sunkKey(k), n]));
-  return { ...w.st, ...sunk, wave: w.wave, games: 1, [seaOf(w).id]: w.wave, [`${seaOf(w).id}Voyage`]: w.st.voyage };
+  return { ...w.st, ...sunkCounts(w.sunk), wave: w.wave, games: 1, [seaOf(w).id]: w.wave, [`${seaOf(w).id}Voyage`]: w.st.voyage };
+}
+
+/** A game's monsters sunk by kind, as counts under their sunkKey. */
+export function sunkCounts(sunk: Readonly<Record<string, number>>): Counts {
+  return Object.fromEntries(Object.entries(sunk).map(([k, n]) => [sunkKey(k), n]));
 }
 
 /** The count of monsters of `kind` sunk, in a game's counts and the harbour's totals (the codex). */
 export function sunkKey(kind: string): string {
   return `sunk_${kind}`;
+}
+
+/** The kinds a game's counts `c` sink for the first time over `totals`: the codex's new entries,
+ *  each worth `BF.codex.pearls`. */
+export function firstSunk(totals: Counts, c: Counts): string[] {
+  const pre = sunkKey('');
+  return Object.keys(c).filter((k) => k.startsWith(pre) && c[k] > 0 && !((totals[k] ?? 0) > 0)).map((k) => k.slice(pre.length));
 }
 
 /** `totals` with a game's `c` added. */

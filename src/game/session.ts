@@ -37,6 +37,9 @@ export interface LastGame {
   daily: boolean;
   /** The captain took the way home at the voyage's end (sim/waves.ts), with its pearls. */
   home: boolean;
+  /** The codex's pearls for kinds first sunk, and the daily streak paid (meta/harbour.ts). */
+  codex: number;
+  streak: { n: number; pearls: number } | null;
 }
 
 export interface SessionOptions {
@@ -113,7 +116,7 @@ export class Session {
   private finish = false;
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
-  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false };
+  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false, codex: 0, streak: null };
   /** An ad is on screen (game/ads.ts): nothing runs and taps do nothing, with no pause cover. */
   hold = false;
   /** Whether a fallen dock may be revived (a rewarded ad is there to watch); set by game/ads.ts. */
@@ -222,7 +225,10 @@ export class Session {
     if (this.daily) delete c[id];
     const log = this.harbour?.logGame(c) ?? [];
     const record = this.daily ? !!this.harbour?.logDaily(this.daily, w.wave) : was > 0 && w.wave > was;
-    this.last = { wave: w.wave, pearls: pearls + log.reduce((s, g) => s + g.pearls, 0), won: pearls, log, sea: w.sea, record, daily: !!this.daily, home };
+    const codex = this.harbour?.lastCodex ?? 0;
+    const streak = this.daily && this.harbour ? this.harbour.sailDaily(this.daily) : null;
+    const extra = log.reduce((s, g) => s + g.pearls, 0) + codex + (streak?.pearls ?? 0);
+    this.last = { wave: w.wave, pearls: pearls + extra, won: pearls, log, sea: w.sea, record, daily: !!this.daily, home, codex, streak };
   }
 
   /** The voyage's last wave is cleared: the captain chooses home (the game ends, with pearls) or

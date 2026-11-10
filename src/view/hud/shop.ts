@@ -10,7 +10,7 @@ import type { World } from '../../sim/world';
 import type { ShopPick } from '../../game/guide/shopPick';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
-import { fitIn, label } from '../kit/text';
+import { fitIn, fitWrap, label } from '../kit/text';
 import type { Frame, Rect } from './frame';
 
 export interface ShopActions {
@@ -49,17 +49,17 @@ export class ShopPanel extends Container {
 
   /** Shows the shop while the world is in it; `mine` is whether the player may buy (not the bot);
    *  `tag` is the card to mark as the Top pick, or null; `free`: the reroll is ad-paid instead. */
-  update(w: World, show: boolean, mine: boolean, tag: number | null = null, free = false): void {
+  update(w: World, show: boolean, mine: boolean, tag: number | null = null, free = false, teach = false): void {
     this.visible = show;
     if (!show) {
       this.last = '';
       return;
     }
-    const key = [w.wave, w.coins, w.hp, w.maxHp, w.mines, w.rerolls, mine, tag, free, ...w.cards.map((c) => `${c.id}${c.bought}`)].join('|');
+    const key = [w.wave, w.coins, w.hp, w.maxHp, w.mines, w.rerolls, mine, tag, free, teach, ...w.cards.map((c) => `${c.id}${c.bought}`)].join('|');
     if (key === this.last) return;
     this.last = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
-    this.build(w, mine, tag, free);
+    this.build(w, mine, tag, free, teach);
   }
 
   /** The button for a shop pick, design units; null while the shop is shut. */
@@ -68,7 +68,7 @@ export class ShopPanel extends Container {
     return this.spots.get(p.t === 'card' ? `card${p.i}` : p.t) ?? null;
   }
 
-  private build(w: World, mine: boolean, tag: number | null, free: boolean): void {
+  private build(w: World, mine: boolean, tag: number | null, free: boolean, teach: boolean): void {
     this.spots.clear();
     const r = this.fr.shop;
     const k = this.fr.boost;
@@ -85,8 +85,11 @@ export class ShopPanel extends Container {
     }
     // a new player's dock was patched for free after the wave (sim/tide.ts)
     const done = w.mended ? t('shop.titleMend', { n: w.wave, hp: w.mended }) : t('shop.title', { n: w.wave });
-    const title = label(mine ? done : t('shop.bot'), 52 * k);
-    fitIn(title, inner * 0.62 - capW, HEAD);
+    // a new player's first shop says what it is for instead (game/guide/guide.ts shopTeach)
+    const titleW = inner * 0.62 - capW;
+    const title = teach && mine ? label(t('shop.teach'), 36 * k, { wrap: titleW }) : label(mine ? done : t('shop.bot'), 52 * k);
+    if (teach && mine) fitWrap(title, titleW, HEAD);
+    else fitIn(title, titleW, HEAD);
     title.anchor.set(0, 0.5);
     title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
     const coins = label(t('hud.coins', { n: w.coins }), 52 * k, { fill: P.brassLight });

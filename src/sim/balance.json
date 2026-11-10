@@ -211,10 +211,14 @@
   "keg": { "every": 20 },
   "barnacle": { "every": 12 },
   "shanty": { "span": 1.5, "coins": 2 },
+  "_harbour": "The harbour's extras (docs/04-content.md section 3.11): paint for the rope and the hook (looks only), pearls for each monster first sunk, and the daily voyage's streak bonus.",
+  "paint": { "base": 60, "step": 40 },
+  "codex": { "pearls": 5 },
+  "streak": { "per": 5, "cap": 7 },
   "seas": [
     { "id": "bay", "lead": 0, "pearls": 1000, "speed": 1000, "gap": 1000, "price": 0, "needs": 0, "fog": 0, "wind": 0 },
     { "id": "fog", "lead": 3, "pearls": 1500, "speed": 1000, "gap": 700, "price": 120, "needs": 12, "fog": 520, "wind": 0 },
-    { "id": "storm", "lead": 4, "pearls": 2000, "speed": 1100, "gap": 1000, "price": 240, "needs": 12, "fog": 0, "wind": 1500 }
+    { "id": "storm", "lead": 4, "pearls": 2000, "speed": 1100, "gap": 1000, "price": 300, "needs": 12, "fog": 0, "wind": 1500 }
   ],
   "goals": [
     ["game", "wave", 5, 10], ["game", "wave", 8, 15], ["game", "wave", 10, 20], ["game", "wave", 15, 30],

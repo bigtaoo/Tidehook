@@ -1,6 +1,6 @@
 // Sea events (docs/04-content.md section 3.10): now and then a wave without a boss is not an
 // ordinary one. A feeding frenzy (faster monsters, coins for each kill), a gold tide (fish pay
-// double), a bounty (one marked monster, tougher, with a purse on it) or a swarm (more small fry,
+// half again), a bounty (one marked monster, tougher, with a purse on it) or a swarm (more small fry,
 // a coin each). Drawn from the luck stream, so the spawns and the catch do not shift.
 
 import { BF } from './balanceFun';
@@ -41,7 +41,7 @@ export function eventSpawn(w: World, m: Monster): void {
   }
 }
 
-/** What a fish landed now pays: double in a gold tide. */
+/** What a fish landed now pays: half again in a gold tide. */
 export function eventPay(w: World, val: number): number {
   return w.event === 'gold' ? muldiv(val, E.goldPay, 1000) : val;
 }

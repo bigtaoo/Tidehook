@@ -47,4 +47,10 @@ export const BF = {
   keg: { every: j.keg.every },
   barnacle: { every: j.barnacle.every },
   shanty: { span: pm(j.shanty.span), coins: pm(j.shanty.coins) },
+  /** The harbour's extras (game/meta): the `n`th paint bought costs `base + step * n` pearls; a
+   *  monster's first sinking pays `codex` pearls; the daily voyage's `n`th day in a row pays
+   *  `per * min(n, cap)` pearls more. */
+  paint: { base: j.paint.base, step: j.paint.step },
+  codex: { pearls: j.codex.pearls },
+  streak: { per: j.streak.per, cap: j.streak.cap },
 };

@@ -1,5 +1,5 @@
 // The harbour's daily tab (game/meta/daily.ts): today's voyage, the same sea and tide for everyone,
-// with the day's best and a button to sail it; beside it today's leaderboard where the host has one
+// with the day's best, the streak of days sailed in a row (game/meta/harbour.ts) and a button to sail it; beside it today's leaderboard where the host has one
 // (game/board.ts). Portrait stacks the two, landscape puts them side by side.
 
 import { Container, Graphics } from 'pixi.js';
@@ -64,14 +64,19 @@ function dayCard(h: Harbour, day: string, r: Rect, k: number, act: DailyActions)
   fitIn(best, inner, rowH * 0.8);
   best.anchor.set(0.5);
   best.position.set(cx, r.y + PAD + rowH * 2.4);
-  const descTop = r.y + PAD + rowH * 3;
+  const st = h.streakOn(day);
+  const streak = label(st.today ? t('daily.streakDone', { n: st.n }) : t('daily.streakNext', { n: st.n, p: st.pearls }), 30 * k, { fill: P.go, stroke: false });
+  fitIn(streak, inner, rowH * 0.8);
+  streak.anchor.set(0.5);
+  streak.position.set(cx, r.y + PAD + rowH * 3.3);
+  const descTop = r.y + PAD + rowH * 3.9;
   const desc = label(t('daily.rules'), 28 * k, { fill: P.ink, stroke: false, weight: '600', wrap: inner });
   fitWrap(desc, inner, r.y + r.h - btnH - PAD * 2 - descTop);
   desc.anchor.set(0.5, 0);
   desc.position.set(cx, descTop);
   const b = new Button({ w: inner, h: btnH, text: t('daily.sail'), size: 36 * k, color: P.go, onPress: () => act.daily() });
   b.position.set(r.x + PAD, r.y + r.h - btnH - PAD);
-  box.addChild(title, sea, best, desc, b);
+  box.addChild(title, sea, best, streak, desc, b);
   return box;
 }
 

@@ -38,6 +38,8 @@ export function width100(text: string, font: string): number {
     const known = map.get(c);
     if (known !== undefined) w += known;
     else if (FULL.test(c)) w += 100;
+    // the hair space view/kit/text.ts puts between CJK characters as a break point
+    else if (c === ' ') w += 6;
     else if (c === '\n' || c === '​') continue;
     else {
       unknown.add(c);

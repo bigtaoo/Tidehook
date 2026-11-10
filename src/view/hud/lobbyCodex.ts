@@ -1,11 +1,13 @@
 // The harbour's codex tab (docs/04-content.md section 3.10): every monster of the sea, each drawn
 // with how many the captain has sunk over all their games, and the gold fish landed. One not met
-// yet is a dark shape with no name, something to sail out for.
+// yet is a dark shape with no name, something to sail out for, with the pearls the first one sunk brings
+// (game/meta/harbour.ts logGame).
 
 import { Container, Graphics } from 'pixi.js';
 import type { Harbour } from '../../game/meta/harbour';
 import { t, type TextKey } from '../../i18n';
 import type { MonsterKind } from '../../sim/balance';
+import { BF } from '../../sim/balanceFun';
 import { sunkKey } from '../../sim/goals';
 import { artSprite } from '../art';
 import { P } from '../kit/palette';
@@ -41,7 +43,7 @@ export function drawCodex(h: Harbour, r: Rect, k: number, wide: boolean): Contai
     const n = sunk(kind);
     const { art, tint } = monsterArt(kind, false);
     const p = at(i);
-    box.addChild(tile(p.x, p.y, tw, th, k, art, n > 0 ? tint : SHADOW, n > 0 ? t(`monsters.${kind}.name` as TextKey) : t('codex.unseen'), n > 0 ? t('codex.sunk', { n }) : ''));
+    box.addChild(tile(p.x, p.y, tw, th, k, art, n > 0 ? tint : SHADOW, n > 0 ? t(`monsters.${kind}.name` as TextKey) : t('codex.unseen'), n > 0 ? t('codex.sunk', { n }) : t('codex.reward', { n: BF.codex.pearls })));
   });
   const golds = h.totals.golds ?? 0;
   const p = at(KINDS.length);
