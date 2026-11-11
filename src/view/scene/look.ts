@@ -113,8 +113,9 @@ export function step(m: Monster, d: number): Step {
   }
 }
 
-/** At most this many hit point pips under a monster. */
-const MAX_PIPS = 12;
+/** At most this many hit point pips under a monster; one of more hit points than this gets a
+ *  layered bar instead (bars). */
+export const MAX_PIPS = 12;
 
 /** The pips under a monster of `hp` hit points: how many, and how many of the last ones are over
  *  the hook's grip. While any are, a cast bounces off it (monsters.ts liftable); hits knock the
@@ -122,4 +123,24 @@ const MAX_PIPS = 12;
 export function pips(hp: number, grip: number): { n: number; heavy: number } {
   const n = Math.min(hp, MAX_PIPS);
   return { n, heavy: Math.min(n, Math.max(0, hp - grip)) };
+}
+
+/** The layered health bar for a monster of `hp` hit points out of `hp0` at full health: how many
+ *  layers are left (the top one included), how full that top layer is (0 to 1) and how deep a
+ *  layer is. A layer holds a pip row's worth at most, so however deep a monster is, one point of
+ *  damage always moves the top layer by a twelfth of the bar or more - which is the whole point
+ *  of the thing, a boss of forty having shown nothing for its first twenty-eight hits. The short
+ *  layer comes last, so a monster at full health shows every layer and a full bar. The drawing
+ *  stacks only the first few sheets (pips.ts drawBar); the count here stays exact. */
+export function bars(hp: number, hp0: number): { left: number; fill: number; size: number } {
+  const full = Math.max(1, hp0);
+  const layers = Math.max(1, Math.ceil(full / MAX_PIPS));
+  const size = Math.ceil(full / layers);
+  // what the last layer holds: the remainder, so the first hit off a full bar always shows
+  const last = Math.max(1, full - (layers - 1) * size);
+  const now = Math.max(0, Math.min(hp, full));
+  if (now <= last) return { left: 1, fill: now / last, size: last };
+  const over = now - last;
+  const n = Math.ceil(over / size);
+  return { left: n + 1, fill: (over - (n - 1) * size) / size, size };
 }

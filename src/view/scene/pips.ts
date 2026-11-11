@@ -8,6 +8,31 @@
 import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import { HEAVY, P } from '../kit/palette';
 
+/** The layered bar's height and how far each sheet under the top one peeks out, both in screen
+ *  pixels before the layout scale. */
+const BAR_H = 5;
+const SHEET = 2.5;
+/** However many layers are left, no more sheets than this are drawn under the top one: past four
+ *  the stack only crowds the lane, and the top sheet is what the player watches. */
+const MAX_SHEETS = 4;
+
+/** The health bar under a monster with more hit points than a row of pips can show (look.ts
+ *  bars): `left` sheets stacked, the top one `fill` full, centred on (x, y) and `w` wide. Pips
+ *  stop at twelve, so without this a boss of forty took twenty-eight hits with nothing to show
+ *  for them. Few shapes and only for the few deep monsters on a lane, so it is drawn straight
+ *  into the frame's Graphics rather than pooled. */
+export function drawBar(g: Graphics, x: number, y: number, w: number, k: number, left: number, fill: number, steel: boolean): void {
+  const h = BAR_H * k;
+  const x0 = x - w / 2;
+  for (let i = Math.min(left - 1, MAX_SHEETS); i > 0; i--) {
+    const d = i * SHEET * k;
+    g.roundRect(x0 + d, y + d, w, h, h / 2).fill({ color: P.line, alpha: 0.3 }).stroke({ color: P.line, width: 1.2 * k, alpha: 0.5 });
+  }
+  g.roundRect(x0, y, w, h, h / 2).fill({ color: P.line, alpha: 0.45 });
+  if (fill > 0) g.roundRect(x0, y, Math.max(h, w * fill), h, h / 2).fill(steel ? HEAVY : P.cream);
+  g.roundRect(x0, y, w, h, h / 2).stroke({ color: P.line, width: 1.6 * k });
+}
+
 /** A pip's outline, in pip radii: the row scales by the radius, and because the radius is always
  *  2.6 times the field's scale and the line 1.2 times it, their ratio does not move with layout. */
 const LINE = 1.2 / 2.6;

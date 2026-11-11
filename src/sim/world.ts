@@ -37,6 +37,9 @@ export interface Monster {
   d: number;
   w: number;
   hp: number;
+  /** Hit points at full health: what spawn gave it, grown with a glutton. The health display
+   *  reads the share left of it (view/scene/look.ts bars). */
+  hp0: number;
   r: number;
   /** FP per tick. */
   speed: number;

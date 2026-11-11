@@ -46,6 +46,7 @@ export function spawn(w: World, kind: MonsterKind): Monster {
     d: pd,
     w: pw,
     hp,
+    hp0: hp,
     r: spec.radius,
     speed: muldiv(muldiv(spec.speed, 1_000_000 + M.speedPerWave * grown, 1_000_000), seaOf(w).speed, 1000),
     stun: 0,
@@ -163,7 +164,9 @@ function eaten(w: World, m: Monster, it: Item): void {
   for (const o of w.mons) if (o.eat === it.id) o.eat = 0;
   const greedy = B.monsters[m.kind].greedy;
   if (greedy) {
-    m.hp += it.chest ? M.gluttonGrowBig : M.gluttonGrowSmall;
+    const grew = it.chest ? M.gluttonGrowBig : M.gluttonGrowSmall;
+    m.hp += grew;
+    m.hp0 += grew;
     m.ate += it.val;
     m.r = Math.min(M.gluttonMaxRadius, m.r + M.gluttonGrowRadius);
   }

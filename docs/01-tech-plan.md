@@ -267,7 +267,7 @@ Tidehook/
 - `.claude/launch.json` 为每个构建变体配一个预览服务。
 - **画面性能的四条规矩**（都是量出来的，别回退）：
   - 每帧重画的小图形要共用 `GraphicsContext`，不要每帧新建 `Graphics`。怪物血条的点（`view/scene/pips.ts`）
-    原来每帧重切约 170 个圆和方块，占 1.9 ms 一帧里的 1.5 ms；改成两个 context + 一池 `Graphics`（只改位置和缩放）后几乎为零。
+    原来每帧重切约 170 个圆和方块，占 1.9 ms 一帧里的 1.5 ms；改成两个 context + 一池 `Graphics`（只改位置和缩放）后几乎为零。血多的怪改画的那条多层血条（同一文件的 `drawBar`）是反例：一条只有五六个圆角矩形，一条航道上也只有一两只这样的怪，所以直接画进当帧的 `Graphics`，不进池。
   - 空图层不要白清。`Graphics.clear()` 即使上面什么都没有也会重新三角化（约 0.05 ms 一帧一层），
     而有三层整片海都是空的（海湾没天气、满血码头没警报、安静的航道没水圈）。`view/kit/redraw.ts` 的 `Redraw`
     记住上一帧有没有东西：一直空就完全不碰，刚空下来才清一次。用在 `scene/fx.ts`、`scene/weather.ts`、`hud/hud.ts`、`hud/pointer.ts`（引导的手）。

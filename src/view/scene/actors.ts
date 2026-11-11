@@ -23,10 +23,10 @@ import { LANE_LEN } from '../../sim/lane';
 import { bandRect } from './field';
 import { isBoss, diving } from '../../sim/kinds';
 import { clarity } from '../../sim/weather';
-import { fishArt, hasOwnArt, lookRadius, monsterArt, pips, step } from './look';
+import { bars, fishArt, hasOwnArt, lookRadius, MAX_PIPS, monsterArt, pips, step } from './look';
 import { inDanger, lowDock } from './danger';
 import { throwSight } from './sight';
-import { PipRow } from './pips';
+import { drawBar, PipRow } from './pips';
 import { SpritePool } from './sprites';
 
 const CRANE_D = B.crane.d / FP;
@@ -238,13 +238,21 @@ export class Actors extends Container {
     // hit points as pips under it; the ones over the hook's grip are steel squares, so a monster
     // the hook will bounce off says so before the cast; none until it is out of the fog
     if (under || seen < 1) return;
-    const { n, heavy } = pips(m.hp, boss ? 0 : grip);
     const pr = 2.6 * k;
-    const left = p.x - ((n - 1) * pr * 2.6) / 2;
     const y = p.y + r * 1.3 + pr * 2;
-    for (let i = 0; i < n; i++) this.pipRow.put(left + i * pr * 2.6, y, pr, i >= n - heavy);
+    // over the hook's grip, so a cast bounces off it (monsters.ts liftable); a boss never lifts
+    const steel = m.hp > (boss ? 0 : grip);
+    if (m.hp0 > MAX_PIPS) {
+      // too deep for a row of pips: a stack of sheets, the top one draining with every hit
+      const b = bars(m.hp, m.hp0);
+      drawBar(over, p.x, y - pr, Math.max(44 * k, r * 1.6), k, b.left, b.fill, steel);
+    } else {
+      const { n, heavy } = pips(m.hp, boss ? 0 : grip);
+      const x0 = p.x - ((n - 1) * pr * 2.6) / 2;
+      for (let i = 0; i < n; i++) this.pipRow.put(x0 + i * pr * 2.6, y, pr, i >= n - heavy);
+    }
     // and a weight on its shoulder, big enough to see on a phone, while it is too heavy to lift
-    if (heavy > 0) drawWeight(over, p.x + r * 1.25, p.y - r * 1.1, Math.max(WEIGHT_MIN, (m.r / FP) * 0.5) * k, k);
+    if (steel) drawWeight(over, p.x + r * 1.25, p.y - r * 1.1, Math.max(WEIGHT_MIN, (m.r / FP) * 0.5) * k, k);
     // a red "!" when it will reach the dock in a moment (danger.ts)
     if (inDanger(m)) drawAlert(over, p.x - r * 1.15, p.y - r * 1.15, (12 + 2 * Math.sin(time * 12)) * k, k);
   }
