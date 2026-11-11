@@ -30,6 +30,7 @@ PICK[winch]=p3              # p1 was photographic wood and rope, p2 too bare
 PICK[enemy_puffer]=p2       # p1 showed its face (lips and belly), not its back
 PICK[enemy_puffer_side]=p2  # p1 with its eye white filled (dot eyes only)
 PICK[enemy_moray]=p2        # p1 curled into a ring, seen from the side
+PICK[enemy_moray_side]=p4   # p1 and p2 were fish; p3 lost the tail fan, p4 the throat fin and belly frill
 
 for n in enemy_grunt enemy_darter enemy_brute enemy_glutton \
          enemy_grunt_side enemy_darter_side enemy_brute_side enemy_glutton_side \
