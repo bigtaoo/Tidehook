@@ -16,6 +16,7 @@ import { frameFor, type Frame } from '../hud/frame';
 import { Hud } from '../hud/hud';
 import { goalText } from '../hud/lobbyLog';
 import { LobbyPanel } from '../hud/lobby';
+import type { DailyView } from '../hud/lobbyDaily';
 import { NO_SALE } from '../hud/lobbyNoAds';
 import type { NoAds } from '../../game/noAds';
 import { seaName } from '../hud/lobbySeas';
@@ -57,6 +58,11 @@ export interface SceneAds extends AdActions {
 }
 
 const NO_UI: SceneUi = { shop: () => {}, toggleSound: () => {}, soundOn: () => true };
+/** Stand-ins for the screens that are not up: the game over card's extra lines and the harbour's
+ *  day. Both cost real work to build (a handful of t() calls; a new Date), and neither panel reads
+ *  them while it is hidden, so a game spent a frame's budget on them 60 times a second. */
+const NO_NOTES: readonly string[] = [];
+const NO_DAILY: DailyView = { day: '' };
 
 export class Scene extends Container {
   readonly frame: Frame;
@@ -171,11 +177,14 @@ export class Scene extends Container {
     const pearls = s.harbour ? s.last.pearls : null;
     const offer = this.ads?.offer() ?? null;
     const end = atEnd ? 'voyage' : s.mode === 'over' && s.last.home ? 'home' : null;
-    this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, overNotes(s), offer, end);
+    const notes = s.mode === 'over' ? overNotes(s) : NO_NOTES;
+    this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, notes, offer, end);
     this.overAds.update(atEnd ? null : offer, atEnd ? null : this.overlay.slot);
     this.voyageEnd.update(BF.voyage.home, atEnd && !s.paused ? this.overlay.slot : null);
     this.pauseSettings.update(s.mode === 'play' && s.paused ? this.overlay.slot : null);
-    this.lobby.update(s.harbour, s.mode === 'lobby', s.last, { day: today(), rows: this.board?.on ? this.board.rows : undefined }, this.noAds ?? NO_SALE);
+    const inLobby = s.mode === 'lobby';
+    const daily = inLobby ? { day: today(), rows: this.board?.on ? this.board.rows : undefined } : NO_DAILY;
+    this.lobby.update(s.harbour, inLobby, s.last, daily, this.noAds ?? NO_SALE);
     return events;
   }
 }

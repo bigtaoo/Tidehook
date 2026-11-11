@@ -107,18 +107,20 @@
 
 - 全部是本地已有的 CC0 素材：Kenney 的 Impact / Interface / Sci-fi Sounds 和 Music Jingles，音乐用 FreePD 的曲子（见下面“每片海一首”）。不用代码合成音效：Swarm Orbit 记录了 Playgama 审核条款 3.3.2 的风险，Potion Siege 的合成方案不照搬。
 - `python tools/build_audio.py` 一键重建：源文件先复制进 `art/audio/sources/`（之后只靠本仓库就能重建），再用 ffmpeg 去头尾静音、限长、转单声道、按 cue 归一峰值，编码成 MP3（各浏览器都能解）写进 `public/audio/<cue>_<n>.mp3`。
-  - 音乐做响度归一（-20 LUFS）、保留立体声、64 kbps（四首一共约 2.8 MB 的音频，包体仍在 5 MB 以内），去掉头尾静音，避免循环接缝处断一下。
+  - 音乐做响度归一（-20 LUFS）、保留立体声、64 kbps，去掉头尾静音，避免循环接缝处断一下。
   - **每片海一首，港口一首**（2026-11-10，`public/audio/music_<track>.mp3`，`src/audio/cues.ts` 的 MUSIC）：
     | 场景 | 曲子 | 为什么 |
     |---|---|---|
     | 港口（大厅、标题） | Hopeful（Rafael Krux） | 暖、不急，两局之间喘口气 |
     | 家门口的港湾 | Busybody（Bryan Teoh） | 一开始就用的主题，“快乐地手忙脚乱” |
     | 雾湾 | Managing Mischief（Bryan Teoh），52.5 s 起截 74 s | “调皮又小心”，悄悄地，看不见前面来的是什么 |
-    | 风暴海 | Busybody 加快 12%、升两个半音 | 同一个港口遇上大风：熟悉的曲子更急 |
+    | 风暴海 | Busybody 加快 12%、升两个半音（**不另出文件**，播放时变速） | 同一个港口遇上大风：熟悉的曲子更急 |
   - 都是本地已有的 FreePD 文件（D:/funny 里已经用过、带 CC0 证书），没有从网上下载。只有三首可用，所以风暴海用 Busybody 的变速版而不是第四首曲子；以后有新的 CC0 曲子再换。
+  - **风暴海不单独出文件**（2026-11-11）：它就是港湾那首放快 12%，以前却又编码成一份 600 kB 的 `music_storm.mp3`——同一段母带、同一条处理链，只是提前做了变速。现在 `tools/build_audio.py` 的 `SHARED` 跳过它，`src/audio/cues.ts` 的 `musicFile()` 让它指向 `music_bay.mp3`、`musicRate()` 给出 1.12，播放时在 `<audio>` 上设 `playbackRate`（并关掉 `preservesPitch`，这样和 ffmpeg 的 `asetrate` 一样连音高一起升）。包体小了 600 kB，少一次下载，音质反而少了一代转码。浏览器若不支持 `preservesPitch`，只是音高不升、曲子照样更急。
+  - 两首共用一个文件时换场景不淡出：直接改 `playbackRate`，曲子不重头来（实际只会从港口切过去，很少碰到）。
   - 换场景时 `<audio>` 只有一个：淡出 0.4 秒、换源、淡入 0.4 秒（iOS 第一次点击解锁的是这个元素，换源不用重新解锁）。截出来的片段两头各淡 0.35 秒，循环接缝是一口气，不是咔哒一声。
   - 同时写 `art/audio/credits.json`（每个文件的来源和授权）、`src/audio/cues.json`（每个 cue 的变体数）和授权原文 `art/audio/licenses/`。
-  - 共 37 个文件约 1.1 MB；`src/audio/audio.test.ts` 校验文件、cue 表和授权一一对应。
+  - 共 39 个文件约 2.2 MB（音效 35 个约 0.2 MB，音乐 3 首约 2.1 MB）；`src/audio/audio.test.ts` 校验文件、cue 表和授权一一对应，共用文件的曲子不另算一份。
 - 音效表（cue → 素材 → 听感）：
 
 | cue | 触发 | 素材 | 变体 |
@@ -206,3 +208,4 @@
   按面板等比铺满、底边对齐，裁成面板的圆角，上面压一层 64% 的深木色，卡片和字照样读得清。
 - **商店封面**：见 `docs/05-store.md` 第 1 节。原画 `art/raw/cover/cover_e2.png`（第二次编辑：清掉上面三分之一的鱼和罗盘，给标题留位置），
   `python tools/build_cover.py` 出三张，写进 `art/cover/`。
+- **标签页图标**：`index.html` 里一行内联 SVG（data URI，约 400 字节）：深海底色上一枚黄铜鱼钩，钩眼、钩弯、倒刺三笔，16 px 下仍认得出是钩不是字母 J。不出文件，顺带免掉每次加载的 `/favicon.ico` 404；门户是 iframe，用不到它。

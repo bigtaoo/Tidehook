@@ -5,7 +5,7 @@ import { B } from '../sim/balance';
 import type { SimEvent } from '../sim/events';
 import { Session } from '../game/session';
 import { startGame } from '../sim/step';
-import { CUES, cueFile, cueFor, MUSIC, musicFile, seaMusic, VARIANTS, type Cue, type Music } from './cues';
+import { CUES, cueFile, cueFor, MUSIC, musicFile, musicRate, seaMusic, VARIANTS, type Cue, type Music } from './cues';
 import { CLICK_LEN, ReelClock, reelRate } from './reel';
 import { Sound, SOUND_KEY, type AudioOut } from './sound';
 
@@ -41,19 +41,26 @@ function setup(stored: string | null = null, rand = () => 0.5) {
 
 describe('the sound files', () => {
   it('has a built file for every variant of every cue, and nothing else', () => {
-    const want = [...CUES.flatMap((c) => Array.from({ length: VARIANTS[c] }, (_, i) => cueFile(c, i))), ...MUSIC.map(musicFile)];
+    // a track that shares another's file (the storm plays the bay's) names no file of its own
+    const want = [...new Set([...CUES.flatMap((c) => Array.from({ length: VARIANTS[c] }, (_, i) => cueFile(c, i))), ...MUSIC.map(musicFile)])];
     expect(built.sort()).toEqual(want.sort());
   });
 
   it('credits every file with its source and a CC0 pack', () => {
     const files = [...credits.cues.flatMap((c) => c.files.map((f) => ({ file: f.file, source: f.source }))), ...credits.music];
-    expect(files.map((f) => f.file).sort()).toEqual([...built].sort());
+    expect([...new Set(files.map((f) => f.file))].sort()).toEqual([...built].sort());
     const packs = credits.packs as Record<string, { license: string }>;
     for (const f of files) expect(packs[f.source.split('/')[0]]?.license).toBe('CC0-1.0');
   });
 });
 
 describe('the music', () => {
+  it('plays the storm as the bay sped up, from the one file', () => {
+    expect(musicFile('storm')).toBe(musicFile('bay'));
+    expect(musicRate('storm')).toBeGreaterThan(1);
+    for (const m of MUSIC) if (m !== 'storm') expect(musicRate(m)).toBe(1);
+  });
+
   it('has a track for the harbour and every sea, a bay one for any other', () => {
     for (const sea of B.seas) expect(seaMusic(sea.id)).toBe(sea.id);
     expect(seaMusic('harbour')).toBe('bay');

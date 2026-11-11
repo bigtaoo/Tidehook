@@ -3,7 +3,7 @@
 // swaps its source and fades back in, so the element iOS unlocked with the first touch stays unlocked. Browsers keep audio locked until the player touches the page,
 // so nothing is created before unlock(); every call before then is dropped, quietly.
 
-import { CUES, cueFile, musicFile, VARIANTS, type Cue, type Music } from './cues';
+import { CUES, cueFile, musicFile, musicRate, VARIANTS, type Cue, type Music } from './cues';
 import type { AudioOut } from './sound';
 
 /** Mix levels, 0-1. */
@@ -54,6 +54,7 @@ export class WebAudioOut implements AudioOut {
       this.sfx.connect(this.ctx.destination);
       const m = new Audio(musicFile(this.track));
       this.loaded = this.track;
+      setRate(m, musicRate(this.track));
       m.loop = true;
       m.preload = 'auto';
       // through the graph, not m.volume: iOS ignores that
@@ -92,6 +93,12 @@ export class WebAudioOut implements AudioOut {
     const g = this.musicGain;
     const ctx = this.ctx;
     if (!m || !g || !ctx || this.loaded === track || this.swap) return;
+    // the storm's tune is the bay's own file played faster (cues.ts): change gear, no fade and no reload
+    if (this.loaded !== null && musicFile(track) === musicFile(this.loaded)) {
+      this.loaded = track;
+      setRate(m, musicRate(track));
+      return;
+    }
     const now = ctx.currentTime;
     g.gain.cancelScheduledValues(now);
     g.gain.setValueAtTime(g.gain.value, now);
@@ -101,6 +108,7 @@ export class WebAudioOut implements AudioOut {
       // the latest ask wins: a run of changes inside one fade loads only the last
       this.loaded = this.track;
       m.src = musicFile(this.track);
+      setRate(m, musicRate(this.track));
       if (this.audible && this.musicOn) void m.play().catch(() => {});
       const t = ctx.currentTime;
       g.gain.cancelScheduledValues(t);
@@ -160,4 +168,14 @@ export class WebAudioOut implements AudioOut {
       }),
     );
   }
+}
+
+/** How fast the element plays, pitch and all: the storm's track is the bay's sped up (cues.ts),
+ *  which is a resample, not a tempo stretch. A browser with no `preservesPitch` holds the pitch
+ *  and only hurries the tune, which is the same gale a shade less bright. */
+function setRate(m: HTMLAudioElement, rate: number): void {
+  const el = m as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean };
+  el.preservesPitch = false;
+  el.webkitPreservesPitch = false;
+  m.playbackRate = rate;
 }

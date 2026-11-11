@@ -6,7 +6,8 @@ Each cue below names its source files. The first run copies them from the local 
 into art/audio/sources/, so later runs need only this repo. Every file is trimmed of leading and
 trailing silence, capped in length, made mono and peak-normalised to the cue's level, then encoded
 as MP3 (every browser decodes it) into public/audio/<cue>_<n>.mp3. The music, one track per sea
-and one for the harbour (public/audio/music_<track>.mp3), is loudness-normalised and kept in stereo.
+and one for the harbour (public/audio/music_<track>.mp3), is loudness-normalised and kept in stereo;
+a track that is only another played faster (SHARED) is not built at all, the game setting the rate.
 
 Writes:
   public/audio/*.mp3         what the game loads
@@ -80,6 +81,10 @@ MUSIC = {
               "the Storm Reach: the bay's tune played 12% faster and two semitones up, the same harbour in a gale"),
 }
 MUSIC_FADE = 0.35
+# A track that is another one played faster: the game sets the rate on the <audio> element
+# (src/audio/cues.ts SHARED, RATE), so only the master's own file is built. A second encode of
+# the same tune cost 600 kB of the bundle and a second download for nothing.
+SHARED = {"storm": "bay"}
 
 
 def run(*args: str) -> bytes:
@@ -102,11 +107,6 @@ def peak_db(path: Path) -> float:
         if "max_volume" in line:
             return float(line.split("max_volume:")[1].split("dB")[0])
     raise RuntimeError(f"no peak for {path}")
-
-
-def sample_rate(path: Path) -> int:
-    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate", "-of", "csv=p=0", str(path)], capture_output=True, text=True).stdout
-    return int(out.strip())
 
 
 def duration_ms(path: Path) -> float:
@@ -149,22 +149,22 @@ def main() -> None:
         counts[cue] = len(files)
         credits["cues"].append(entry)
     for track, (rel, title, author, upstream, at, length, rate, why) in MUSIC.items():
-        dst = OUT / f"music_{track}.mp3"
-        # it loops: silence at either end would be a gap at the seam
-        tail = "areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse"
-        head = "silenceremove=start_periods=1:start_threshold=-50dB"
-        chain = [head, tail]
-        if length:
-            # a region of a long master, faded at both ends so the seam is a breath, not a click
-            chain = [f"atrim={at}:{at + length}", "asetpts=PTS-STARTPTS", f"afade=t=in:d={MUSIC_FADE}",
-                     f"afade=t=out:st={length - MUSIC_FADE}:d={MUSIC_FADE}"]
-        if rate != 1.0:
-            chain.append(f"asetrate={round(sample_rate(source(rel)) * rate)},aresample=44100")
-        chain.append("loudnorm=I=-20:TP=-3:LRA=11")
-        run("-i", str(source(rel)), "-af", ",".join(chain), "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "64k", str(dst))
+        shared = SHARED.get(track)
+        dst = OUT / f"music_{shared or track}.mp3"
+        if not shared:
+            # it loops: silence at either end would be a gap at the seam
+            tail = "areverse,silenceremove=start_periods=1:start_threshold=-50dB,areverse"
+            head = "silenceremove=start_periods=1:start_threshold=-50dB"
+            chain = [head, tail]
+            if length:
+                # a region of a long master, faded at both ends so the seam is a breath, not a click
+                chain = [f"atrim={at}:{at + length}", "asetpts=PTS-STARTPTS", f"afade=t=in:d={MUSIC_FADE}",
+                         f"afade=t=out:st={length - MUSIC_FADE}:d={MUSIC_FADE}"]
+            chain.append("loudnorm=I=-20:TP=-3:LRA=11")
+            run("-i", str(source(rel)), "-af", ",".join(chain), "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "64k", str(dst))
         credits["music"].append({"track": track, "file": f"audio/{dst.name}", "title": title, "author": author, "source": rel,
                                  "upstream": f"archive.org/details/freepd {upstream}", "why": why, "start_s": at, "length_s": length,
-                                 "rate": rate, "duration_ms": duration_ms(dst), "bytes": dst.stat().st_size})
+                                 "rate": rate, "duration_ms": round(duration_ms(dst) / rate, 1), "bytes": dst.stat().st_size})
         used.add(rel.split("/")[0])
     for pack in sorted(used):
         name, author, url, lic = PACKS[pack]

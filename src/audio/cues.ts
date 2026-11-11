@@ -20,8 +20,18 @@ export function cueFile(cue: Cue, i: number): string {
 export const MUSIC = ['harbour', 'bay', 'fog', 'storm'] as const;
 export type Music = (typeof MUSIC)[number];
 
+/** The Storm Reach's tune is the bay's played faster (tools/build_audio.py MUSIC), so it is that
+ *  same file at a higher rate rather than a second 600 kB copy of the same master. */
+const SHARED: Partial<Record<Music, Music>> = { storm: 'bay' };
+const RATE: Partial<Record<Music, number>> = { storm: 1.12 };
+
 export function musicFile(m: Music): string {
-  return `audio/music_${m}.mp3`;
+  return `audio/music_${SHARED[m] ?? m}.mp3`;
+}
+
+/** How fast to play a track's file, 1 for its own. */
+export function musicRate(m: Music): number {
+  return RATE[m] ?? 1;
 }
 
 /** The track for a sea id; a sea without its own plays the bay's. */
