@@ -52,6 +52,9 @@ export async function boot(platform: Platform): Promise<Application> {
   const params = urlSwitches(location.search);
   const want = detectLocale([params.get('lang'), platform.storage.getItem(LANG_KEY), ...platform.languages()]);
   const table = loadLocale(want);
+  // both are plain fetches and want no renderer, so they run while the page is still finding its
+  // size (a portal's iframe can sit at 0x0 for a while) and while the WebGL context comes up
+  const art = loadArt();
   await waitForSize(window);
 
   const app = new Application();
@@ -66,7 +69,6 @@ export async function boot(platform: Platform): Promise<Application> {
   });
   (platform.mount ?? document.body).appendChild(app.canvas);
   app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  const art = loadArt();
   if (await table) setLocale(want);
   await art;
 
@@ -95,7 +97,7 @@ export async function boot(platform: Platform): Promise<Application> {
   const mix = () => sound.setMix(settings.get('music'), settings.get('sfx'));
   settings.onChange = mix;
   mix();
-  const haptics = new Haptics(webBuzz(navigator), () => settings.get('buzz'));
+  const haptics = new Haptics(webBuzz(navigator, window), () => settings.get('buzz'));
   // silent while the host says so or an ad is on screen
   let hostMuted = false;
   const ads = new Ads(platform, session, () => sound.hostMute(hostMuted || ads.on));
