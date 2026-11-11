@@ -220,7 +220,7 @@ Tidehook/
     **要用户点头**（`replace_in_app_products` 会删掉没列出的商品）。没在后台建之前，线上就是“不出现”。
   - 开发时 `?pay=fake`（`platform/fakePayments.ts`，标价 $1.99，买的时候等 0.6 秒）。
 - **之后再说**：iOS（Capacitor 8 + AdMob + 去广告内购 + Game Center + Capgo OTA，照 Potion Siege 的 `docs/ios.md`），以及微信小游戏（竖屏天然适配，参考 Blight Bloom 的 Pixi DOMAdapter 方案，主包 4 MB）。
-- 包体：首包 ≤ 5 MB，图片用 WebP。四首音乐加进来以后 `dist-playgama` 3.98 MB，zip 3.2 MB（QA 工具实测加载 1.17 秒）。
+- 包体：首包 ≤ 5 MB，图片用 WebP。四首音乐加进来以后 `dist-playgama` 曾是 3.98 MB、zip 3.2 MB（QA 工具那次实测加载 1.17 秒）；风暴海改成共用海湾那份文件（`00-art-direction.md` 第 7 节）之后是 **3.45 MB，zip 2.7 MB**，加载没有再测。
 - **QA 工具**（2026-11-10）：`npm run dev:playgama` 后，用开发者后台的 `get_local_game_qa_tool_link` 拿链接，在 Playgama 的 Bridge 环境里跑本地包。
   日志顺序正常：Bridge 初始化 → 读四个存档 key → 语言 → 读购买和商品目录 → `game_ready` → `gameplay_started`，没有报错。
   Chrome 装了拦截插件时 QA 工具会报 AdBlock，这时三个激励按钮不出现，是预期行为。
@@ -249,12 +249,13 @@ Tidehook/
 - 语言（2026-11）：en、zh、ru、es、pt（巴西葡语）、tr、de、fr，除英文外都是懒加载分包，按浏览器或平台语言自动选。语气短、直白，带点港口味。插进句子的名词（海域、目标、怪名）一律放在冒号后面，避开格变化；土耳其语里含 {sea} 的句子把海名放在最前。占位符由 `i18n.test.ts` 校验。德语和俄语偏长，放不下时先缩短文案，不改布局。
 - 开发开关（`src/game/switches.ts`，只在 dev 构建里生效）：`?autoplay`、`?speed`、`?ads=fake`、`?lang`、`?seed`、`?lag`、`?ease=N`（每局 N 波慢潮，0 = 裸局）、`?board=fake`（假的每日榜）、`?pay=fake`（去广告内购打开）、`?rec=0`（关掉点击记录器）。
 - `.claude/launch.json` 为每个构建变体配一个预览服务。
-- **画面性能的两条规矩**（都是量出来的，别回退）：
+- **画面性能的三条规矩**（都是量出来的，别回退）：
   - 每帧重画的小图形要共用 `GraphicsContext`，不要每帧新建 `Graphics`。怪物血条的点（`view/scene/pips.ts`）
     原来每帧重切约 170 个圆和方块，占 1.9 ms 一帧里的 1.5 ms；改成两个 context + 一池 `Graphics`（只改位置和缩放）后几乎为零。
   - 空图层不要白清。`Graphics.clear()` 即使上面什么都没有也会重新三角化（约 0.05 ms 一帧一层），
     而有三层整片海都是空的（海湾没天气、满血码头没警报、安静的航道没水圈）。`view/kit/redraw.ts` 的 `Redraw`
     记住上一帧有没有东西：一直空就完全不碰，刚空下来才清一次。用在 `scene/fx.ts`、`scene/weather.ts`、`hud/hud.ts`、`hud/pointer.ts`（引导的手）。
+  - 没露面的面板不要替它备料。`view/scene/scene.ts` 原来每帧都算 `today()`（`new Date`）和 `overNotes()`（一串 `t()`），可这两样只有大厅和结算卡在读——打一局就是一秒六十次白烧。按 `s.mode` 给常量占位（`NO_DAILY`、`NO_NOTES`），面板自己的 `update()` 早就会在没变或藏着时直接返回。
   - 反过来：`Text` 的新建很便宜（约 0.003 ms），池化没有意义，量过，不做。
 
 ## 9. 里程碑建议
