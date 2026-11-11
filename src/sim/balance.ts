@@ -301,7 +301,10 @@ export const B = {
     jitterMax: pm(j.waves.jitterMax),
     clearDelay: sec(j.waves.clearDelay),
   },
-  tide: { waves: j.tide.waves, pace: pm(j.tide.pace) },
+  /** The tide's three stages (sim/tide.ts): `pace` levels a wave over the first `waves` of a
+   *  game, one a wave after that, and `surge` a wave from wave `surgeFrom` on, so a game that
+   *  has run long closes rather than drifting on. */
+  tide: { waves: j.tide.waves, pace: pm(j.tide.pace), surgeFrom: j.tide.surgeFrom, surge: pm(j.tide.surge) },
   /** The daily voyage (game/meta/daily.ts): its waves of slow tide, fewer than a voyage's. */
   daily: { ease: j.daily.ease },
   meta: { perWave: j.meta.perWave, upgrades: j.meta.upgrades.map(upgradeSpec) },

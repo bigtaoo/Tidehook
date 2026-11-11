@@ -13,7 +13,6 @@ export const es: Table = {
     dock: 'Muelle {hp}/{max}',
     mines: 'Minas {n}',
     held: 'Chatarra en mano',
-    pause: 'Pausa',
   },
   shop: {
     teach: 'Los peces dan monedas y las monedas compran cartas. Elige una y luego la siguiente oleada',
@@ -68,6 +67,7 @@ export const es: Table = {
     debut: 'Llega uno nuevo: {name}. {tip}',
     held: 'Chatarra en mano. Toca otra vez para lanzarla por la línea.',
     eat: 'Un monstruo se ha parado a comer. Engánchalo mientras mastica.',
+    tide: 'La marea cambia. Desde aquí el mar sube más rápido que tú',
   },
   guide: {
     cast: 'Toca cuando brille el sedal',

@@ -12,6 +12,7 @@ import { FP } from '../../sim/math/fixed';
 import { seaOf } from '../../sim/seas';
 import { gust } from '../../sim/weather';
 import { SEA } from '../kit/palette';
+import { Redraw } from '../kit/redraw';
 import { toDesign, type Field } from '../orient';
 import { bandRect } from './field';
 
@@ -28,6 +29,7 @@ const STREAK_COLOR = 0xcfe0ee;
 export class WeatherTop extends Container {
   private readonly wall = new Graphics();
   private readonly moving = new Graphics();
+  private readonly redraw = new Redraw();
   private sea = '';
   /** The wind's travel so far, world units across the lane (signed). */
   private blown = 0;
@@ -51,14 +53,13 @@ export class WeatherTop extends Container {
     }
     const dt = s.paused ? 0 : frameMs / 1000;
     this.time += dt;
+    if (sea.wind > 0) this.blown += (gust(w) / sea.wind) * STREAK_SPEED * dt;
+    // the bay has neither, and clearing an empty layer still costs (kit/redraw.ts)
+    if (!this.redraw.needed(sea.fog > 0 || sea.wind > 0)) return;
     const g = this.moving;
     g.clear();
     if (sea.fog > 0) this.wisps(g, sea.fog / FP);
-    if (sea.wind > 0) {
-      const share = gust(w) / sea.wind;
-      this.blown += share * STREAK_SPEED * dt;
-      this.streaks(g, share);
-    }
+    if (sea.wind > 0) this.streaks(g, gust(w) / sea.wind);
   }
 
   private drawWall(fog: number): void {

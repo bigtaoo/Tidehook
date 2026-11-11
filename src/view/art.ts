@@ -82,8 +82,3 @@ export function artSprite(n: ArtName, height: number, ax = 0.5, ay = 0.5): Sprit
 export function aspect(n: ArtName): number {
   return FIT[n].w / FIT[n].h;
 }
-
-/** For tests: pretend `n` is loaded with texture `t`. */
-export function setTextureForTest(n: ArtName, t: Texture): void {
-  textures.set(n, t);
-}

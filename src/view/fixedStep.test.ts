@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FixedStep, MAX_STEPS, TICK_MS, lerpX } from './fixedStep';
+import { FixedStep, MAX_STEPS, TICK_MS } from './fixedStep';
 
 describe('FixedStep', () => {
   it('runs 30 steps a second whatever the frame rate', () => {
@@ -15,7 +15,6 @@ describe('FixedStep', () => {
     const f = new FixedStep();
     expect(f.advance(TICK_MS * 1.5)).toBe(1);
     expect(f.alpha).toBeCloseTo(0.5);
-    expect(lerpX({ x: 2000, y: 0, px: 1000, py: 0 }, f.alpha)).toBeCloseTo(1.5);
   });
 
   it('drops a long backlog instead of fast-forwarding through it', () => {

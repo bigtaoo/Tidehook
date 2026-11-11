@@ -12,6 +12,7 @@ import type { SimEvent } from '../../sim/events';
 import { LANE_LEN } from '../../sim/lane';
 import { FP } from '../../sim/math/fixed';
 import { MON, P } from '../kit/palette';
+import { Redraw } from '../kit/redraw';
 import { label } from '../kit/text';
 import { toDesign, type Field } from '../orient';
 import { bandRect } from './field';
@@ -40,6 +41,7 @@ const LEAK_MS = 400;
 
 export class Fx extends Container {
   private readonly g = new Graphics();
+  private readonly redraw = new Redraw();
   private rings: Ring[] = [];
   private pops: Pop[] = [];
   private leakMs = 0;
@@ -51,10 +53,7 @@ export class Fx extends Container {
 
   add(events: readonly SimEvent[]): void {
     const f = this.f;
-    const ring = (d: number, w: number, r0: number, r1: number, color: number, life = RING_MS) => {
-      const p = toDesign(f, d / FP, w / FP);
-      this.rings.push({ x: p.x, y: p.y, r0: r0 * f.scale, r1: r1 * f.scale, color, ms: 0, life });
-    };
+    const ring = this.ring;
     for (const ev of events) {
       if (ev.e === 'hit' && ev.thrown) {
         ring(ev.d, ev.w, 10, 48, P.brassLight, THROWN_MS);
@@ -76,10 +75,7 @@ export class Fx extends Container {
   /** The fun layer's flashes (sim/fun.ts): streaks, perfect casts, gold, bounties, the pufferfish. */
   private fun(ev: SimEvent): void {
     const f = this.f;
-    const ring = (d: number, w: number, r0: number, r1: number, color: number, life = RING_MS) => {
-      const p = toDesign(f, d / FP, w / FP);
-      this.rings.push({ x: p.x, y: p.y, r0: r0 * f.scale, r1: r1 * f.scale, color, ms: 0, life });
-    };
+    const ring = this.ring;
     const at = (d: number, w: number) => toDesign(f, Math.min(d / FP + DMG_LIFT, LANE_LEN - DMG_LIFT), w / FP);
     const crane = (lift = 0) => toDesign(f, B.crane.d / FP + 30 + lift, B.crane.w / FP - 60);
     if (ev.e === 'combo') this.pop(t('fx.combo', { n: ev.n, c: ev.coins }), at(ev.d, ev.w), ev.n >= 4 ? P.red : P.brassLight, 30 + Math.min(ev.n, 8) * 3);
@@ -100,6 +96,13 @@ export class Fx extends Container {
     } else if (ev.e === 'tug') this.pop(t('fx.tug'), crane(80), P.red, 40);
   }
 
+  /** A ring that opens from r0 to r1 over `life` at the lane point (d, w), both in FP. */
+  private readonly ring = (d: number, w: number, r0: number, r1: number, color: number, life = RING_MS): void => {
+    const f = this.f;
+    const p = toDesign(f, d / FP, w / FP);
+    this.rings.push({ x: p.x, y: p.y, r0: r0 * f.scale, r1: r1 * f.scale, color, ms: 0, life });
+  };
+
   /** Words that pop up on `p` and rise: coins beside the crane, damage on a monster. */
   private pop(text: string, p: { x: number; y: number }, fill: number, size = 30): void {
     const tx = label(text, size * this.f.scale, { fill });
@@ -110,16 +113,19 @@ export class Fx extends Container {
   }
 
   update(frameMs: number): void {
-    const g = this.g.clear();
-    if (this.leakMs > 0) {
-      this.leakMs -= frameMs;
-      const r = bandRect(this.f, 0, B.dock.edge / FP);
-      g.rect(r.x, r.y, r.w, r.h).fill({ color: P.red, alpha: 0.45 * Math.max(0, this.leakMs / LEAK_MS) });
-    }
+    if (this.leakMs > 0) this.leakMs -= frameMs;
     this.rings = this.rings.filter((r) => (r.ms += frameMs) < r.life);
-    for (const r of this.rings) {
-      const u = r.ms / r.life;
-      g.circle(r.x, r.y, r.r0 + (r.r1 - r.r0) * u).stroke({ color: r.color, width: 4 * this.f.scale * (1 - u) + 1, alpha: 1 - u });
+    // a quiet lane shows neither, and clearing an empty layer still costs (kit/redraw.ts)
+    if (this.redraw.needed(this.leakMs > 0 || this.rings.length > 0)) {
+      const g = this.g.clear();
+      if (this.leakMs > 0) {
+        const r = bandRect(this.f, 0, B.dock.edge / FP);
+        g.rect(r.x, r.y, r.w, r.h).fill({ color: P.red, alpha: 0.45 * Math.max(0, this.leakMs / LEAK_MS) });
+      }
+      for (const r of this.rings) {
+        const u = r.ms / r.life;
+        g.circle(r.x, r.y, r.r0 + (r.r1 - r.r0) * u).stroke({ color: r.color, width: 4 * this.f.scale * (1 - u) + 1, alpha: 1 - u });
+      }
     }
     const rise = this.f.wide ? { x: 1, y: 0 } : { x: 0, y: -1 };
     for (const p of this.pops) {

@@ -13,7 +13,6 @@ export const en = {
     dock: 'Dock {hp}/{max}',
     mines: 'Mines {n}',
     held: 'Junk in hand',
-    pause: 'Pause',
   },
   shop: {
     teach: 'Fish bring coins, coins buy cards. Pick one, then bring on the next wave',
@@ -68,6 +67,7 @@ export const en = {
     debut: 'Here comes the {name}. {tip}',
     held: 'Junk in hand. Tap again to throw it down the line.',
     eat: 'A monster stopped to eat. Hook it while it chews.',
+    tide: 'The tide turns. From here the sea rises faster than you do',
   },
   guide: {
     cast: 'Tap when the line glows',

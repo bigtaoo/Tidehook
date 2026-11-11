@@ -91,7 +91,7 @@
     "jitterMax": 1.4,
     "clearDelay": 1
   },
-  "tide": { "waves": 30, "pace": 0.55 },
+  "tide": { "waves": 30, "pace": 0.55, "surgeFrom": 35, "surge": 1.6 },
   "daily": { "ease": 10 },
   "weather": { "fogBand": 60, "gustSecs": 7 },
   "catch": {

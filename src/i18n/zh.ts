@@ -13,7 +13,6 @@ export const zh: Table = {
     dock: '码头 {hp}/{max}',
     mines: '水雷 {n}',
     held: '破烂在手',
-    pause: '暂停',
   },
   shop: {
     teach: '鱼换金币，金币买卡。选一张，然后迎接下一波',
@@ -68,6 +67,7 @@ export const zh: Table = {
     debut: '{name}来了。{tip}',
     held: '破烂在手，再点一下就顺着瞄准线扔出去',
     eat: '怪停下来啃鱼了，趁它嘴忙钩它',
+    tide: '潮水转向了。从这里起，海涨得比你快',
   },
   guide: {
     cast: '瞄准线发光时点击',

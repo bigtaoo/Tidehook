@@ -205,6 +205,11 @@ function screens(fr: Frame): Screen[] {
   return out;
 }
 
+/** One locale's sweep builds every screen at six sizes and takes seconds on its own, so a busy
+ *  machine (a parallel build, another sim running) can push it past vitest's 5 s default and fail
+ *  a suite that is in fact green. The work is bounded, so a wide timeout costs nothing. */
+const SWEEP_MS = 30_000;
+
 describe('every language fits its boxes', () => {
   for (const l of LOCALES) {
     it(l, async () => {
@@ -223,7 +228,7 @@ describe('every language fits its boxes', () => {
       }
       setLocale('en');
       expect([...new Set(found)]).toEqual([]);
-    });
+    }, SWEEP_MS);
   }
 
   it('measures every glyph it met', () => {

@@ -13,7 +13,6 @@ export const fr: Table = {
     dock: 'Quai {hp}/{max}',
     mines: 'Mines {n}',
     held: 'Débris en main',
-    pause: 'Pause',
   },
   shop: {
     teach: 'Les poissons rapportent des pièces, les pièces achètent des cartes. Choisis-en une, puis la vague suivante',
@@ -68,6 +67,7 @@ export const fr: Table = {
     debut: 'Nouveau venu : {name}. {tip}',
     held: 'Débris en main. Touche encore pour le lancer le long de la ligne.',
     eat: 'Un monstre s’est arrêté pour manger. Accroche-le pendant qu’il mâche.',
+    tide: 'La marée tourne. Désormais la mer monte plus vite que toi',
   },
   guide: {
     cast: 'Touche quand la ligne brille',

@@ -45,6 +45,8 @@ export function bossOf(wave: number): BossKind | null {
 export function startWave(w: World): void {
   w.wave++;
   w.phase = 'wave';
+  // one wave's warning before the tide's third stage bites, so the step up is not a mystery
+  if (w.wave === B.tide.surgeFrom) emit(w, { e: 'tide' });
   w.clearT = 0;
   const rng = w.rng.spawn;
   const mix = waveMix(level(w));

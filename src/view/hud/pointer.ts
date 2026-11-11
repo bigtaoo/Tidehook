@@ -10,6 +10,7 @@ import { t } from '../../i18n';
 import { FP } from '../../sim/math/fixed';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
+import { Redraw } from '../kit/redraw';
 import { fitIn, label } from '../kit/text';
 import { toDesign } from '../orient';
 import type { Frame, Rect } from './frame';
@@ -29,6 +30,7 @@ const SKIP_SHARE = 0.3;
 
 export class Pointer extends Container {
   private readonly hand = new Graphics();
+  private readonly redraw = new Redraw();
   private readonly bubble = new Container();
   private bubbleKey = '';
   private ms = 0;
@@ -56,7 +58,9 @@ export class Pointer extends Container {
     const cue = live ? (s.guide?.cue ?? null) : null;
     this.ms += frameMs;
     this.drawBubble(cue && cue.text && s.world.phase === 'wave' ? cue : null, s.guide?.skipArmed ?? false);
-    this.hand.clear();
+    // the hand is up only while the tutorial points at something, so in every game after the
+    // first this layer stands empty, and clearing an empty one still costs (kit/redraw.ts)
+    if (this.redraw.needed(!!(cue?.hand && cue.target))) this.hand.clear();
     this.tip = null;
     if (!cue?.hand || !cue.target) return;
     if (cue.target.t === 'shop') {

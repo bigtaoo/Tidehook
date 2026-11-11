@@ -6,6 +6,7 @@ import { t } from '../../i18n';
 import type { World } from '../../sim/world';
 import { Button } from '../kit/button';
 import { CATCH, P } from '../kit/palette';
+import { Redraw } from '../kit/redraw';
 import { fitIn, label } from '../kit/text';
 import type { Frame, Rect } from './frame';
 import { lowDock } from '../scene/danger';
@@ -63,6 +64,7 @@ export class Hud extends Container {
   private readonly marks = new Graphics();
   /** A red ring that throbs round the dock's bar while it is about to fall (scene/danger.ts). */
   private readonly alarm = new Graphics();
+  private readonly redraw = new Redraw();
   private readonly speaker = new Graphics();
   private last = '';
 
@@ -99,10 +101,14 @@ export class Hud extends Container {
   /** `soundOn`: the player's sound toggle, drawn on its button. */
   update(w: World, soundOn = true): void {
     const b0 = this.slots.bar;
-    const al = this.alarm.clear();
-    if (lowDock(w)) {
-      const throb = 0.5 + 0.5 * Math.sin((w.tick / 30) * 8);
-      al.roundRect(b0.x - 6, b0.y - 6, b0.w + 12, b0.h + 12, (b0.h + 12) / 2).stroke({ color: P.red, width: 6, alpha: 0.35 + throb * 0.65 });
+    const low = lowDock(w);
+    // a sound dock shows no alarm, and clearing an empty layer still costs (kit/redraw.ts)
+    if (this.redraw.needed(low)) {
+      const al = this.alarm.clear();
+      if (low) {
+        const throb = 0.5 + 0.5 * Math.sin((w.tick / 30) * 8);
+        al.roundRect(b0.x - 6, b0.y - 6, b0.w + 12, b0.h + 12, (b0.h + 12) / 2).stroke({ color: P.red, width: 6, alpha: 0.35 + throb * 0.65 });
+      }
     }
     const key = `${w.wave}|${w.coins}|${w.hp}|${w.maxHp}|${w.mines}|${w.held ? 1 : 0}|${soundOn}`;
     if (key === this.last) return;

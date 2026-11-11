@@ -14,7 +14,6 @@ export const pt: Table = {
     dock: 'Cais {hp}/{max}',
     mines: 'Minas {n}',
     held: 'Sucata na mão',
-    pause: 'Pausa',
   },
   shop: {
     teach: 'Peixes dão moedas, moedas compram cartas. Escolha uma e depois a próxima onda',
@@ -69,6 +68,7 @@ export const pt: Table = {
     debut: 'Lá vem: {name}. {tip}',
     held: 'Sucata na mão. Toque de novo para jogá-la pela linha.',
     eat: 'Um monstro parou para comer. Fisgue enquanto ele mastiga.',
+    tide: 'A maré virou. Daqui em diante o mar sobe mais rápido que você',
   },
   guide: {
     cast: 'Toque quando a linha brilhar',

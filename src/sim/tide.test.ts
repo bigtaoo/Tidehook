@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { B } from './balance';
 import { nextWave, startGame, step } from './step';
 import { level } from './tide';
-import { spawnGap, waveMix } from './waves';
+import { spawnGap, startWave, waveMix } from './waves';
 import type { World } from './world';
 
 /** Clears the wave at once: the lane empty, the queue gone, the clear delay run out. */
@@ -13,9 +13,39 @@ function clearWave(w: World): void {
 }
 
 describe("the sea climbs slower at the start of a player's game", () => {
-  it('a bare game reads the wave as it is', () => {
+  it('a bare game reads the wave as it is, up to the surge', () => {
     const w = startGame(1);
     for (const wave of [1, 2, 7, 30]) expect(level(w, wave)).toBe(wave * 1000);
+  });
+
+  it('climbs faster once the surge wave is past', () => {
+    const { pace, surge, surgeFrom, waves } = B.tide;
+    const w = startGame(1, waves);
+    const slow = 1000 + waves * pace;
+    const mid = (surgeFrom - 1 - waves) * 1000;
+    expect(level(w, waves + 1)).toBe(slow);
+    expect(level(w, surgeFrom)).toBe(slow + mid);
+    expect(level(w, surgeFrom + 3)).toBe(slow + mid + 3 * surge);
+  });
+
+  it('says so one wave before the surge bites, and only then', () => {
+    const w = startGame(1, B.tide.waves);
+    w.wave = B.tide.surgeFrom - 1;
+    startWave(w);
+    expect(w.wave).toBe(B.tide.surgeFrom);
+    expect(w.events.some((e) => e.e === 'tide')).toBe(true);
+    const warned = level(w, w.wave);
+    w.events = [];
+    startWave(w);
+    expect(w.events.some((e) => e.e === 'tide')).toBe(false);
+    expect(level(w, w.wave) - warned).toBe(B.tide.surge);
+  });
+
+  it('the surge reaches a bare game too, just as late', () => {
+    const w = startGame(1);
+    const { surge, surgeFrom } = B.tide;
+    expect(level(w, surgeFrom)).toBe(surgeFrom * 1000);
+    expect(level(w, surgeFrom + 2)).toBe(surgeFrom * 1000 + 2 * surge);
   });
 
   it('an eased game climbs at the pace, then one a wave', () => {

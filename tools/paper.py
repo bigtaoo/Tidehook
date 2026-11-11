@@ -23,7 +23,7 @@ TUNE = {"captain": STRICT, "enemy_glutton": STRICT}
 # spoked pulley): the share of the image an enclosed light patch must cover to count, and how
 # grey it must be (None: any light colour, so the eel's pale inner rim goes too; the winch's cream
 # rope strips must stay)
-HOLES = {"enemy_darter": (0.002, None), "winch": (0.0005, 24)}
+HOLES = {"enemy_darter": (0.002, None), "enemy_darter_side": (0.002, 24), "winch": (0.0005, 24)}
 
 
 def clear_holes(rgb, bg, limits, hole_min, hole_chroma):

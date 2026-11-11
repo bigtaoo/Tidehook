@@ -26,6 +26,7 @@ import { clarity } from '../../sim/weather';
 import { fishArt, hasOwnArt, lookRadius, monsterArt, pips, step } from './look';
 import { inDanger, lowDock } from './danger';
 import { throwSight } from './sight';
+import { PipRow } from './pips';
 import { SpritePool } from './sprites';
 
 const CRANE_D = B.crane.d / FP;
@@ -64,22 +65,25 @@ export class Actors extends Container {
   /** Under the bodies: the aim, the rope and any grey-box stand-ins. */
   private readonly under = new Graphics();
   readonly bodies = new SpritePool();
-  /** Over the bodies: hit point pips and the rings of grabbed and eating monsters. */
+  /** Over the bodies: the rings of grabbed and eating monsters, and the rest of their badges. */
   private readonly over = new Graphics();
+  /** The hit point pips, which are many and the same shape, so they are pooled (pips.ts). */
+  private readonly pipRow = new PipRow();
 
   constructor(private readonly f: Field) {
     super();
     const lane = bandRect(f, 0, LANE_LEN);
     const mask = new Graphics().rect(lane.x, lane.y, lane.w, lane.h).fill(0xffffff);
-    this.addChild(this.bodies.shade, this.under, this.bodies, this.over, mask);
+    this.addChild(this.bodies.shade, this.under, this.bodies, this.over, this.pipRow, mask);
     this.mask = mask;
   }
 
   draw(s: Session): void {
-    const { f, under: g, bodies, over } = this;
+    const { f, under: g, bodies, over, pipRow } = this;
     g.clear();
     over.clear();
     bodies.begin();
+    pipRow.begin();
     const w = s.world;
     const a = s.alpha;
     const k = f.scale;
@@ -191,6 +195,7 @@ export class Actors extends Container {
       }
     }
     bodies.end();
+    pipRow.end();
   }
 
   private monster(m: Monster, p: Pt & { d: number }, grip: number, time: number, under: boolean, seen: number): void {
@@ -237,12 +242,7 @@ export class Actors extends Container {
     const pr = 2.6 * k;
     const left = p.x - ((n - 1) * pr * 2.6) / 2;
     const y = p.y + r * 1.3 + pr * 2;
-    const line = { color: P.line, width: 1.2 * k };
-    for (let i = 0; i < n; i++) {
-      const x = left + i * pr * 2.6;
-      if (i < n - heavy) over.circle(x, y, pr).fill(P.cream).stroke(line);
-      else over.rect(x - pr * 1.05, y - pr * 1.05, pr * 2.1, pr * 2.1).fill(HEAVY).stroke(line);
-    }
+    for (let i = 0; i < n; i++) this.pipRow.put(left + i * pr * 2.6, y, pr, i >= n - heavy);
     // and a weight on its shoulder, big enough to see on a phone, while it is too heavy to lift
     if (heavy > 0) drawWeight(over, p.x + r * 1.25, p.y - r * 1.1, Math.max(WEIGHT_MIN, (m.r / FP) * 0.5) * k, k);
     // a red "!" when it will reach the dock in a moment (danger.ts)

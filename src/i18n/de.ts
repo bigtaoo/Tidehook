@@ -13,7 +13,6 @@ export const de: Table = {
     dock: 'Steg {hp}/{max}',
     mines: 'Minen {n}',
     held: 'Schrott in der Hand',
-    pause: 'Pause',
   },
   shop: {
     teach: 'Fische bringen Münzen, Münzen kaufen Karten. Wähle eine, dann die nächste Welle',
@@ -68,6 +67,7 @@ export const de: Table = {
     debut: 'Neu: {name}. {tip}',
     held: 'Schrott in der Hand. Tippe nochmal, um ihn die Leine entlang zu werfen.',
     eat: 'Ein Monster frisst gerade. Hak es, während es kaut.',
+    tide: 'Die Flut kehrt. Ab jetzt steigt das Meer schneller als du',
   },
   guide: {
     cast: 'Tippe, wenn die Leine leuchtet',

@@ -49,6 +49,8 @@ export type SimEvent =
   | { e: 'bounty'; coins: number; d: number; w: number }
   /** The coming wave is a sea event. */
   | { e: 'seaEvent'; id: Exclude<SeaEvent, ''> }
+  /** The slow tide's debt comes due: from the next wave the sea climbs faster (tide.ts). */
+  | { e: 'tide' }
   /** The voyage's last wave cleared (game/session.ts offers the way home). */
   | { e: 'voyage'; wave: number }
   /** A pufferfish bursts at sea, or its bomb goes off. */

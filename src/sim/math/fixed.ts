@@ -77,8 +77,3 @@ export function dist(dx: number, dy: number): number {
 export function dist2(dx: number, dy: number): number {
   return dx * dx + dy * dy;
 }
-
-/** FP to world units. Render side only: the result is a float. */
-export function fromFp(v: number): number {
-  return v / FP;
-}

@@ -14,7 +14,6 @@ export const tr: Table = {
     dock: 'İskele {hp}/{max}',
     mines: 'Mayın {n}',
     held: 'Elde hurda',
-    pause: 'Duraklat',
   },
   shop: {
     teach: 'Balıklar para getirir, parayla kart alınır. Birini seç, sonra sıradaki dalga',
@@ -69,6 +68,7 @@ export const tr: Table = {
     debut: 'Yeni düşman: {name}. {tip}',
     held: 'Elde hurda. Hattın aşağısına fırlatmak için tekrar dokun.',
     eat: 'Bir canavar yemek için durdu. Çiğnerken onu kancala.',
+    tide: 'Gelgit döndü. Buradan sonra deniz senden hızlı yükseliyor',
   },
   guide: {
     cast: 'Misina parlayınca dokun',
