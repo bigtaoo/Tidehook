@@ -173,8 +173,16 @@ Tidehook/
   用 `navigator.vibrate`，没有就什么都不做（iOS Safari 没有）。两次之间至少隔一小段，只有大事件不受限。
   **玩家碰过屏幕之前一声不响**：新手的第一局是自动开的（02-onboarding.md），没人点过屏幕怪就可能摸到码头，这时候震一下是玩家没招谁没惹谁的一下；Chrome 本来也会拦掉，还每次往控制台记一条错。`webBuzz` 自己听第一次手势（和 `audio/engine.ts` 解锁声音的那三个事件一样：`pointerdown`、`keydown`、`touchend`），听到之前直接扔掉。
   设置（`game/settings.ts`）里能关，同一处还有音乐、音效分开的开关和“平稳画面”（关掉 view/scene/feel.ts 的震屏和顿帧，模拟不受影响）。
+  **系统说要少动，第一帧就平稳。** 系统设了 `prefers-reduced-motion: reduce` 的玩家，“平稳画面”默认就是开的
+  （`wantsCalm(window)`，开机读一次），不用先被震一轮再去翻设置。这只是默认值：玩家自己扳过一次就存进存储，
+  以后谁也盖不过他。
 - 单键或单点：点任意处（或空格）甩钩。v2 的键位作为桌面快捷键保留：1/2/3 选卡、4 修理、5 水雷、R 刷新、Enter 开始。M 开关声音。
 - 不用 Esc 做暂停，因为门户 iframe 会吞掉 Esc（Swarm Orbit 的教训）。暂停按钮从第一帧起就画出来。
+- **人一走开就暂停。** 标签页被藏起来时浏览器自己会停掉 ticker，但只是失焦（桌面玩家切到别的窗口去回一句话）不会：
+  潮水照涨，怪照样上岸，回来时码头已经破了，而且是在他一眼都没看见的情况下破的。所以 `window` 的 `blur` 也开一次暂停
+  （`src/game/away.ts`，和 `webBuzz` 一样是可注入的小模块，好写测试），就是玩家自己按的那个暂停：要点一下才继续，不会自己恢复到一波怪中间。
+  - 只听 `blur` 事件，不在开机时读当前的焦点状态：门户的 iframe 常常要等玩家点进来才有焦点，开机就读会让游戏一上来就扣着暂停罩子。
+  - 广告在放的时候不暂停（`session.hold`）：广告本来就把游戏按住了，而且它会抢焦点，不挡住的话每看完一条广告都会多出一个暂停罩子。
 - iframe 尺寸为 0 时不初始化，等 resize（Swarm Orbit 的教训）。
 - **开局先把网络的活派出去。** 语言包和美术（`view/art.ts`，31 张 webp 约 424 KB）都只是 fetch，不要渲染器，所以 `boot()` 一进来就都发出去，再去 `waitForSize`、再 `app.init()`。原来美术排在 `app.init()` 之后，于是这两段等待期间网络是闲的——门户的 iframe 可能在 0×0 上待一会儿，那段时间本来白白浪费。本机上这点重叠就几十毫秒（整个 424 KB 在 localhost 上 70 ms），真正值钱的是 CDN 延迟和 iframe 迟迟不给尺寸的时候。
 
@@ -194,7 +202,7 @@ Tidehook/
   - **免费换牌**：商店的换牌按钮变绿，看广告免费换一次，不花金币，也不涨换牌价。
   - 三个广告按钮前的播放标记是 `Button` 的 `icon: 'play'` 画出来的三角，文案里不再写 ▶（有的系统会把 ▶ 显示成彩色 emoji）；`i18n.test.ts` 检查所有语言都没有 ▶ ► ⏵。
   - 平台说没有激励广告时（比如检测到广告拦截，或在 mock 平台上），三个按钮都不出现。autoplay 局和没有港口的局也不出现。
-- **插屏广告**只放在自然断点：一波打完、商店打开时，以及从结算回港口时。新玩家的第一局不放；看过激励广告后，到下一波开始之前也不放。频率交给 Bridge 的 `minimumDelayBetweenInterstitial`，游戏里不另外计时。
+- **插屏广告**只放在自然断点：一波打完、商店打开时，以及从结算回港口时。新玩家的第一局不放；看过激励广告后，到下一波开始之前也不放。第 30 波航程终点那次清波**不放**：那时商店虽然开着，但被“回港还是继续”的选择挡住，玩家正在做决定，不是停顿；而且选了回港的话，几秒后回港口那次插屏会紧接着再来一次。频率交给 Bridge 的 `minimumDelayBetweenInterstitial`，游戏里不另外计时。
 - 广告播放期间 `Session.hold` 冻结模拟、吞掉点击，声音静音。
 - **遥测**（`src/game/telemetry.ts`，按 Playgama telemetry guide v1.1.2）：
   - `progression_started` / `_completed` / `_failed`：step_id 为 `wave`，带 step_index、sea 和 game（玩家的第几局，跨会话累计，封顶 20，20 表示 20 及以上）；
@@ -203,7 +211,8 @@ Tidehook/
   - `harbour_purchase`：港口每买一级发一次，带 item_id（升级 id，或 `chart_<海>`）、level 和 game。看“第几局买了什么”、海图有没有人买；
   - 激励和插屏广告带 placement 传给 Bridge（`revive` / `double` / `reroll`，`shop` / `harbour`），广告收入和次数由 Bridge 自己统计，游戏不重复发；
   - 波次事件另带 `mode`（`daily` 每日航行 / `voyage` 普通一局），每日那局不升级、潮水不同，不混进普通局的波次曲线；
-  - `progression_failed` 另带 `minutes`：这局到输为止的游玩分钟数（商店时间不算，封顶 90），看真实一局有多长（04-content 第 4.3 节）；
+  - `voyage_end`：第 30 波航程终点玩家做完选择时发一次，带 `choice`（home / sail_on）；
+  - `progression_failed` 和 `voyage_end` 都带 `minutes`：这局的游玩分钟数（商店时间不算，封顶 90），看真实一局有多长（04-content 第 4.3 节）。两边都要带：回港结束的那局不会 `_failed`，只带在失败上的话，能计时的就只剩输掉的局，而打到第 30 波的恰好是“一局多长”这个问题最想看的强玩家；
   - `harbour_complete`：港口最后一样东西买完时发一次，带 game，看长线内容在第几局用完；
   - `tutorial_step` / `tutorial_completed`；
   - 每 30 秒有效游玩发一次 `performance_sample`（`src/game/perf.ts`）；
@@ -239,6 +248,11 @@ Tidehook/
     这一局打出当天新纪录时才提交。
   - 要两样东西才会出现：开发者后台建一个 id 为 `daily` 的 SaaS 排行榜（`create_leaderboard`，**要用户点头**），
     以及构建时的环境变量 `PLAYGAMA_SAAS_TOKEN`（后台给的 public token）。少一样 Bridge 就报没有排行榜，每日页只显示自己的今日最佳。
+  - 传分数失败就算了：玩家掉线、平台拒收，`submit()` 都会 reject。不补发（补发要么每帧重试，要么攒着，都不值一条每日成绩），但必须 `catch` 掉，不然就是一条没人接的 unhandled rejection；榜本身进港时会重读一次。
+  - **分数记在"开航那天"，不是"结束那天"**：23:55 开的一局，00:05 沉的，按 UTC 已经是第二天了。
+    那局用的是昨天的种子、算的是昨天的最佳成绩（`session.daily` 一直留到局末），按今天的分数传上去，
+    今天的榜首就会是一局别人根本没法比的航行。所以 `frame()` 读 `s.daily`，不读 `today()`。
+  - 同理，玩家在港口里跨过午夜时，榜要重读一遍（`readDay`），否则"今天"的标题下面会一直挂着昨天的名次。
   - 开发时 `?board=fake`（`platform/fakeBoard.ts`，编出来的榜）。
 - 真要防作弊时：模拟是确定性的，可以用录像回放校验分数（复用 Potion Siege 的 collector，Node + NDJSON）。
 
@@ -251,14 +265,25 @@ Tidehook/
 - 语言（2026-11）：en、zh、ru、es、pt（巴西葡语）、tr、de、fr，除英文外都是懒加载分包，按浏览器或平台语言自动选。语气短、直白，带点港口味。插进句子的名词（海域、目标、怪名）一律放在冒号后面，避开格变化；土耳其语里含 {sea} 的句子把海名放在最前。占位符由 `i18n.test.ts` 校验。德语和俄语偏长，放不下时先缩短文案，不改布局。
 - 开发开关（`src/game/switches.ts`，只在 dev 构建里生效）：`?autoplay`、`?speed`、`?ads=fake`、`?lang`、`?seed`、`?lag`、`?ease=N`（每局 N 波慢潮，0 = 裸局）、`?board=fake`（假的每日榜）、`?pay=fake`（去广告内购打开）、`?rec=0`（关掉点击记录器）。
 - `.claude/launch.json` 为每个构建变体配一个预览服务。
-- **画面性能的三条规矩**（都是量出来的，别回退）：
+- **画面性能的四条规矩**（都是量出来的，别回退）：
   - 每帧重画的小图形要共用 `GraphicsContext`，不要每帧新建 `Graphics`。怪物血条的点（`view/scene/pips.ts`）
     原来每帧重切约 170 个圆和方块，占 1.9 ms 一帧里的 1.5 ms；改成两个 context + 一池 `Graphics`（只改位置和缩放）后几乎为零。
   - 空图层不要白清。`Graphics.clear()` 即使上面什么都没有也会重新三角化（约 0.05 ms 一帧一层），
     而有三层整片海都是空的（海湾没天气、满血码头没警报、安静的航道没水圈）。`view/kit/redraw.ts` 的 `Redraw`
     记住上一帧有没有东西：一直空就完全不碰，刚空下来才清一次。用在 `scene/fx.ts`、`scene/weather.ts`、`hud/hud.ts`、`hud/pointer.ts`（引导的手）。
   - 没露面的面板不要替它备料。`view/scene/scene.ts` 原来每帧都算 `today()`（`new Date`）和 `overNotes()`（一串 `t()`），可这两样只有大厅和结算卡在读——打一局就是一秒六十次白烧。按 `s.mode` 给常量占位（`NO_DAILY`、`NO_NOTES`），面板自己的 `update()` 早就会在没变或藏着时直接返回。
+  - 尺寸没变就不要重建场景。Pixi 的 `ResizePlugin` 把窗口报上来的每一个 `resize` 事件都转成
+    `renderer.resize()`，而 `AbstractRenderer.resize()` 不比较新旧尺寸，照样发 `resize` 事件——手机上地址栏
+    回落、软键盘收起、门户挪一下 iframe 都会来一发，尺寸其实一个像素没动。`app.ts` 的 `layout()` 原来每一发
+    都把整个场景 `destroy` 掉重建（桌面开发版量到 0.5–1.9 ms 一次，`Scene.draw` 一帧才 0.40 ms），画出来还是
+    同一张图。现在先算 `fitDesign`，和上次的 `Fit` 用 `sameFit`（`view/viewport.ts`）比一比，一样就直接返回；
+    场景只读 `Fit`，所以这样是安全的。实测：连发 5 次同尺寸 resize，场景对象不变、耗时为 0；转屏照样重建。
   - 反过来：`Text` 的新建很便宜（约 0.003 ms），池化没有意义，量过，不做。
+  - 反过来：大厅面板**不要** `cacheAsTexture`。量过（390×844，`resolution = renderer.resolution × fit.scale`）：
+    `LobbyPanel` 的 24 个孩子一帧要 50 个 draw call，缓存后整屏 64 → 14 个、120 µs → 68 µs，命中测试照常（按钮还在场景图里，
+    合成的 `pointerdown` 能正常切页）。但缓存出来的那一帧有 4.6% 的像素和直接画的不一样（平均差 34，最大 225）——
+    面板里全是字，纹理那一步把字重采样了一遍，糊了。省下的 52 µs 只是一帧预算的 0.3%，而且是在菜单里，不是在打的时候
+    （打的时候一帧 148 µs、22 个 draw call，本来就只占 0.9%）。拿字的清晰度换这个不值。
 
 ## 9. 里程碑建议
 

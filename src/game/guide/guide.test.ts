@@ -3,6 +3,7 @@ import { SafeStore } from '../../platform/types';
 import { CALM_D } from '../../sim/monsters';
 import { startGame, step } from '../../sim/step';
 import type { World } from '../../sim/world';
+import { Harbour } from '../meta/harbour';
 import { Session } from '../session';
 import { FIRST_MS, Guide, HOLD_MS, REST_MS, SKIP_MS, STEP_IDS } from './guide';
 import { GUIDE_KEY, loadGuide } from './store';
@@ -42,6 +43,36 @@ describe('Guide', () => {
     run(s, 1000);
     expect(s.world.calm).toBe(0);
     expect(g.cue?.step).toBe('cast');
+  });
+
+  it('gives a step its hold back in the next game of the same sitting', () => {
+    const { g } = fresh();
+    const s = new Session({ seed: 5, speed: 1, autoplay: null }, g);
+    s.start();
+    run(s, HOLD_MS + 1000);
+    expect(s.world.calm).toBe(0);
+    // the player never found the cast and sails again, without reloading the page
+    s.start();
+    run(s, 5000);
+    expect([s.world.calm, s.world.mons.length, g.cue?.step]).toEqual([1, 0, 'cast']);
+    // and this game's hold lets go on its own clock, HOLD_MS in
+    run(s, HOLD_MS);
+    expect(s.world.calm).toBe(0);
+  });
+
+  it("never holds the daily voyage, which is everyone's same world", () => {
+    const { store, g } = fresh();
+    const s = new Session({ seed: 5, speed: 1, autoplay: null }, g, new Harbour(store));
+    s.openLobby();
+    expect(s.sailDaily('2026-11-10')).toBe(true);
+    run(s, 5000);
+    // no hold, monsters as the day deals them, and the cue still teaches
+    expect([s.world.calm, g.cue?.step]).toEqual([0, 'cast']);
+    expect(s.world.mons.length).toBeGreaterThan(0);
+    // the same unfinished guide still holds a plain voyage
+    const plain = new Session({ seed: 5, speed: 1, autoplay: null }, g);
+    plain.start();
+    expect(plain.world.calm).toBe(1);
   });
 
   it('shows the hand only after FIRST_MS, and rests it REST_MS after a tap', () => {

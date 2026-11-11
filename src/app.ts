@@ -5,6 +5,7 @@ import { Application } from 'pixi.js';
 import { WebAudioOut } from './audio/engine';
 import { Sound } from './audio/sound';
 import { Ads } from './game/ads';
+import { watchAway } from './game/away';
 import { DailyBoard } from './game/board';
 import { FIRST_SEED } from './game/guide/firstSeed';
 import { Guide } from './game/guide/guide';
@@ -14,7 +15,7 @@ import { today } from './game/meta/daily';
 import { Harbour } from './game/meta/harbour';
 import { startRecording } from './game/rec/wire';
 import { SEEN_MS, Session, type SessionOptions } from './game/session';
-import { Settings } from './game/settings';
+import { Settings, wantsCalm } from './game/settings';
 import { urlSwitches } from './game/switches';
 import { Telemetry } from './game/telemetry';
 import { detectLocale, loadLocale, setLocale } from './i18n';
@@ -26,7 +27,7 @@ import type { Platform } from './platform/types';
 import { SEA } from './view/kit/palette';
 import { loadArt } from './view/art';
 import { Scene, type SceneUi } from './view/scene/scene';
-import { fitDesign } from './view/viewport';
+import { fitDesign, sameFit, type Fit } from './view/viewport';
 import { waitForSize } from './view/waitForSize';
 
 /** The player's language pick, in the platform's storage. */
@@ -93,7 +94,7 @@ export async function boot(platform: Platform): Promise<Application> {
   out.listen(window);
   const sound = new Sound(out, platform.storage);
   // the music, the sounds, the buzz and calm motion apart (game/settings.ts)
-  const settings = new Settings(platform.storage);
+  const settings = new Settings(platform.storage, wantsCalm(window));
   const mix = () => sound.setMix(settings.get('music'), settings.get('sfx'));
   settings.onChange = mix;
   mix();
@@ -123,6 +124,11 @@ export async function boot(platform: Platform): Promise<Application> {
   bindKeys(window, session, (key) => key === 'm' && (sound.toggle(), true));
   const pause = () => session.pause();
   platform.onHostPause?.(pause);
+  // an ad holds the game already and steals the focus while it plays: pausing for that would hand
+  // the player a pause cover every time one ends
+  watchAway(window, () => {
+    if (!session.hold) pause();
+  });
   // the ticker stops with the tab, so the sound hears about it here
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) pause();
@@ -130,9 +136,16 @@ export async function boot(platform: Platform): Promise<Application> {
   });
 
   let scene: Scene | null = null;
+  let fit: Fit | null = null;
   const layout = () => {
+    // Pixi hands on every window resize event, including the ones that changed nothing: a phone's
+    // address bar settling, a keyboard closing, a host nudging its iframe. The scene reads the Fit
+    // and nothing else, so rebuilding it for those would cost a frame and draw the same picture.
+    const next = fitDesign(app.screen.width, app.screen.height);
+    if (scene && sameFit(fit, next)) return;
+    fit = next;
     scene?.destroy({ children: true });
-    scene = new Scene(fitDesign(app.screen.width, app.screen.height), session, ui, ads, board, noAds);
+    scene = new Scene(next, session, ui, ads, board, noAds);
     app.stage.addChild(scene);
   };
   layout();

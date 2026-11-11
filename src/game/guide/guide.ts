@@ -1,7 +1,8 @@
 // The tutorial (docs/02-onboarding.md): it watches the game and says what to try next, one cue at
 // a time, and never plays for the player. A cue is a step, its line of words, what it points at
-// and what the aim line should glow on. The first two steps hold the lane (World.calm) so waiting
-// can never lose; the rest only point. Done steps are saved and never come back. No Pixi: the
+// and what the aim line should glow on. The first two steps hold a plain voyage's lane
+// (World.calm) so waiting can never lose; the rest only point. Done steps are saved and never
+// come back. No Pixi: the
 // view draws the cue (view/hud/pointer.ts), the Session feeds the events and taps.
 
 import type { TextKey } from '../../i18n';
@@ -40,7 +41,9 @@ export interface Cue {
 
 export interface StepLog {
   step: string;
-  /** Seconds of play when the step first showed and when it was done (-1: skipped). */
+  /** The game it was done in, counted as Guide.games counts. */
+  game: number;
+  /** Seconds into that game when the step first showed and when it was done (-1: skipped). */
   shownS: number;
   doneS: number;
 }
@@ -67,8 +70,11 @@ export class Guide {
   /** The first game over's one lesson, while that card is up. */
   lesson: TextKey | null = null;
   readonly log: StepLog[] = [];
+  /** Play time in this game, ms: the step clock, which starts over with every game. */
   private playMs = 0;
   private realMs = 0;
+  /** Whether this game's lane may be held for a step (see begin()). */
+  private holds = true;
   private current: StepId | null = null;
   private stepMs = 0;
   private restMs = 0;
@@ -131,11 +137,19 @@ export class Guide {
     return this.realMs - this.skipAt <= SKIP_MS;
   }
 
-  /** A game started. */
-  begin(): void {
+  /** A game started. `hold` says whether its lane may be held for a step: never the daily
+   *  voyage's, which is the same world for everyone on the board.
+   *
+   *  The step clock starts over, so a player who fumbled one game meets the same gentle start in
+   *  the next, instead of that turning on whether they happened to reload the page. */
+  begin(hold = true): void {
     this.games++;
     this.bruteLeaks = 0;
     this.lesson = null;
+    this.holds = hold;
+    this.playMs = 0;
+    this.current = null;
+    this.shownAt.clear();
     this.save();
   }
 
@@ -151,7 +165,7 @@ export class Guide {
       this.skipAt = this.realMs;
       return false;
     }
-    for (const s of STEP_IDS) if (!this.done.has(s)) this.log.push({ step: s, shownS: this.secs(this.shownAt.get(s)), doneS: -1 });
+    for (const s of STEP_IDS) if (!this.done.has(s)) this.log.push({ step: s, game: this.games, shownS: this.secs(this.shownAt.get(s)), doneS: -1 });
     for (const s of STEP_IDS) this.done.add(s);
     this.cue = null;
     this.current = null;
@@ -198,8 +212,9 @@ export class Guide {
   }
 
   /** The hold for the steps still to do: no monsters before the first catch, then one at a time;
-   *  none once that step has waited HOLD_MS. */
+   *  none in a game that may not hold, and none once that step has waited HOLD_MS of this game. */
   calm(): Calm {
+    if (!this.holds) return 0;
     const held = (s: StepId) => this.playMs - (this.shownAt.get(s) ?? this.playMs) < HOLD_MS;
     if (!this.done.has('cast')) return held('cast') ? 1 : 0;
     if (!this.done.has('crab')) return held('crab') ? 2 : 0;
@@ -243,7 +258,7 @@ export class Guide {
   private finish(step: StepId): void {
     if (this.done.has(step)) return;
     this.done.add(step);
-    this.log.push({ step, shownS: this.secs(this.shownAt.get(step)), doneS: this.secs(this.playMs) });
+    this.log.push({ step, game: this.games, shownS: this.secs(this.shownAt.get(step)), doneS: this.secs(this.playMs) });
     this.save();
   }
 

@@ -36,6 +36,12 @@ export function fitDesign(screenW: number, screenH: number): Fit {
   return { wide, w, h, scale, x: (screenW - w * scale) / 2, y: (screenH - h * scale) / 2 };
 }
 
+/** Whether two fits put the design in the same place at the same size. Pixi fires a resize event
+ *  for every one the window reports, changed or not, so the scene asks this before rebuilding. */
+export function sameFit(a: Fit | null, b: Fit): boolean {
+  return a !== null && a.wide === b.wide && a.w === b.w && a.h === b.h && a.scale === b.scale && a.x === b.x && a.y === b.y;
+}
+
 /** How much small words grow in a small embed: at 800x450 the design is at 0.42 of its size and
  *  48-unit words come out 20 pixels tall. 1 from 1280x720 up. In portrait only as far as the
  *  design widened (a phone's narrow bars have no room to grow into): a 600x600 square, 1.33. */

@@ -87,7 +87,10 @@ export class Ads {
     const from = this.mode;
     this.mode = this.session.mode;
     const lobby = from === 'over' && this.mode === 'lobby';
-    if (shop && this.session.world.phase === 'shop') void this.interstitial('shop');
+    // the voyage's end clears a wave like any other, but the shop stays shut behind the choice of
+    // home or on (game/session.ts): a decision waiting on the player is not a break, and going home
+    // from under the ad would then queue the harbour's one seconds later
+    if (shop && this.session.world.phase === 'shop' && !this.session.atVoyageEnd()) void this.interstitial('shop');
     else if (lobby) void this.interstitial('harbour');
   }
 

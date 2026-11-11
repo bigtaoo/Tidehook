@@ -167,7 +167,7 @@ export class Session {
     this.pilot = this.opts.autoplay ? new Pilot(this.world.seed, this.opts.autoplay) : null;
     this.shopWait = 0;
     this.pending = this.revived = this.doubled = this.freeRerolled = this.finish = false;
-    this.guide?.begin();
+    this.guide?.begin(!this.daily);
     this.guide?.update(this.world, true, 0);
     this.snapshot();
     this.collect();

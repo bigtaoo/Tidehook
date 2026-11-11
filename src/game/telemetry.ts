@@ -13,10 +13,17 @@
 //   revive) or 'none' (no ad to offer);
 // - lesson on the first game over ever: the tip the card showed (junk, cards, fish, near), which
 //   says what new players lose to;
-// - minutes on a failure: the game's play time so far in whole minutes (shop time left out),
-//   capped at MINUTES_CAP, to see how long real games run (docs/04-content.md section 4.3);
+// - minutes on a failure and at a voyage's end: the game's play time in whole minutes (shop time
+//   left out), capped at MINUTES_CAP, to see how long real games run (docs/04-content.md section
+//   4.3). A game the captain takes home never fails, so without it here the only games we would
+//   time are the ones somebody lost, and wave 30 is reached by the strong players whose length is
+//   the open question;
 // - harbour_complete: once, the purchase that leaves nothing in the harbour to buy, with the game
 //   number, which says when the long-tail content runs out.
+//
+// A tutorial step carries the game it was done in and its seconds into that game (the step clock
+// starts over with each game, game/guide/guide.ts), so "a step people take two or three games to
+// reach" and "a step that takes a long minute" read apart from each other.
 
 import type { Platform } from '../platform/types';
 import type { SimEvent } from '../sim/events';
@@ -64,8 +71,7 @@ export class Telemetry {
       if (ev.e === 'waveStart') this.send('progression_started', step);
       else if (ev.e === 'waveClear') this.send('progression_completed', step);
       else if (ev.e === 'over') {
-        const minutes = Math.min(MINUTES_CAP, Math.floor(s.world.tick / TICK_RATE / 60));
-        const fail: Record<string, string | number | boolean> = { ...step, reason: 'dock_fell', revive: s.pending ? 'offered' : s.revived ? 'used' : 'none', minutes };
+        const fail: Record<string, string | number | boolean> = { ...step, reason: 'dock_fell', revive: s.pending ? 'offered' : s.revived ? 'used' : 'none', minutes: this.minutes() };
         const lesson = s.guide?.lesson;
         if (lesson) fail.lesson = lesson.slice(lesson.lastIndexOf('.') + 1);
         this.send('progression_failed', fail);
@@ -73,7 +79,7 @@ export class Telemetry {
     }
     // the voyage's end offered the way home (game/session.ts): which way the captain went
     const atEnd = s.atVoyageEnd();
-    if (this.wasEnd && !atEnd) this.send('voyage_end', { ...step, choice: s.mode === 'over' && s.last.home ? 'home' : 'sail_on' });
+    if (this.wasEnd && !atEnd) this.send('voyage_end', { ...step, choice: s.mode === 'over' && s.last.home ? 'home' : 'sail_on', minutes: this.minutes() });
     this.wasEnd = atEnd;
     this.tutorial();
     if (s.mode === 'lobby') this.purchases(game);
@@ -85,10 +91,20 @@ export class Telemetry {
     if (sample) this.send('performance_sample', sample);
   }
 
+  /** The game's play time in whole minutes, capped (see the top of the file). */
+  private minutes(): number {
+    return Math.min(MINUTES_CAP, Math.floor(this.session.world.tick / TICK_RATE / 60));
+  }
+
   /** The player's game number, capped (see the top of the file). */
   private game(): number {
     const s = this.session;
-    return Math.min(GAME_CAP, Math.max(1, s.guide?.games ?? s.games));
+    return this.capped(s.guide?.games ?? s.games);
+  }
+
+  /** A game number as it is sent: at least 1, capped (see the top of the file). */
+  private capped(n: number): number {
+    return Math.min(GAME_CAP, Math.max(1, n));
   }
 
   /** What the harbour holds: each upgrade's level and each chart, by id. */
@@ -128,7 +144,7 @@ export class Telemetry {
     if (!g) return;
     for (; this.steps < g.log.length; this.steps++) {
       const l = g.log[this.steps];
-      this.send('tutorial_step', { step_id: l.step, step_index: STEP_IDS.indexOf(l.step as (typeof STEP_IDS)[number]) + 1, seconds: l.doneS, skipped: l.doneS < 0 });
+      this.send('tutorial_step', { step_id: l.step, step_index: STEP_IDS.indexOf(l.step as (typeof STEP_IDS)[number]) + 1, game: this.capped(l.game), seconds: l.doneS, skipped: l.doneS < 0 });
     }
     if (!this.tutorialDone && g.finished) {
       this.tutorialDone = true;

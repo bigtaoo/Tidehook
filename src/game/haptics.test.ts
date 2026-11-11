@@ -19,6 +19,7 @@ function fakeNav(log: (number | number[])[]) {
 
 const coins: SimEvent = { e: 'coins', amount: 3, spat: false };
 const leak: SimEvent = { e: 'leak', kind: 'grunt', dmg: 1 };
+const kill = (kind: 'boss' | 'grunt'): SimEvent => ({ e: 'kill', id: 1, kind, crushed: false, d: 0, w: 0 });
 
 describe('webBuzz', () => {
   it('is null where the browser cannot vibrate', () => {
@@ -69,6 +70,16 @@ describe('Haptics', () => {
     const h = new Haptics((p) => void log.push(p), () => false);
     expect(h.events([coins], 0)).toBeNull();
     expect(log).toEqual([]);
+  });
+
+  it('buzzes for a boss sunk, and for nothing smaller', () => {
+    const log: (number | number[])[] = [];
+    const h = new Haptics((p) => void log.push(p), () => true);
+    expect(h.events([kill('boss')], 0)).toEqual([60, 40, 90]);
+    expect(h.events([kill('grunt')], 500)).toBeNull();
+    // a fish the hook spat out is not a catch
+    expect(h.events([{ e: 'coins', amount: 1, spat: true }], 900)).toBeNull();
+    expect(log).toEqual([[60, 40, 90]]);
   });
 
   it('drops a small buzz that follows too close, but never a big one', () => {

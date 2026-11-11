@@ -35,6 +35,8 @@ export class DailyBoard {
   private sent = -1;
   private wasLobby = false;
   private asked = 0;
+  /** The day the rows on screen were read for, so the harbour notices midnight passing. */
+  private readDay = '';
 
   constructor(
     private readonly board: Board | null,
@@ -51,10 +53,21 @@ export class DailyBoard {
     const { last } = s;
     if (s.mode === 'over' && !s.pending && last.daily && last.record && this.sent !== s.games) {
       this.sent = s.games;
-      void this.board.submit(boardScore(this.today(), last.wave)).then(() => this.read());
+      // the day it was sailed, not the day it ended: a voyage begun at 23:55 UTC and lost at 00:05
+      // is yesterday's seed and yesterday's best, and scoring it as today's would plant a wave from
+      // the wrong game at the head of today's board
+      const day = s.daily ?? this.today();
+      // a submit that fails (an offline player, a host that refuses) must not land as an unhandled
+      // rejection; there is nothing to retry, since the harbour reads the board again on the way in
+      void this.board
+        .submit(boardScore(day, last.wave))
+        .then(() => this.read())
+        .catch(() => {});
     }
     const lobby = s.mode === 'lobby';
-    if (lobby && !this.wasLobby) void this.read();
+    // a player who sits in the harbour across midnight would otherwise keep yesterday's rows under
+    // today's heading until they sail again
+    if (lobby && (!this.wasLobby || this.today() !== this.readDay)) void this.read();
     this.wasLobby = lobby;
   }
 
@@ -63,6 +76,7 @@ export class DailyBoard {
     if (!this.board) return;
     const ask = ++this.asked;
     const day = this.today();
+    this.readDay = day;
     let got: DailyRow[] = [];
     try {
       const top = await this.board.top();

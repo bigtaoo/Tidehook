@@ -23,6 +23,8 @@ CrazyGames 衡量的是“玩满 1 分钟的人 ÷ 访问数”。Holy Kicker �
    - `crab` 步：一次只刷一只，怪物走到离码头 `CALM_D = 300` 处就停下（照样可以吃鱼）。
    - 第一条鱼上岸即放行；第一只怪被击杀即解除按住。其余步骤不按住。
    - 按住最多 30 s（`HOLD_MS`）。某步出现 30 s 还没完成就放开，提示照旧显示。这是 Swarm Orbit 的教训：永不释放的按住就是一堵墙。
+   - 这 30 s 按局计：每开一局，没完成的步骤重新拿回按住（`Guide.begin()` 重置步骤时钟）。第一局没摸着门道的玩家，下一局得到同样温柔的开局，而不是取决于他有没有碰巧刷新过页面。
+   - 每日航程（第 7 节）不按住（`begin(false)`）：它对榜上每个人都必须是同一个世界。提示照常显示，只是海不等人。
    - 为什么是 300：瞄准线扫过一只螃蟹时只亮 2–4 tick（约 67–140 ms），扫过鱼约 270 ms。金线按钩子真实的钩尖半径判定（手里拿着杂物时按扔出杂物的半径 15）。最初按 bot 的余量 15 判定，金线会亮在钩子其实抓不到的位置，那时是 2–5 tick。所以钩螃蟹靠预判，像抓娃娃机，不靠反应。怪停得越近，角度越宽，亮得越久。但停在 300 以内又会挤到码头和手。300 是两者之间的平衡点。
 6. **可以跳过。** 气泡旁有“跳过教程”，连点两下（3 s 内）才生效，防误触。跳过就把全部步骤记为完成。
 7. **只教一次。** 完成的步骤 id 存进 `platform.storage` 的 `tidehook.guide`。
@@ -36,6 +38,8 @@ CrazyGames 衡量的是“玩满 1 分钟的人 ÷ 访问数”。Holy Kicker �
 | `throw` | 手里第一次拿到杂物（`held`） | 手指向最近的怪；瞄准线扫到怪时变金色 | Tap to throw it | — | 第一次 `throw` |
 | `junk` | 乌龟（brute）登场时，还没学过 `throw`，手里也没有杂物 | 手指向最近的杂物；瞄准线扫到杂物时变金色 | Hook junk for the turtle | — | 拿到杂物（随后进入 `throw`） |
 | `shop` | 首局每次进商店 | 推荐动作（见下）的按钮，再到 “Next wave” | Top pick → Next wave | — | 首局结束 |
+
+`junk` 是个兜底：多数玩家在乌龟登场之前就顺手捞到过杂物，`throw` 一步接管，`junk` 随那次 `throw` 一起记为完成（实测首局里它基本不会单独出现）。只有一次都没碰过杂物、乌龟又已经上场的玩家才看得到它。
 
 商店的推荐动作，规则与 bot 一致：
 
@@ -70,13 +74,13 @@ CrazyGames 衡量的是“玩满 1 分钟的人 ÷ 访问数”。Holy Kicker �
 
 - `src/sim/world.ts`：`calm: 0 | 1 | 2`。0 = 正常；1 = 不刷怪；2 = 场上没怪时才刷，怪物停在 `d ≤ CALM_D` 处。纯整数，确定性。
 - `src/sim/ray.ts`：从 bot 移出来的 `rayFirst`，引导和 bot 共用。
-- `src/game/guide/guide.ts`：引导规则，纯逻辑，没有 Pixi。输入是事件、世界和玩家的点击，输出是当前提示 `Cue`（步骤、文案 key、目标、瞄准线是否变金）。它在 `step` 之外设置 `world.calm`，所以模拟仍是确定性的，平衡守卫的数值不变。
+- `src/game/guide/guide.ts`：引导规则，纯逻辑，没有 Pixi。输入是事件、世界和玩家的点击，输出是当前提示 `Cue`（步骤、文案 key、目标、瞄准线是否变金）。它在 `step` 之外设置 `world.calm`，所以模拟仍是确定性的，平衡守卫的数值不变。每局开头 `Session.start()` 调 `begin(!daily)`：步骤时钟归零，每日航程不按住。
 - `src/game/guide/store.ts`：读写 `tidehook.guide`（`{done: string[], games: number}`），坏数据当空档。
 - `src/game/guide/shopPick.ts`：商店推荐动作。
 - `src/game/guide/firstSeed.ts`：新手种子及其打分。
 - `src/view/hud/pointer.ts`：手、气泡和跳过按钮；把 `Cue` 的目标经 `orient.ts` 换算到屏幕。手永远不出屏（有测试）。商店里的箭头缩到一半（`SHOP_SHRINK`），只占按钮上方的空隙，不挡卡片文字。指向由外框完成。
 - `src/view/scene/actors.ts`：瞄准线变金色。
-- 统计（M4 接入）：`tutorial_step {step, shownS, doneS, waitS}`、`tutorial_skip`、`tutorial_end`。`Guide.log` 已经记下了这些数据，M4 只需要转发。
+- 统计（`src/game/telemetry.ts`）：`tutorial_step {step_id, step_index, game, seconds, skipped}` 和 `tutorial_completed`，直接转发 `Guide.log`。`game` 是完成这一步的局数，`seconds` 是这一局里的秒数（步骤时钟按局计），所以“要打两三局才走到的一步”和“一步要花掉一分钟”分得开。
 
 ## 5 测试
 
@@ -89,12 +93,14 @@ CrazyGames 衡量的是“玩满 1 分钟的人 ÷ 访问数”。Holy Kicker �
   - 老玩家不出引导，也不按住；
   - 标签只显示前三局；
   - 四种失败提示；
-  - `calm 2` 一次一只、停在 `CALM_D`、码头不掉血。
+  - `calm 2` 一次一只、停在 `CALM_D`、码头不掉血；
+  - 同一次坐下里的第二局，按住重新回来，并照这一局的时钟 30 s 后放开；
+  - 每日航程不按住，但提示照旧，同一份存档的普通局仍然按住。
 - `onboard.test.ts`：无头假玩家用新手种子打首局，跑 3 个种子。
   - 每次瞄准线变金：50% 准时点，30% 晚 200 ms 点（已经错过螃蟹的窗口），20% 放过。
   - 商店里看到手 400 ms 后，点手指的按钮。
   - 验收条件：
-    - 所有步骤都完成（实测约 105–129 s）。
+    - 所有步骤都完成（实测约 87–106 s，第 4 波）。
     - 前 60 s 不输。
     - “能操作却没有提示”的最长空档 ≤ 3.5 s（实测约 1.5 s）。
     - 第一个动作在 3 s 内可以做；只看不点的玩家 3 s 内能看到 `cast` 的手。

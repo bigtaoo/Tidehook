@@ -5,6 +5,7 @@ import { gameOver } from '../sim/monsters';
 import { Guide } from './guide/guide';
 import { B } from '../sim/balance';
 import { TICK_RATE } from '../sim/math/fixed';
+import { BF } from '../sim/balanceFun';
 import { Harbour, HARBOUR_KEY } from './meta/harbour';
 import { PerfSampler, SAMPLE_MS } from './perf';
 import { Session } from './session';
@@ -61,13 +62,15 @@ describe('Telemetry', () => {
     const g = new Guide(new SafeStore(null));
     const s = new Session({ seed: 3, speed: 1, autoplay: null }, g);
     const tel = new Telemetry(p, s, 'b');
+    g.begin();
+    g.begin();
     g.skip();
     g.skip();
     tel.frame(16, false, []);
     const names = p.tracked.map(([e]) => e);
     expect(names.filter((e) => e === 'tutorial_step').length).toBeGreaterThan(0);
     expect(names.at(-1)).toBe('tutorial_completed');
-    expect(p.tracked[0][1]).toMatchObject({ step_index: 1, skipped: true });
+    expect(p.tracked[0][1]).toMatchObject({ step_index: 1, skipped: true, game: 2 });
   });
 
   it("marks a failure with the revive's state and the first lesson, and sends each purchase", () => {
@@ -99,6 +102,29 @@ describe('Telemetry', () => {
       { item_id: 'hull', level: 1, game: 1 },
       { item_id: 'hull', level: 2, game: 1 },
     ]);
+  });
+
+  it("times a voyage taken home, which never fails and so would otherwise go untimed", () => {
+    const p = new StubPlatform();
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+    const tel = new Telemetry(p, s, 'b');
+    s.start();
+    const w = s.world;
+    w.wave = BF.voyage.wave;
+    w.queue = [];
+    w.mons = [];
+    for (let i = 0; i < 600 && !s.atVoyageEnd(); i++) {
+      s.update(16);
+      tel.frame(16, true, s.drain());
+    }
+    expect(s.atVoyageEnd()).toBe(true);
+    w.tick = 23 * 60 * TICK_RATE;
+    expect(s.home()).toBe(true);
+    tel.frame(16, false, s.drain());
+    const end = p.tracked.find(([e]) => e === 'voyage_end');
+    expect(end?.[1]).toMatchObject({ choice: 'home', minutes: 23, step_index: BF.voyage.wave, mode: 'voyage' });
+    // and nothing calls it a failure: the dock is still standing
+    expect(p.tracked.map(([e]) => e)).not.toContain('progression_failed');
   });
 
   it('sends the minutes on a failure and harbour_complete once, on the last purchase', () => {

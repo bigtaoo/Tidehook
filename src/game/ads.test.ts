@@ -6,6 +6,8 @@ import { Ads } from './ads';
 import { Guide } from './guide/guide';
 import { saveGuide } from './guide/store';
 import { Harbour } from './meta/harbour';
+import { BF } from '../sim/balanceFun';
+import type { SimEvent } from '../sim/events';
 import { OVER_LOCK_MS, Session } from './session';
 
 const FRAME = 1000 / 60;
@@ -21,6 +23,20 @@ function setup(ads: StubPlatform['ads'] = 'reward', guideGames = 5) {
   const a = new Ads(p, s, (on) => flips.push(on));
   s.start();
   return { p, s, a, flips };
+}
+
+/** Clears the voyage's last wave, and hands back what the sim said on the way. */
+function toVoyageEnd(s: Session): SimEvent[] {
+  const w = s.world;
+  w.wave = BF.voyage.wave;
+  w.queue = [];
+  w.mons = [];
+  const events: SimEvent[] = [];
+  for (let i = 0; i < 600 && !s.atVoyageEnd(); i++) {
+    s.update(FRAME);
+    events.push(...s.drain());
+  }
+  return events;
 }
 
 /** Sinks the dock and runs the frame that notices. */
@@ -104,6 +120,21 @@ describe('Ads', () => {
     s.tap();
     a.frame([]);
     expect(p.calls.filter((c) => c === 'midgame')).toHaveLength(2);
+  });
+
+  it("waits out the voyage's end, where the captain is choosing, and fills the way home once", async () => {
+    const { p, s, a } = setup('skip');
+    const events = toVoyageEnd(s);
+    // the wave cleared and the shop is open underneath, but the choice of home or on holds it shut
+    expect([events.some((e) => e.e === 'waveClear'), s.world.phase, s.shopping()]).toEqual([true, 'shop', false]);
+    a.frame(events);
+    expect([s.hold, p.calls]).toEqual([false, []]);
+    expect(s.home()).toBe(true);
+    a.frame([]);
+    s.update(OVER_LOCK_MS + 100);
+    s.tap();
+    a.frame([]);
+    expect(p.calls.filter((c) => c === 'midgame')).toHaveLength(1);
   });
 
   it("shows no interstitial in a new player's first game, nor right after a rewarded ad", async () => {
