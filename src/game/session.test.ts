@@ -108,7 +108,7 @@ describe('Session', () => {
     s.start();
     s.start();
     expect(s.world.ease).toBe(B.tide.waves);
-    saveGuide(store, { done: [], games: 9 });
+    saveGuide(store, { done: [], games: 9, shops: 0 });
     expect(new Session({ seed: 3, speed: 1, autoplay: null }, new Guide(store)).world.ease).toBe(B.tide.waves);
     expect(new Session({ seed: 3, speed: 1, autoplay: 'good' }).world.ease).toBe(0);
     expect(new Session({ seed: 3, speed: 1, autoplay: 'novice', ease: 5 }).world.ease).toBe(5);

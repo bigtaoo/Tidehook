@@ -59,7 +59,7 @@ describe('NoAds', () => {
 
   it('turns the interstitials off once owned and leaves the rewarded ads', async () => {
     const store = new SafeStore(null);
-    saveGuide(store, { done: [], games: 5 });
+    saveGuide(store, { done: [], games: 5, shops: 0 });
     const p = new StubPlatform();
     p.ads = 'reward';
     const s = new Session({ seed: 3, speed: 1, autoplay: null }, new Guide(store), new Harbour(store));

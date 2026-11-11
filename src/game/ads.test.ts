@@ -15,7 +15,7 @@ const FRAME = 1000 / 60;
 /** A player's game with a harbour, on a stub host whose rewarded ads answer `ads`. */
 function setup(ads: StubPlatform['ads'] = 'reward', guideGames = 5) {
   const store = new SafeStore(null);
-  saveGuide(store, { done: [], games: guideGames });
+  saveGuide(store, { done: [], games: guideGames, shops: 0 });
   const p = new StubPlatform();
   p.ads = ads;
   const s = new Session({ seed: 3, speed: 1, autoplay: null }, new Guide(store), new Harbour(store));

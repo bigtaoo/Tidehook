@@ -31,13 +31,29 @@ describe('the harbour tip', () => {
     expect(new Harbour(store).flat).toBe(1);
   });
 
-  it('says nothing until the player is stuck', () => {
+  it('says nothing until the player is stuck, once something has been bought', () => {
     const h = new Harbour(new SafeStore(null));
     h.logGame({ wave: 3, bay: 3 });
+    h.earn(1000);
+    h.buy('hull');
+    h.pearls = 0;
     for (let i = 1; i < TIP_AFTER; i++) flatGame(h);
     expect(harbourTip(h)).toBeNull();
     flatGame(h);
     expect(harbourTip(h)).toEqual({ kind: 'log' });
+  });
+
+  it('tells a player who has never bought anything that the pearls are to spend', () => {
+    const h = new Harbour(new SafeStore(null));
+    expect(harbourTip(h)).toBeNull(); // home with nothing: nothing to say
+    const cheapest = Math.min(...B.meta.upgrades.map((u) => h.price(u.id) ?? Infinity));
+    h.earn(cheapest);
+    expect(h.flat).toBeLessThan(TIP_AFTER);
+    expect(harbourTip(h)).toEqual({ kind: 'buy' }); // said on the first visit, not after two flat games
+    h.buy(B.meta.upgrades.find((u) => h.price(u.id) === cheapest)!.id);
+    expect(harbourTip(h)).toBeNull(); // and never again, however many pearls are in hand
+    h.earn(1000);
+    expect(harbourTip(h)).toBeNull();
   });
 
   it('points at a harder sea owned, then an affordable chart, an upgrade, a chart to save for', () => {

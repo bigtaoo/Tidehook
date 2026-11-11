@@ -176,7 +176,9 @@ export class Session {
   /** Runs the ticks `frameMs` of real time is worth; returns how many ran. */
   update(frameMs: number): number {
     const n = this.run(frameMs);
-    this.guide?.update(this.world, this.mode === 'play' && !this.paused, frameMs);
+    // an ad on screen is not play: the tutorial's clocks (its hold's 30 s, the hand's rest, the
+    // seconds a step took) must not run through a minute of someone else's video
+    this.guide?.update(this.world, this.mode === 'play' && !this.paused && !this.hold, frameMs);
     return n;
   }
 

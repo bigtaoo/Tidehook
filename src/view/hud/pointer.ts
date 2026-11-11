@@ -54,7 +54,7 @@ export class Pointer extends Container {
   }
 
   update(s: Session, frameMs: number): void {
-    const live = s.mode === 'play' && !s.paused;
+    const live = s.mode === 'play' && !s.paused && !s.hold;
     const cue = live ? (s.guide?.cue ?? null) : null;
     this.ms += frameMs;
     this.drawBubble(cue && cue.text && s.world.phase === 'wave' ? cue : null, s.guide?.skipArmed ?? false);

@@ -60,6 +60,23 @@ describe('Guide', () => {
     expect(s.world.calm).toBe(0);
   });
 
+  it('spends no hold, and shows no hand, while an ad is on screen', () => {
+    const { g } = fresh();
+    const s = new Session({ seed: 5, speed: 1, autoplay: null }, g);
+    s.start();
+    run(s, HOLD_MS - 2000);
+    expect(s.world.calm).toBe(1);
+    // a rewarded ad goes up (game/ads.ts): a minute of someone else's video is not a minute of play
+    s.hold = true;
+    run(s, 60_000);
+    expect([s.world.calm, g.cue?.step]).toEqual([1, 'cast']);
+    // the cue stands still rather than ticking on, which is why the hand is not drawn over an
+    // ad either (view/hud/pointer.ts). Play goes on where it left off:
+    s.hold = false;
+    run(s, 2500);
+    expect(s.world.calm).toBe(0);
+  });
+
   it("never holds the daily voyage, which is everyone's same world", () => {
     const { store, g } = fresh();
     const s = new Session({ seed: 5, speed: 1, autoplay: null }, g, new Harbour(store));
@@ -161,11 +178,12 @@ describe('Guide', () => {
   });
 
   it('reads bad saves as a new player', () => {
-    for (const raw of ['{', 'null', '[]', '{"done":7,"games":-2}', '{"done":["cast",3],"games":1.5}']) {
+    for (const raw of ['{', 'null', '[]', '{"done":7,"games":-2,"shops":"3"}', '{"done":["cast",3],"games":1.5,"shops":-1}']) {
       const store = new SafeStore(null);
       store.setItem(GUIDE_KEY, raw);
       const save = loadGuide(store);
       expect(save.games).toBe(0);
+      expect(save.shops).toBe(0);
       expect(save.done.every((d) => typeof d === 'string')).toBe(true);
     }
   });
@@ -188,6 +206,23 @@ describe('Guide', () => {
     const again = new Guide(store);
     again.begin();
     expect(again.shopTeach).toBe(false);
+  });
+
+  it('spends the shop visits it has already used, across a reload, so the step can finish', () => {
+    const { store, g } = fresh();
+    const w = startGame(1);
+    g.begin();
+    g.observe([{ e: 'waveStart', wave: 2 }], w);
+    g.observe([{ e: 'waveStart', wave: 3 }], w);
+    expect(g.has('shop')).toBe(false);
+    // the tab is closed between two waves and the game opened again. The hand's budget is a
+    // budget, not a fresh start: the third shop still ends the step, and with it the tutorial.
+    const again = new Guide(store);
+    again.begin();
+    expect(again.has('shop')).toBe(false);
+    again.observe([{ e: 'waveStart', wave: 4 }], w);
+    expect(again.has('shop')).toBe(true);
+    expect(loadGuide(store).shops).toBe(3);
   });
 
   it('answers once true for each one-time hint, kept across saves', () => {
@@ -227,6 +262,19 @@ describe('Guide', () => {
       g.observe([{ e: 'over', wave: 3 }], w);
       expect(g.lesson).toBeNull();
     }
+  });
+
+  it('tells the lesson of the end that stuck, not of the fall before a revive', () => {
+    const { g } = fresh();
+    g.begin();
+    const w = startGame(2);
+    w.lv = { power: 1 };
+    g.observe([{ e: 'over', wave: 2 }], w);
+    expect(g.lesson).toBe('guide.lesson.near');
+    // the revive's ad is watched (sim/revive.ts): the same game runs on and ends somewhere else
+    g.observe([{ e: 'leak', kind: 'brute', dmg: 2 }], w);
+    g.observe([{ e: 'over', wave: 4 }], w);
+    expect(g.lesson).toBe('guide.lesson.junk');
   });
 });
 

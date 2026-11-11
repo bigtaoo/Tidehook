@@ -80,7 +80,8 @@ export class Guide {
   private restMs = 0;
   private tapped = false;
   private skipAt = -Infinity;
-  private visits = 0;
+  /** Shops left while the shop step waited, this save's running total (see store.ts). */
+  private visits: number;
   private bruteLeaks = 0;
   private readonly shownAt = new Map<string, number>();
 
@@ -88,6 +89,7 @@ export class Guide {
     const save = loadGuide(store);
     this.done = new Set(save.done);
     this.games = save.games;
+    this.visits = save.shops;
   }
 
   /** A new player: the first game starts at once, on the first seed. */
@@ -104,7 +106,6 @@ export class Guide {
     return this.games <= TAG_GAMES;
   }
 
-  /** The first skip press is waiting for the second. */
   /** The first shop of a new player: its title says what the shop is for (fish, coins, cards). */
   get shopTeach(): boolean {
     return !this.done.has('shop') && !this.done.has(SHOP_SEEN);
@@ -115,13 +116,14 @@ export class Guide {
     return this.done.has(id);
   }
 
-  /** A shop left: marks the teach line seen on this save (the first) and says when the hand is done. */
+  /** A shop left: marks the teach line seen on this save (the first), counts the visit and says
+   *  when the hand is done. The count is saved like the rest, so closing the tab between waves
+   *  does not hand the player the hand again from the top. */
   private leftShop(): boolean {
-    if (!this.done.has(SHOP_SEEN)) {
-      this.done.add(SHOP_SEEN);
-      this.save();
-    }
-    return ++this.visits >= SHOP_VISITS;
+    this.visits++;
+    this.done.add(SHOP_SEEN);
+    this.save();
+    return this.visits >= SHOP_VISITS;
   }
 
   /** True the first time `id` is asked about on this save, never after: a one-time hint (the
@@ -133,6 +135,7 @@ export class Guide {
     return true;
   }
 
+  /** The first skip press is waiting for the second. */
   get skipArmed(): boolean {
     return this.realMs - this.skipAt <= SKIP_MS;
   }
@@ -185,7 +188,9 @@ export class Guide {
       }
       else if (ev.e === 'leak' && ev.kind === 'brute') this.bruteLeaks++;
       else if (ev.e === 'waveStart' && ev.wave > 1 && !this.done.has('shop') && this.leftShop()) this.finish('shop');
-      else if (ev.e === 'over' && !this.done.has(LOST)) {
+      // the one lesson is the first game over's. A revive (game/ads.ts) can end that same game
+      // twice, so it says what lost it in the end, not what the fall before the ad looked like.
+      else if (ev.e === 'over' && (this.lesson !== null || !this.done.has(LOST))) {
         this.lesson = this.lessonFor(w);
         this.done.add(LOST);
         this.save();
@@ -274,7 +279,7 @@ export class Guide {
   }
 
   private save(): void {
-    saveGuide(this.store, { done: [...this.done], games: this.games });
+    saveGuide(this.store, { done: [...this.done], games: this.games, shops: this.visits });
   }
 }
 
