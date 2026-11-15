@@ -96,7 +96,9 @@ export function career(name: string, opts: CareerOptions = {}): Career {
   for (let n = 0; total < maxMins && done === null; n++) {
     const sea = seaFor(lv);
     const r = playGame(base + n, name, 1000, cap, B.tide.waves, lv, sea);
-    const c = { ...r.st, ...sunkCounts(r.sunk), wave: r.wave, games: 1, [B.seas[sea].id]: r.wave };
+    // as sim/goals.ts counts(), which a GameResult cannot be handed to: the sea's wave and, when
+    // the voyage was sailed to its end, that sea's voyage goal
+    const c = { ...r.st, ...sunkCounts(r.sunk), wave: r.wave, games: 1, [B.seas[sea].id]: r.wave, [`${B.seas[sea].id}Voyage`]: r.st.voyage };
     // the codex pays for each kind first sunk (game/meta/harbour.ts)
     const codex = firstSunk(totals, c).length * BF.codex.pearls;
     best = bestCounts(best, c);

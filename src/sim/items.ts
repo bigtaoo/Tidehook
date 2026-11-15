@@ -43,7 +43,7 @@ export function addItem(w: World, kind: 'fish' | 'junk'): boolean {
     const pd = rng.range(B.dock.edge + C.nearMargin, LANE_LEN_FP - C.farMargin - r);
     if (w.items.some((o) => dist2(o.w - pw, o.d - pd) < (o.r + r + C.spacing) * (o.r + r + C.spacing))) continue;
     let val = kind === 'fish' ? fishValue(w, chest, pd) : 0;
-    // now and then a fish is gold (fun.ts), drawn from its own stream so the rest do not shift
+    // now and then a fish is gold (fun.ts), drawn from the luck stream so the spawns and the catch do not shift
     const gold = kind === 'fish' && !chest && w.rng.luck.int(1000) < goldChance(w);
     if (gold) val = muldiv(val, goldMult(w), 1000);
     w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest), dropped: false, gold });

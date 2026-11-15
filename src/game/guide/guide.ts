@@ -23,6 +23,9 @@ export const STEP_IDS: readonly StepId[] = ['cast', 'crab', 'throw', 'junk', 'sh
 const LOST = 'lost';
 /** Saved once the first shop is left, so the shop's teach line does not come back after a reload. */
 const SHOP_SEEN = 'shopSeen';
+/** Saved once a card has been bought, ever: until then the shop keeps tagging its Top pick
+ *  (tagOn), the way the harbour keeps pointing while nothing has been bought (meta/tip.ts). */
+const BOUGHT = 'bought';
 
 /** What the aim line glows on. */
 export type Want = 'fish' | 'mon' | 'junk';
@@ -83,6 +86,8 @@ export class Guide {
   /** Shops left while the shop step waited, this save's running total (see store.ts). */
   private visits: number;
   private bruteLeaks = 0;
+  /** Levels owned at this game’s first frame, -1 before it: the shop is the only thing that grows them. */
+  private lv0 = -1;
   private readonly shownAt = new Map<string, number>();
 
   constructor(private readonly store: KeyValueStore | null) {
@@ -101,9 +106,12 @@ export class Guide {
     return STEP_IDS.every((s) => this.done.has(s));
   }
 
-  /** The shop marks the Top pick card in the first few games. */
+  /** The shop marks its Top pick card in the first few games, and goes on marking it for a player
+   *  who has never bought a card at all: three games of tag are nothing to someone who has not
+   *  understood yet what the shop is for, and they are the ones the seas stay shut for
+   *  (docs/04-content.md section 5). The harbour points the same way (meta/tip.ts). */
   get tagOn(): boolean {
-    return this.games <= TAG_GAMES;
+    return this.games <= TAG_GAMES || !this.done.has(BOUGHT);
   }
 
   /** The first shop of a new player: its title says what the shop is for (fish, coins, cards). */
@@ -148,6 +156,7 @@ export class Guide {
   begin(hold = true): void {
     this.games++;
     this.bruteLeaks = 0;
+    this.lv0 = -1;
     this.lesson = null;
     this.holds = hold;
     this.playMs = 0;
@@ -202,6 +211,14 @@ export class Guide {
   update(w: World, playing: boolean, frameMs: number): void {
     this.realMs += frameMs;
     w.calm = this.calm();
+    // a card bought, this game or any: only the shop grows the levels owned, so a rise says a
+    // card was taken and the Top pick’s tag has done its work (tagOn)
+    const owned = Object.values(w.lv).reduce((a, b) => a + b, 0);
+    if (this.lv0 < 0) this.lv0 = owned;
+    else if (owned > this.lv0 && !this.done.has(BOUGHT)) {
+      this.done.add(BOUGHT);
+      this.save();
+    }
     if (!playing) return;
     this.playMs += frameMs;
     const step = this.pick(w);

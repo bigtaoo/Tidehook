@@ -235,12 +235,20 @@ describe('Guide', () => {
     expect(new Guide(store).finished).toBe(false);
   });
 
-  it('tags the Top pick for the first three games only', () => {
-    const { g } = fresh();
+  it('tags the Top pick for the first three games, and on until a card is bought', () => {
+    const { store, g } = fresh();
+    const w = startGame(5);
     for (let i = 0; i < 3; i++) g.begin();
     expect(g.tagOn).toBe(true);
     g.begin();
+    g.update(w, true, FRAME);
+    // a fourth game and still not one card: the tag stays up for the player it is there for
+    expect(g.tagOn).toBe(true);
+    w.lv.reel = 1;
+    g.update(w, true, FRAME);
     expect(g.tagOn).toBe(false);
+    // and it is remembered, so a reload does not hand the tag back
+    expect(new Guide(store).tagOn).toBe(false);
   });
 
   it('picks one lesson for the first game over, and none after', () => {

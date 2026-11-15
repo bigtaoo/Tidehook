@@ -121,6 +121,8 @@ export const es: Table = {
     streak: 'Racha diaria {n}: +{p} perlas',
     paused: 'Tomando aire',
     resume: 'Toca para seguir',
+
+    putIn: 'Volver a puerto ya',
     over: 'El muelle cedió',
     reached: 'Aguantaste hasta la oleada {n}',
     again: 'Toca para jugar otra vez',

@@ -122,6 +122,8 @@ export const tr: Table = {
     streak: 'Günlük seri {n}: +{p} inci',
     paused: 'Soluklanıyor',
     resume: 'Devam etmek için dokun',
+
+    putIn: 'Erken limana dön',
     over: 'İskele çöktü',
     reached: '{n}. dalgaya kadar dayandın',
     again: 'Tekrar oynamak için dokun',

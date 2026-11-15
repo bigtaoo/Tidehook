@@ -121,6 +121,8 @@ export const en = {
     streak: 'Daily streak {n}: +{p} pearls',
     paused: 'Catching breath',
     resume: 'Tap to resume',
+
+    putIn: 'Put in early',
     over: 'The dock gave way',
     reached: 'You held on to wave {n}',
     again: 'Tap to play again',

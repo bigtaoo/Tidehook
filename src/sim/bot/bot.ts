@@ -35,6 +35,9 @@ export interface Persona {
   randomCards?: boolean;
   /** Fishes even with a monster close to the dock. */
   fishNear?: boolean;
+  /** Never buys anything in the shop: straight on to the next wave. A new player who has not
+   *  understood what the cards are for. */
+  shopSkip?: boolean;
 }
 
 const BASE: Record<string, PersonaSpec> = {
@@ -73,6 +76,10 @@ const REROLL_ABOVE = 60;
 const SPAM_CHANCE = 300;
 
 function shop(w: World, p: Persona, rng: Prng): void {
+  if (p.shopSkip) {
+    nextWave(w);
+    return;
+  }
   const repairAt = p.repairAt ?? 3;
   while (w.hp <= w.maxHp - repairAt && buyRepair(w));
   if (p.mines && w.mines < 1) buyMine(w);

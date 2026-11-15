@@ -18,7 +18,7 @@ import { Overlay } from '../hud/overlay';
 import { Harbour } from '../../game/meta/harbour';
 import { SafeStore } from '../../platform/types';
 import { SETTING_IDS, Settings } from '../../game/settings';
-import { PauseSettings } from '../hud/settingsPanel';
+import { PausePanel } from '../hud/pausePanel';
 import { Container as Box } from 'pixi.js';
 import { ShopPanel, type ShopActions } from '../hud/shop';
 import { Button } from '../kit/button';
@@ -131,13 +131,13 @@ function screens(fr: Frame): Screen[] {
   });
   out.push(cover('title', 'title', false), cover('paused', 'play', true), cover('over', 'over', false));
   out.push({
-    name: 'cover/paused with settings',
+    name: 'cover/paused with panel',
     build: () => {
       const box = new Box();
       const o = new Overlay(fr);
       o.update('play', true, false, 188, [], 16);
-      const ps = new PauseSettings(fr.boost, new Settings(null), SETTING_IDS, () => {});
-      ps.update(o.slot);
+      const ps = new PausePanel(fr.boost, new Settings(null), SETTING_IDS, () => {}, { putIn: () => {} });
+      ps.update(o.slot, 42, true);
       box.addChild(o, ps);
       return box;
     },

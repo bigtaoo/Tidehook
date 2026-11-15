@@ -1,6 +1,6 @@
 // The player's settings as buttons (game/settings.ts): music, sounds, vibration and calm motion, each
 // a plate that reads "Music: on" and flips on a press. Drawn into a rect by drawToggles, used by the
-// pause cover (PauseSettings, in the slot the Overlay leaves) and the harbour's cabin tab.
+// pause cover (hud/pausePanel.ts, in the slot the Overlay leaves) and the harbour's cabin tab.
 
 import { Container } from 'pixi.js';
 import type { SettingId, Settings } from '../../game/settings';
@@ -8,7 +8,6 @@ import { t } from '../../i18n';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
 import type { Rect } from './frame';
-import type { Slot } from './overAds';
 
 const GAP = 24;
 
@@ -31,36 +30,4 @@ export function drawToggles(s: Settings, ids: readonly SettingId[], r: Rect, k: 
     box.addChild(b);
   });
   return box;
-}
-
-const BTN_W = 380;
-const BTN_H = 96;
-
-/** The toggles on the pause cover, in its slot; rebuilt when a setting or the slot changes. */
-export class PauseSettings extends Container {
-  private key = '';
-
-  constructor(
-    private readonly boost: number,
-    private readonly settings: Settings | null,
-    private readonly ids: readonly SettingId[],
-    private readonly onToggle: (id: SettingId) => void,
-  ) {
-    super();
-  }
-
-  update(slot: Slot | null): void {
-    const s = this.settings;
-    const key = s && slot ? `${s.key}|${slot.x}|${slot.y}|${slot.w}|${slot.h}` : '';
-    if (key === this.key) return;
-    this.key = key;
-    for (const c of this.removeChildren()) c.destroy({ children: true });
-    if (!s || !slot) return;
-    const k = this.boost;
-    const cols = 2;
-    const rows = Math.ceil(this.ids.length / cols);
-    const w = Math.min(slot.w, BTN_W * k * cols + GAP);
-    const h = Math.min(slot.h, BTN_H * k * rows + GAP * (rows - 1));
-    this.addChild(drawToggles(s, this.ids, { x: slot.x - w / 2, y: slot.y - h / 2, w, h }, k, cols, this.onToggle));
-  }
 }

@@ -40,10 +40,19 @@ export interface Player {
   /** Watches the pearl-doubling ad after every game. */
   double: boolean;
   /** cheap: buys the cheapest thing it can, again and again; charts: saves for a sea chart as soon
-   *  as one is on sale, and buys the rest cheapest first otherwise. */
-  harbour: 'cheap' | 'charts';
+   *  as one is on sale, and buys the rest cheapest first otherwise; none: never spends a pearl,
+   *  a player who has not understood what the harbour is for. */
+  harbour: 'cheap' | 'charts' | 'none';
   /** newest: always sails the hardest sea owned; bay: never leaves the home bay. */
   sea: 'newest' | 'bay';
+  /** home: takes the way home when the voyage ends (sim/balanceFun.ts voyage.wave), which banks
+   *  the game with its extra pearls; sail (the default): plays on until the dock falls. */
+  voyage?: 'home' | 'sail';
+  /** How long the player sits down for, minutes. A game still running then ends there: the captain
+   *  puts in early and banks what the dock has earned (game/session.ts putIn), or, with PUTIN=0,
+   *  the old way, where the tab closed mid-wave and the whole game was lost. Unset: they stay
+   *  until the dock falls. */
+  sitting?: number;
 }
 
 const PLAIN = { junk: true, fish: true, reroll: false, mines: false, spam: false };

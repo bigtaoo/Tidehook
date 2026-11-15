@@ -121,6 +121,8 @@ export const zh: Table = {
     streak: '每日连续 {n} 天：+{p} 珍珠',
     paused: '歇口气',
     resume: '点击继续',
+
+    putIn: '提前返航',
     over: '码头塌了',
     reached: '撑到了第 {n} 波',
     again: '点击再来一局',

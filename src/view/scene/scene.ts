@@ -24,11 +24,13 @@ import { OverAds, type AdActions } from '../hud/overAds';
 import { Overlay } from '../hud/overlay';
 import { VoyageEnd } from '../hud/voyageEnd';
 import { BF } from '../../sim/balanceFun';
+import { pearlsFor } from '../../sim/meta';
 import { Pointer } from '../hud/pointer';
 import { topCard } from '../../game/guide/shopPick';
 import { t } from '../../i18n';
 import { ShopPanel } from '../hud/shop';
-import { PauseSettings, shownSettings } from '../hud/settingsPanel';
+import { PausePanel } from '../hud/pausePanel';
+import { shownSettings } from '../hud/settingsPanel';
 import type { Fit } from '../viewport';
 import { Actors } from './actors';
 import { drawField, drawWeather } from './field';
@@ -71,7 +73,7 @@ export class Scene extends Container {
   readonly overlay: Overlay;
   readonly overAds: OverAds;
   readonly voyageEnd: VoyageEnd;
-  readonly pauseSettings: PauseSettings;
+  readonly pausePanel: PausePanel;
   readonly lobby: LobbyPanel;
   /** The sea's weather over the water, redrawn when the sea changes. */
   private readonly weather = new Graphics();
@@ -119,7 +121,7 @@ export class Scene extends Container {
       ui.settings?.toggle(id);
       ui.click?.();
     };
-    this.pauseSettings = new PauseSettings(fr.boost, ui.settings ?? null, settingIds, toggle);
+    this.pausePanel = new PausePanel(fr.boost, ui.settings ?? null, settingIds, toggle, { putIn: () => ui.shop(session.putIn()) });
     this.lobby = new LobbyPanel(fr, {
       buy: (id) => ui.shop(session.buyMeta(id)),
       sail: () => session.sail(),
@@ -136,7 +138,7 @@ export class Scene extends Container {
     }, ui.settings ? { s: ui.settings, ids: settingIds } : null);
     this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());
     this.field.addChild(drawField(fr.field), this.weather, this.actors, this.weatherTop, this.fx);
-    this.addChild(this.field, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.voyageEnd, this.pauseSettings, this.lobby);
+    this.addChild(this.field, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.voyageEnd, this.pausePanel, this.lobby);
     this.scale.set(fit.scale);
     this.position.set(fit.x, fit.y);
   }
@@ -181,7 +183,13 @@ export class Scene extends Container {
     this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, notes, offer, end);
     this.overAds.update(atEnd ? null : offer, atEnd ? null : this.overlay.slot);
     this.voyageEnd.update(BF.voyage.home, atEnd && !s.paused ? this.overlay.slot : null);
-    this.pauseSettings.update(s.mode === 'play' && s.paused ? this.overlay.slot : null);
+    // The pause cover wins over the voyage cover (hud/overlay.ts), so a captain who pauses at the
+    // voyage’s end sees this panel instead of that card. Putting in is not offered there: the way
+    // home is the better deal and Session.putIn refuses it, which would leave a dead button. Nor in
+    // the guided first game, where the tutorial is still talking (game/ads.ts does the same).
+    const paused = s.mode === 'play' && s.paused;
+    const canPutIn = !atEnd && (!s.guide || s.guide.games > 1);
+    this.pausePanel.update(paused ? this.overlay.slot : null, pearlsFor(s.world), canPutIn);
     const inLobby = s.mode === 'lobby';
     const daily = inLobby ? { day: today(), rows: this.board?.on ? this.board.rows : undefined } : NO_DAILY;
     this.lobby.update(s.harbour, inLobby, s.last, daily, this.noAds ?? NO_SALE);

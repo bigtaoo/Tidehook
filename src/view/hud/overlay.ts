@@ -21,8 +21,9 @@ const CAPTAIN_H = 340;
 /** The gap the game over card leaves for the ad buttons (hud/overAds.ts), design units; a row of
  *  the pause cover's settings takes as much. */
 const SLOT_H = 150;
-/** The rows of settings buttons on the pause cover (hud/settingsPanel.ts). */
-const PAUSE_ROWS = 2;
+/** The rows the pause cover's panel fills: the settings buttons, and under them the button
+ *  that puts in early (hud/pausePanel.ts). */
+const PAUSE_ROWS = 3;
 /** Card lines this size and up (the headline) shrink to one line; smaller ones wrap onto two. */
 const WRAP_BELOW = 90;
 /** Stands in the queue for the one-time sea event hint, whose words are looked up as it shows. */

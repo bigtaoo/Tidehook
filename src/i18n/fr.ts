@@ -121,6 +121,8 @@ export const fr: Table = {
     streak: 'Série du jour {n} : +{p} perles',
     paused: 'On reprend son souffle',
     resume: 'Touche pour reprendre',
+
+    putIn: 'Rentrer au port',
     over: 'Le quai a cédé',
     reached: 'Tu as tenu jusqu’à la vague {n}',
     again: 'Touche pour rejouer',

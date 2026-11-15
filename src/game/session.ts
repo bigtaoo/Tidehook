@@ -226,7 +226,11 @@ export class Session {
     // a daily voyage sails a sea that may not be owned: it counts for the log but not the sea's best
     if (this.daily) delete c[id];
     const log = this.harbour?.logGame(c) ?? [];
-    const record = this.daily ? !!this.harbour?.logDaily(this.daily, w.wave) : was > 0 && w.wave > was;
+    // A sea beyond the home bay was paid for with a chart, so the first run there is a best worth
+    // saying out loud (view/scene/scene.ts, telemetry.ts celebrate); only the very first game of
+    // all stays quiet, having nothing yet to beat.
+    const first = was === 0 && w.sea > 0;
+    const record = this.daily ? !!this.harbour?.logDaily(this.daily, w.wave) : (first || was > 0) && w.wave > was;
     const codex = this.harbour?.lastCodex ?? 0;
     const streak = this.daily && this.harbour ? this.harbour.sailDaily(this.daily) : null;
     const extra = log.reduce((s, g) => s + g.pearls, 0) + codex + (streak?.pearls ?? 0);
@@ -254,6 +258,20 @@ export class Session {
   sailOn(): boolean {
     if (!this.atVoyageEnd()) return false;
     this.finish = false;
+    return true;
+  }
+
+  /** Puts in early: the captain ends a voyage in progress and brings home what the dock has
+   *  earned so far. It pays exactly what sinking here would have paid (sim/meta.ts counts the
+   *  waves cleared, so the one under way is not among them) and no voyage bonus, so there is
+   *  nothing to win by it — only the hours a player used to throw away by closing the tab
+   *  mid-wave (docs/04-content.md section 5). Only from the pause, which is friction enough. */
+  putIn(): boolean {
+    if (this.mode !== 'play' || !this.paused || this.hold || this.finish || this.pending) return false;
+    this.paused = false;
+    this.mode = 'over';
+    this.overMs = 0;
+    this.settle();
     return true;
   }
 

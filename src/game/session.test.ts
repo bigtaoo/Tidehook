@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SafeStore } from '../platform/types';
 import { B } from '../sim/balance';
 import { BF } from '../sim/balanceFun';
+import { pearlsFor } from '../sim/meta';
 import { gameOver } from '../sim/monsters';
 import { Guide } from './guide/guide';
 import { saveGuide } from './guide/store';
@@ -167,6 +168,10 @@ describe('Session', () => {
     const home = toEnd();
     expect(home.atVoyageEnd()).toBe(true);
     expect(home.shopping()).toBe(false);
+    // the card's own way home is there, with its bonus: no putting in behind it
+    home.togglePause();
+    expect(home.putIn()).toBe(false);
+    home.togglePause();
     home.tap();
     expect(home.atVoyageEnd()).toBe(true);
     expect(home.home()).toBe(true);
@@ -178,5 +183,45 @@ describe('Session', () => {
     expect(on.atVoyageEnd()).toBe(false);
     expect(on.shopping()).toBe(true);
     expect(on.home()).toBe(false);
+  });
+  it('puts in early: the catch comes home, and no more than sinking there would pay', () => {
+    const make = () => {
+      const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+      s.tap();
+      s.world.wave = 6;
+      run(s, 400);
+      return s;
+    };
+    const put = make();
+    expect(put.putIn()).toBe(false);
+    put.togglePause();
+    const want = pearlsFor(put.world);
+    expect(put.putIn()).toBe(true);
+    expect(put.mode).toBe('over');
+    expect(put.paused).toBe(false);
+    expect(put.last).toMatchObject({ wave: 6, home: false });
+    expect(put.last.won).toBe(want);
+    expect(put.harbour?.pearls).toBeGreaterThanOrEqual(want);
+    // once is enough, and a dock that sinks on the same wave brings home exactly as much
+    expect(put.putIn()).toBe(false);
+    const sunk = make();
+    gameOver(sunk.world);
+    run(sunk, 200);
+    expect(sunk.last.won).toBe(put.last.won);
+  });
+  it('counts the first run in a bought sea as a best, but not the first game of all', () => {
+    const sink = (sea: number) => {
+      const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+      s.tap();
+      s.world.sea = sea;
+      s.world.wave = 6;
+      gameOver(s.world);
+      run(s, 100);
+      return s.last.record;
+    };
+    // the home bay on the first game of all: nothing to beat yet, so nothing to crow about
+    expect(sink(0)).toBe(false);
+    // a sea the captain bought a chart for: the first run there is its best, and worth saying
+    expect(sink(1)).toBe(true);
   });
 });
