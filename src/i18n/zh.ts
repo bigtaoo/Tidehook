@@ -123,6 +123,7 @@ export const zh: Table = {
     resume: '点击继续',
 
     putIn: '提前返航',
+    putInHead: '提前回港',
     over: '码头塌了',
     reached: '撑到了第 {n} 波',
     again: '点击再来一局',

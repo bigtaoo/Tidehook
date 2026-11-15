@@ -124,6 +124,7 @@ export const pt: Table = {
     resume: 'Toque para continuar',
 
     putIn: 'Voltar ao porto já',
+    putInHead: 'De volta ao porto',
     over: 'O cais desabou',
     reached: 'Você aguentou até a onda {n}',
     again: 'Toque para jogar de novo',

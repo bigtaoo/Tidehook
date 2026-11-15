@@ -30,8 +30,9 @@ const WRAP_BELOW = 90;
 const EVENT_HINT = '\u0000event';
 
 type Cover = 'title' | 'paused' | 'over' | 'voyage' | null;
-/** How a game reached its end: at the voyage's end, choosing (`voyage`), or home from it (`home`). */
-export type VoyageEnd = 'voyage' | 'home' | null;
+/** How a game reached its end: at the voyage's end, choosing (`voyage`), home from it (`home`),
+ *  or put in early mid-voyage (`putIn`). A dock that fell is none of these: it is `null`. */
+export type VoyageEnd = 'voyage' | 'home' | 'putIn' | null;
 type Line = [string, number, number];
 
 export class Overlay extends Container {
@@ -202,9 +203,14 @@ export class Overlay extends Container {
   /** The game over card's lines; an empty line is the ad buttons' slot. While the revive is on
    *  offer the game is not counted yet, so no pearls and no way on but the buttons. */
   private overLines(): Line[] {
-    const head: Line[] = this.end === 'home'
-      ? [[t('voyage.home'), 96, P.brassLight], [t('overlay.reached', { n: this.wave }), 60, P.cream]]
-      : [[t('overlay.over'), 96, P.red], [t('overlay.reached', { n: this.wave }), 60, P.cream]];
+    // a captain who came home — at the voyage's end or by putting in early — did not lose the
+    // dock, so the card does not shout that it fell
+    const title: Line = this.end === 'home'
+      ? [t('voyage.home'), 96, P.brassLight]
+      : this.end === 'putIn'
+        ? [t('overlay.putInHead'), 96, P.brassLight]
+        : [t('overlay.over'), 96, P.red];
+    const head: Line[] = [title, [t('overlay.reached', { n: this.wave }), 60, P.cream]];
     if (this.offer === 'revive') return [...head, [t('ads.reviveNote'), 48, P.brassLight], ['', 0, 0]];
     return [
       ...head,

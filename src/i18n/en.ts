@@ -123,6 +123,7 @@ export const en = {
     resume: 'Tap to resume',
 
     putIn: 'Put in early',
+    putInHead: 'Back in port',
     over: 'The dock gave way',
     reached: 'You held on to wave {n}',
     again: 'Tap to play again',

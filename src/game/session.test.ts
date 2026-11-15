@@ -199,7 +199,8 @@ describe('Session', () => {
     expect(put.putIn()).toBe(true);
     expect(put.mode).toBe('over');
     expect(put.paused).toBe(false);
-    expect(put.last).toMatchObject({ wave: 6, home: false });
+    // `putIn` is what tells the game over card not to say the dock fell (view/hud/overlay.ts)
+    expect(put.last).toMatchObject({ wave: 6, home: false, putIn: true });
     expect(put.last.won).toBe(want);
     expect(put.harbour?.pearls).toBeGreaterThanOrEqual(want);
     // once is enough, and a dock that sinks on the same wave brings home exactly as much
@@ -208,6 +209,7 @@ describe('Session', () => {
     gameOver(sunk.world);
     run(sunk, 200);
     expect(sunk.last.won).toBe(put.last.won);
+    expect(sunk.last.putIn).toBe(false);
   });
   it('counts the first run in a bought sea as a best, but not the first game of all', () => {
     const sink = (sea: number) => {

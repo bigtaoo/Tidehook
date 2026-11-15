@@ -123,6 +123,7 @@ export const de: Table = {
     resume: 'Tippe zum Weiterspielen',
 
     putIn: 'Früher einlaufen',
+    putInHead: 'Wieder im Hafen',
     over: 'Der Steg ist eingebrochen',
     reached: 'Du hast bis Welle {n} durchgehalten',
     again: 'Tippe für eine neue Runde',

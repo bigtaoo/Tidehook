@@ -123,6 +123,7 @@ export const fr: Table = {
     resume: 'Touche pour reprendre',
 
     putIn: 'Rentrer au port',
+    putInHead: 'De retour au port',
     over: 'Le quai a cédé',
     reached: 'Tu as tenu jusqu’à la vague {n}',
     again: 'Touche pour rejouer',

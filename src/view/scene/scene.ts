@@ -178,7 +178,7 @@ export class Scene extends Container {
     const lesson = g?.lesson ? t(g.lesson) : null;
     const pearls = s.harbour ? s.last.pearls : null;
     const offer = this.ads?.offer() ?? null;
-    const end = atEnd ? 'voyage' : s.mode === 'over' && s.last.home ? 'home' : null;
+    const end = atEnd ? 'voyage' : s.mode !== 'over' ? null : s.last.home ? 'home' : s.last.putIn ? 'putIn' : null;
     const notes = s.mode === 'over' ? overNotes(s) : NO_NOTES;
     this.overlay.update(s.mode, s.paused, shop, w.wave, hints, frameMs, this.pointer.talking, lesson, pearls, notes, offer, end);
     this.overAds.update(atEnd ? null : offer, atEnd ? null : this.overlay.slot);

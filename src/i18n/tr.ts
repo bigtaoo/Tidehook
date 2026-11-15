@@ -124,6 +124,7 @@ export const tr: Table = {
     resume: 'Devam etmek için dokun',
 
     putIn: 'Erken limana dön',
+    putInHead: 'Limana dönüldü',
     over: 'İskele çöktü',
     reached: '{n}. dalgaya kadar dayandın',
     again: 'Tekrar oynamak için dokun',

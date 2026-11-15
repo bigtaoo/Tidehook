@@ -123,6 +123,7 @@ export const es: Table = {
     resume: 'Toca para seguir',
 
     putIn: 'Volver a puerto ya',
+    putInHead: 'De vuelta en puerto',
     over: 'El muelle cedió',
     reached: 'Aguantaste hasta la oleada {n}',
     again: 'Toca para jugar otra vez',

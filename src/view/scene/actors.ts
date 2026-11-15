@@ -34,7 +34,7 @@ const CRANE_W = B.crane.w / FP;
 /** How far the aim line reaches at rest, world units. */
 const AIM_LEN = 260;
 /** The winch's and the hook's drawn size, world units of area radius. */
-const WINCH_R = 34;
+const WINCH_R = 25;
 /** Where the winch sprite's pulley wheel is, as a share of its height (it is centred across). */
 const WINCH_PULLEY = 0.142;
 const HOOK_R = 9;
@@ -128,11 +128,19 @@ export class Actors extends Container {
     }
     if (lowDock(w)) drawCracks(g, f, time);
 
+    const hub = toDesign(f, CRANE_D, CRANE_W);
+    // the winch: still and symmetric, with its pulley wheel on the launch point, so the rope and the
+    // aim start from its middle. A turning boom swung about too much to watch, and its pulley off
+    // to one side made the launch point look shifted. It is drawn before the rope and the hook, and
+    // small enough to sit on the planks, so the post never hides what is being aimed at.
+    if (!bodies.put('winch', hub.x, hub.y, WINCH_R * k, { ay: WINCH_PULLEY })) {
+      g.circle(hub.x, hub.y, 18 * k).fill(P.brass).stroke({ color: P.line, width: 3.5 * k });
+    }
+
     // the hook: the rope from the crane to the tip, between last tick's aim and length and now's
     const h = w.hook;
     const ang = rad(s.prevHook.ang + (h.ang - s.prevHook.ang) * a);
     const len = (s.prevHook.len + (h.len - s.prevHook.len) * a) / FP;
-    const hub = toDesign(f, CRANE_D, CRANE_W);
     if (h.st === 'swing') {
       // with junk in hand the aim is the throw's sight: as far as the shot flies, and the monster
       // it would hit ringed
@@ -182,12 +190,6 @@ export class Actors extends Container {
       }
     }
 
-    // the winch: still and symmetric, with its pulley wheel on the launch point, so the rope and the
-    // aim start from its middle. A turning boom swung about too much to watch, and its pulley off
-    // to one side made the launch point look shifted.
-    if (!bodies.put('winch', hub.x, hub.y, WINCH_R * k, { ay: WINCH_PULLEY })) {
-      g.circle(hub.x, hub.y, 24 * k).fill(P.brass).stroke({ color: P.line, width: 3.5 * k });
-    }
     if (w.held) {
       const r = HELD_R * k;
       if (!bodies.put(fishArt(w, w.held, f.wide), hub.x, hub.y, r)) {
