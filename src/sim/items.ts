@@ -46,7 +46,7 @@ export function addItem(w: World, kind: 'fish' | 'junk'): boolean {
     // now and then a fish is gold (fun.ts), drawn from the luck stream so the spawns and the catch do not shift
     const gold = kind === 'fish' && !chest && w.rng.luck.int(1000) < goldChance(w);
     if (gold) val = muldiv(val, goldMult(w), 1000);
-    w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest), dropped: false, gold });
+    w.items.push({ id: nextId(w), kind, chest, d: pd, w: pw, r, val, wt: weightOf(kind, chest), dropped: false, safe: 0, gold });
     return true;
   }
   return false;
@@ -91,8 +91,16 @@ export function dropJunk(w: World, m: Monster): void {
     val: 0,
     wt: C.junkWeight,
     dropped: false,
+    safe: 0,
     gold: false,
   });
+}
+
+/** Counts the grace down on loot a monster dropped. While it runs the crowd swims past that
+ *  item (nearestFish in monsters.ts), so the captain who sank a boss has a moment to cast for the
+ *  chest instead of watching the next glutton swallow it. */
+export function tickItems(w: World): void {
+  for (const it of w.items) if (it.safe > 0) it.safe--;
 }
 
 /** The fish a glutton ate, dropped where it died when it was not crushed on the dock. */
@@ -109,6 +117,7 @@ export function dropFish(w: World, m: Monster): Item {
     val: m.ate,
     wt: weightOf('fish', chest),
     dropped: true,
+    safe: chest ? C.dropSafe : 0,
     gold: false,
   };
   w.st.dropped += m.ate;

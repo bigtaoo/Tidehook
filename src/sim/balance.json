@@ -46,7 +46,7 @@
     "puffer": { "hp": 1, "speed": 32, "radius": 14, "dmg": 1, "bursts": true },
     "moray": { "hp": 2, "speed": 40, "radius": 12, "dmg": 2, "tugs": true }
   },
-  "boss": { "every": 5, "chest": 30, "knock": 0.35, "pearls": 4 },
+  "boss": { "every": 5, "chest": 29, "knock": 0.35, "pearls": 4 },
   "kraken": { "from": 20, "every": 10, "chest": 1.5, "summon": 5, "brood": 2, "max": 8, "pearls": 8 },
   "dive": { "every": 4, "under": 1.6, "near": 240 },
   "monster": {
@@ -120,6 +120,7 @@
     "chestValueFar": 30,
     "valuePerWave": 0.08,
     "dropChest": 15,
+    "dropSafe": 6,
     "returnMargin": 60,
     "returnNear": 90
   },

@@ -66,7 +66,7 @@ function shapes(g: Graphics): { x: number; y: number; w: number; color: number; 
 describe('the layered health bar', () => {
   it('fills the top sheet by the share that is left of the layer', () => {
     const g = new Graphics();
-    drawBar(g, 100, 50, 60, 1, 1, 0.5, true);
+    drawBar(g, 100, 50, 60, 1, { left: 1, fill: 0.5, size: 1 }, true);
     // the track, then half of it in steel, then the outline
     const s = shapes(g);
     expect(s.map((o) => [o.action, o.x, o.w])).toEqual([
@@ -79,19 +79,19 @@ describe('the layered health bar', () => {
 
   it('paints a bar the hook could lift in cream, like a light pip', () => {
     const g = new Graphics();
-    drawBar(g, 100, 50, 60, 1, 1, 1, false);
+    drawBar(g, 100, 50, 60, 1, { left: 1, fill: 1, size: 1 }, false);
     expect(shapes(g)[1]).toMatchObject({ color: P.cream, w: 60 });
   });
 
   it('draws nothing but the empty track at no health', () => {
     const g = new Graphics();
-    drawBar(g, 100, 50, 60, 1, 1, 0, true);
+    drawBar(g, 100, 50, 60, 1, { left: 1, fill: 0, size: 1 }, true);
     expect(shapes(g).map((o) => o.action)).toEqual(['fill', 'stroke']);
   });
 
   it('stacks a sheet for each layer under the top one, offset so they are counted', () => {
     const g = new Graphics();
-    drawBar(g, 100, 50, 60, 1, 3, 1, true);
+    drawBar(g, 100, 50, 60, 1, { left: 3, fill: 1, size: 1 }, true);
     const s = shapes(g);
     // the two sheets first, the deepest furthest out, then the top sheet on them
     expect(s.map((o) => [o.action, o.x, o.y])).toEqual([
@@ -105,10 +105,27 @@ describe('the layered health bar', () => {
     ]);
   });
 
+  it('notches the top sheet into the hits it stands for, so they can be counted', () => {
+    const g = new Graphics();
+    drawBar(g, 100, 50, 60, 1, { left: 3, fill: 1, size: 10 }, true, true);
+    // nine notches between ten points, evenly spaced across the bar
+    const notches = shapes(g).filter((o) => o.w < 2);
+    expect(notches).toHaveLength(9);
+    expect(notches.map((o) => o.x)).toEqual([75.3, 81.3, 87.3, 93.3, 99.3, 105.3, 111.3, 117.3, 123.3]);
+    // and they are laid down over the fill, under the outline
+    expect(shapes(g).at(-1)!.action).toBe('stroke');
+  });
+
+  it('leaves the bar bare when its points would be too fine to tell apart', () => {
+    const g = new Graphics();
+    drawBar(g, 100, 50, 30, 1, { left: 1, fill: 1, size: 12 }, true);
+    expect(shapes(g).filter((o) => o.w < 2)).toHaveLength(0);
+  });
+
   it('stops stacking sheets however deep the monster, so the lane stays readable', () => {
     const deep = (left: number) => {
       const g = new Graphics();
-      drawBar(g, 100, 50, 60, 1, left, 1, true);
+      drawBar(g, 100, 50, 60, 1, { left, fill: 1, size: 1 }, true);
       return shapes(g).length;
     };
     expect([deep(5), deep(6), deep(20)]).toEqual([11, 11, 11]);

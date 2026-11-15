@@ -334,6 +334,7 @@ export const B = {
     chestValueFar: c.chestValueFar,
     valuePerWave: pm(c.valuePerWave),
     dropChest: c.dropChest,
+    dropSafe: sec(c.dropSafe),
     returnMargin: toFp(c.returnMargin),
     returnNear: toFp(c.returnNear),
   },

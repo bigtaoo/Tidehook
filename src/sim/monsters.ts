@@ -139,7 +139,7 @@ function puffed(w: World, m: Monster, crushed: boolean): void {
   const P = BF.puffer;
   if (crushed) {
     if (w.held) return;
-    w.held = { id: nextId(w), kind: 'puffer', chest: false, d: m.d, w: m.w, r: m.r, val: 0, wt: 0, dropped: false, gold: false };
+    w.held = { id: nextId(w), kind: 'puffer', chest: false, d: m.d, w: m.w, r: m.r, val: 0, wt: 0, dropped: false, safe: 0, gold: false };
     emit(w, { e: 'held' });
     return;
   }
@@ -178,7 +178,7 @@ function nearestFish(w: World, m: Monster): { it: Item; at: number } | null {
   let best: Item | null = null;
   let bd = B.monsters[m.kind].greedy ? w.up.lure + M.gluttonLure : w.up.lure;
   for (const it of w.items) {
-    if (it.kind !== 'fish') continue;
+    if (it.kind !== 'fish' || it.safe > 0) continue;
     const dd = dist(it.w - m.w, it.d - m.d);
     if (dd < bd) {
       bd = dd;

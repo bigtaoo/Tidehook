@@ -2,7 +2,7 @@
 // portrait (they come down the screen), in profile facing left in landscape (they come leftward).
 // Their step is driven by how far they have come, not by the clock, so a stunned one stops.
 
-import type { MonsterKind } from '../../sim/balance';
+import { B, type MonsterKind } from '../../sim/balance';
 import { fishValue } from '../../sim/items';
 import { FP } from '../../sim/math/fixed';
 import type { Item, Monster, World } from '../../sim/world';
@@ -18,9 +18,18 @@ export const LOOK_SCALE = 1.5;
 export const ACROSS_MAX = 2;
 
 /** The opaque-area radius to draw sprite `n` at for a thing of hit radius `r` (any unit):
- *  LOOK_SCALE times it, cut down for a sprite wider across the lane than ACROSS_MAX allows. */
-export function lookRadius(n: ArtName, r: number, wide: boolean): number {
-  return r * Math.min(LOOK_SCALE, ACROSS_MAX / acrossHalf(n, wide));
+ *  LOOK_SCALE times it, cut down so the sprite reaches no further across the lane than `across`
+ *  hit radii. */
+export function lookRadius(n: ArtName, r: number, wide: boolean, across = ACROSS_MAX): number {
+  return r * Math.min(LOOK_SCALE, across / acrossHalf(n, wide));
+}
+
+/** How far across the lane a thing of hit radius `hit` (FP) may be drawn, in hit radii: never
+ *  past where the hook's tip would still catch it. ACROSS_MAX is fine for a small thing, whose
+ *  tip reaches a good way past its middle, but a boss is thirteen units of picture wider than its
+ *  own catch on each side at that cap, so the hook sails straight over the turtle's shell. */
+export function catchAcross(hit: number): number {
+  return Math.min(ACROSS_MAX, 1 + B.hook.tip / hit);
 }
 
 const FISH: readonly ArtName[] = ['fish_coral', 'fish_orange', 'fish_gold'];
@@ -113,6 +122,14 @@ export function step(m: Monster, d: number): Step {
   }
 }
 
+/** A layered health bar's state: `left` sheets still stacked (the top one included), how full
+ *  that top sheet is (0 to 1) and `size` points of damage to a sheet. */
+export interface Bars {
+  left: number;
+  fill: number;
+  size: number;
+}
+
 /** At most this many hit point pips under a monster; one of more hit points than this gets a
  *  layered bar instead (bars). */
 export const MAX_PIPS = 12;
@@ -132,7 +149,7 @@ export function pips(hp: number, grip: number): { n: number; heavy: number } {
  *  of the thing, a boss of forty having shown nothing for its first twenty-eight hits. The short
  *  layer comes last, so a monster at full health shows every layer and a full bar. The drawing
  *  stacks only the first few sheets (pips.ts drawBar); the count here stays exact. */
-export function bars(hp: number, hp0: number): { left: number; fill: number; size: number } {
+export function bars(hp: number, hp0: number): Bars {
   const full = Math.max(1, hp0);
   const layers = Math.max(1, Math.ceil(full / MAX_PIPS));
   const size = Math.ceil(full / layers);

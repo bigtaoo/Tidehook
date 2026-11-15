@@ -35,7 +35,7 @@ describe('the weather', () => {
 
   it('does not slow the swing for a catch in the fog', () => {
     const w = calm(fog);
-    const fish = (d: number): Item => ({ id: 1, kind: 'fish', chest: false, d, w: B.crane.w, r: toFp(14), val: 1, wt: 1, dropped: false, gold: false });
+    const fish = (d: number): Item => ({ id: 1, kind: 'fish', chest: false, d, w: B.crane.w, r: toFp(14), val: 1, wt: 1, dropped: false, safe: 0, gold: false });
     w.items = [fish(B.crane.d + fogLine(w) - toFp(40))];
     expect(onTarget(w, 0)).toBe(true);
     w.items = [fish(B.crane.d + fogLine(w) + toFp(40))];

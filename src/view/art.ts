@@ -67,6 +67,14 @@ export function acrossHalf(n: ArtName, wide: boolean): number {
   return (wide ? f.h : f.w) / 2 / f.r;
 }
 
+/** How far sprite `n` reaches along the lane from its middle, per unit of opaque-area radius:
+ *  its half-height in portrait, its half-width in landscape. The other half of acrossHalf, for
+ *  hanging something (a health bar) clear of the picture rather than over it. */
+export function alongHalf(n: ArtName, wide: boolean): number {
+  const f = FIT[n];
+  return (wide ? f.w : f.h) / 2 / f.r;
+}
+
 /** Sprite `n` scaled to `height` design units with its anchor at (ax, ay); null when it is not
  *  loaded, and the caller leaves the space empty. For the HUD's pictures (the captain). */
 export function artSprite(n: ArtName, height: number, ax = 0.5, ay = 0.5): Sprite | null {

@@ -18,12 +18,12 @@ import { BRAD_FULL } from '../../sim/math/trig';
 import type { Item, Monster } from '../../sim/world';
 import { CATCH, HEAVY, MON, P } from '../kit/palette';
 import { toDesign, type Field } from '../orient';
-import { areaScale, tex } from '../art';
+import { alongHalf, acrossHalf, areaScale, tex } from '../art';
 import { LANE_LEN } from '../../sim/lane';
 import { bandRect } from './field';
 import { isBoss, diving } from '../../sim/kinds';
 import { clarity } from '../../sim/weather';
-import { bars, fishArt, hasOwnArt, lookRadius, MAX_PIPS, monsterArt, pips, step } from './look';
+import { bars, catchAcross, fishArt, hasOwnArt, lookRadius, MAX_PIPS, monsterArt, pips, step } from './look';
 import { inDanger, lowDock } from './danger';
 import { throwSight } from './sight';
 import { drawBar, PipRow } from './pips';
@@ -34,7 +34,7 @@ const CRANE_W = B.crane.w / FP;
 /** How far the aim line reaches at rest, world units. */
 const AIM_LEN = 260;
 /** The winch's and the hook's drawn size, world units of area radius. */
-const WINCH_R = 25;
+const WINCH_R = 28;
 /** Where the winch sprite's pulley wheel is, as a share of its height (it is centred across). */
 const WINCH_PULLEY = 0.142;
 const HOOK_R = 9;
@@ -111,6 +111,16 @@ export class Actors extends Container {
       if (it.dropped) {
         const pulse = 0.5 + 0.5 * Math.sin(time * 5 + it.id);
         g.circle(p.x, p.y, r * (1.05 + pulse * 0.25)).fill({ color: P.brassLight, alpha: 0.18 + pulse * 0.17 });
+      }
+      // loot just dropped is the captain's for a moment: a ring closing on it counts that moment
+      // down, and while it runs the crowd swims past (sim/items.ts tickItems)
+      if (it.safe > 0) {
+        const left = it.safe / B.catch.dropSafe;
+        const rr = r * 1.5;
+        over.circle(p.x, p.y, rr).stroke({ color: P.line, width: 2 * k, alpha: 0.3 * seen });
+        over
+          .arc(p.x, p.y, rr, -Math.PI / 2, -Math.PI / 2 + TAU * left)
+          .stroke({ color: P.brassLight, width: 3 * k, alpha: 0.9 * seen });
       }
       if (!bodies.put(art, p.x, p.y, r, pose)) drawItemShape(g, it, p, k);
     };
@@ -208,7 +218,9 @@ export class Actors extends Container {
     const st = stunned || m.grab ? { up: 0, rot: 0, sx: 1, sy: 1 } : step(m, p.d);
     const boss = isBoss(m.kind);
     const { art, tint } = monsterArt(m.kind, f.wide, m.shell > 0);
-    const drawn = bodies.put(art, p.x, p.y - st.up * r, lookRadius(art, r, f.wide), {
+    // never drawn wider across the lane than the hook can reach, or a cast sails over the picture
+    const look = lookRadius(art, r, f.wide, catchAcross(m.r));
+    const drawn = bodies.put(art, p.x, p.y - st.up * r, look, {
       // a hooked moray pulling the rope out thrashes
       rot: st.rot + (m.grab ? Math.sin(p.x * 0.05) * 0.2 : 0) + (m.tug > 0 ? Math.sin(time * 40) * 0.35 : 0),
       sx: st.sx,
@@ -241,13 +253,15 @@ export class Actors extends Container {
     // the hook will bounce off says so before the cast; none until it is out of the fog
     if (under || seen < 1) return;
     const pr = 2.6 * k;
-    const y = p.y + r * 1.3 + pr * 2;
+    // clear of the sprite, not over it: a boss's shell reaches further down than its hit circle
+    const y = p.y + Math.max(r * 1.3, look * alongHalf(art, f.wide)) + pr * 2;
     // over the hook's grip, so a cast bounces off it (monsters.ts liftable); a boss never lifts
     const steel = m.hp > (boss ? 0 : grip);
     if (m.hp0 > MAX_PIPS) {
       // too deep for a row of pips: a stack of sheets, the top one draining with every hit
-      const b = bars(m.hp, m.hp0);
-      drawBar(over, p.x, y - pr, Math.max(44 * k, r * 1.6), k, b.left, b.fill, steel);
+      // as wide as the thing itself, so every notch on it is a hit the player can count
+      const w = Math.max(44 * k, look * acrossHalf(art, f.wide) * 2);
+      drawBar(over, p.x, y - pr, w, k, bars(m.hp, m.hp0), steel, boss);
     } else {
       const { n, heavy } = pips(m.hp, boss ? 0 : grip);
       const x0 = p.x - ((n - 1) * pr * 2.6) / 2;

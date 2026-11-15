@@ -92,7 +92,7 @@ describe('full health in the simulation', () => {
     m.w = B.crane.w;
     w.mons.push(m);
     const was = m.hp0;
-    const it: Item = { id: w.nextId++, kind: 'fish', chest: false, d: m.d, w: m.w, r: B.catch.fishRadius, val: 7, wt: 1, dropped: false, gold: false };
+    const it: Item = { id: w.nextId++, kind: 'fish', chest: false, d: m.d, w: m.w, r: B.catch.fishRadius, val: 7, wt: 1, dropped: false, safe: 0, gold: false };
     w.items.push(it);
     for (let t = 0; t < 600 && m.full === 0; t++) step(w);
     expect(m.full).toBe(1);

@@ -22,7 +22,7 @@ function emptyLane(): World {
 }
 
 function put(w: World, kind: Item['kind'], d: number, val = 7): Item {
-  const it: Item = { id: w.nextId++, kind, chest: false, d: toFp(d), w: B.crane.w, r: B.catch.fishRadius, val, wt: 1, dropped: false, gold: false };
+  const it: Item = { id: w.nextId++, kind, chest: false, d: toFp(d), w: B.crane.w, r: B.catch.fishRadius, val, wt: 1, dropped: false, safe: 0, gold: false };
   w.items.push(it);
   return it;
 }

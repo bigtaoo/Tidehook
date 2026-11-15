@@ -25,8 +25,12 @@ export interface Item {
   val: number;
   /** How much it slows the reel. */
   wt: number;
-  /** Spilled by a glutton killed at sea: the coins it had eaten, back in the water. */
+  /** Spilled by a glutton (or a boss) killed at sea: the coins it had eaten, back in the water. */
   dropped: boolean;
+  /** Ticks of grace left on a chest a boss just dropped: while it runs, the crowd swims past it
+   *  (monsters.ts nearestFish), so whoever sank the thing has time to cast for it. 0 on everything
+   *  else, the coins a glutton spills included - those are the crowd's to take back. */
+  safe: number;
   /** A gold fish: rare, shining, worth several times a fish (fun.ts). */
   gold: boolean;
 }

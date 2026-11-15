@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { liftable } from '../../sim/monsters';
 import { startGame } from '../../sim/step';
 import type { Monster } from '../../sim/world';
-import { monsterArt, pips } from './look';
+import { acrossHalf } from '../art';
+import { ACROSS_MAX, catchAcross, lookRadius, monsterArt, pips } from './look';
+import { B } from '../../sim/balance';
+import { toFp } from '../../sim/math/fixed';
 
 describe('hit point pips', () => {
   it('marks the ones over the grip as heavy, the last ones first', () => {
@@ -23,6 +26,24 @@ describe('hit point pips', () => {
         expect(pips(hp, grip).heavy === 0).toBe(liftable(w, { hp, kind: 'grunt', shell: 0 } as Monster));
       }
     }
+  });
+});
+
+describe('how big a thing is drawn', () => {
+  it('never paints a monster further across the lane than the hook could catch it', () => {
+    for (const wide of [false, true]) {
+      for (const kind of ['grunt', 'brute', 'boss', 'kraken'] as const) {
+        const hit = B.monsters[kind].radius * 1000;
+        const { art } = monsterArt(kind, wide);
+        const look = lookRadius(art, hit, wide, catchAcross(hit));
+        expect(look * acrossHalf(art, wide)).toBeLessThanOrEqual(hit + B.hook.tip + 1);
+      }
+    }
+  });
+
+  it('leaves a small thing the room it had: its tip reaches well past its middle', () => {
+    expect(catchAcross(toFp(10))).toBe(ACROSS_MAX);
+    expect(catchAcross(toFp(26))).toBeCloseTo(1.5, 5);
   });
 });
 

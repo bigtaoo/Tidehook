@@ -7,11 +7,20 @@
 
 import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import { HEAVY, P } from '../kit/palette';
+import type { Bars } from './look';
 
 /** The layered bar's height and how far each sheet under the top one peeks out, both in screen
  *  pixels before the layout scale. */
 const BAR_H = 5;
+/** A boss's bar, which the player reads from across the lane, is drawn this tall instead. */
+const BOSS_H = 8;
 const SHEET = 2.5;
+/** A notch is cut between every two points of damage on the top sheet while each point is at
+ *  least this many screen pixels wide: that is what turns a draining bar into a count of the
+ *  hits still to come. Below it the notches would be a texture, so the bar goes bare. */
+const NOTCH_STEP = 5;
+/** How wide a notch is cut, in screen pixels before the layout scale. */
+const NOTCH_W = 1.4;
 /** However many layers are left, no more sheets than this are drawn under the top one: past four
  *  the stack only crowds the lane, and the top sheet is what the player watches. */
 const MAX_SHEETS = 4;
@@ -20,16 +29,23 @@ const MAX_SHEETS = 4;
  *  bars): `left` sheets stacked, the top one `fill` full, centred on (x, y) and `w` wide. Pips
  *  stop at twelve, so without this a boss of forty took twenty-eight hits with nothing to show
  *  for them. Few shapes and only for the few deep monsters on a lane, so it is drawn straight
- *  into the frame's Graphics rather than pooled. */
-export function drawBar(g: Graphics, x: number, y: number, w: number, k: number, left: number, fill: number, steel: boolean): void {
-  const h = BAR_H * k;
+ *  into the frame's Graphics rather than pooled. The top sheet is notched into its points of
+ *  damage, so the player can count the hits left instead of guessing at a shrinking stripe;
+ *  `big` for a boss, whose bar is drawn taller. */
+export function drawBar(g: Graphics, x: number, y: number, w: number, k: number, b: Bars, steel: boolean, big = false): void {
+  const h = (big ? BOSS_H : BAR_H) * k;
   const x0 = x - w / 2;
-  for (let i = Math.min(left - 1, MAX_SHEETS); i > 0; i--) {
+  for (let i = Math.min(b.left - 1, MAX_SHEETS); i > 0; i--) {
     const d = i * SHEET * k;
     g.roundRect(x0 + d, y + d, w, h, h / 2).fill({ color: P.line, alpha: 0.3 }).stroke({ color: P.line, width: 1.2 * k, alpha: 0.5 });
   }
   g.roundRect(x0, y, w, h, h / 2).fill({ color: P.line, alpha: 0.45 });
-  if (fill > 0) g.roundRect(x0, y, Math.max(h, w * fill), h, h / 2).fill(steel ? HEAVY : P.cream);
+  if (b.fill > 0) g.roundRect(x0, y, Math.max(h, w * b.fill), h, h / 2).fill(steel ? HEAVY : P.cream);
+  const step = w / b.size;
+  if (step >= NOTCH_STEP * k) {
+    const nw = NOTCH_W * k;
+    for (let i = 1; i < b.size; i++) g.roundRect(x0 + i * step - nw / 2, y, nw, h, 0).fill({ color: P.line, alpha: 0.55 });
+  }
   g.roundRect(x0, y, w, h, h / 2).stroke({ color: P.line, width: 1.6 * k });
 }
 

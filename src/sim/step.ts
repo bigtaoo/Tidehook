@@ -5,7 +5,7 @@
 import { B } from './balance';
 import { tickStreak } from './fun';
 import { updateHook } from './hook';
-import { restock } from './items';
+import { restock, tickItems } from './items';
 import { applyMeta, type MetaLevels } from './meta';
 import { updateMonsters } from './monsters';
 import { updateShots } from './throw';
@@ -39,6 +39,7 @@ export function step(w: World): void {
   w.events = [];
   if (w.phase !== 'wave') return;
   tickStreak(w);
+  tickItems(w);
   updateHook(w);
   updateShots(w);
   updateMonsters(w);

@@ -47,7 +47,7 @@ describe('hermit', () => {
     const m = spawn(w, 'hermit');
     m.d = toFp(400);
     m.w = B.crane.w;
-    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, gold: false };
+    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, safe: 0, gold: false };
     castStraight(w);
     expect(w.mons).toHaveLength(1);
     expect(m.shell).toBe(0);
@@ -78,7 +78,7 @@ describe('ray', () => {
     const m = spawn(w, 'ray');
     m.d = toFp(400);
     m.w = B.crane.w;
-    w.items.push({ id: w.nextId++, kind: 'fish', chest: false, d: toFp(380), w: B.crane.w + toFp(60), r: B.catch.fishRadius, val: 5, wt: 1, dropped: false, gold: false });
+    w.items.push({ id: w.nextId++, kind: 'fish', chest: false, d: toFp(380), w: B.crane.w + toFp(60), r: B.catch.fishRadius, val: 5, wt: 1, dropped: false, safe: 0, gold: false });
     for (let i = 0; i < 60; i++) step(w);
     expect(w.items).toHaveLength(1);
     expect(m.eat).toBe(0);
@@ -119,10 +119,39 @@ describe('kraken', () => {
     k.hp = 1;
     k.d = toFp(500);
     k.w = B.crane.w;
-    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, gold: false };
+    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, safe: 0, gold: false };
     castStraight(w);
     expect(w.st.bosses).toBe(1);
     expect(w.st.krakens).toBe(1);
     expect(w.items.some((i) => i.kind === 'fish' && i.chest)).toBe(true);
+  });
+
+  it("leaves the chest alone long enough to cast for it, then the crowd may have it", () => {
+    const w = emptyLane();
+    const k = spawn(w, 'boss');
+    k.hp = 1;
+    k.d = toFp(500);
+    k.w = B.crane.w;
+    w.held = { id: w.nextId++, kind: 'junk', chest: false, d: 0, w: 0, r: B.catch.junkRadius, val: 0, wt: 2, dropped: false, safe: 0, gold: false };
+    castStraight(w);
+    const chest = w.items.find((i) => i.chest)!;
+    expect(chest.safe).toBe(B.catch.dropSafe);
+    // a glutton right on top of it swims past while the grace runs
+    const g = spawn(w, 'glutton');
+    g.d = chest.d;
+    g.w = chest.w;
+    for (let t = 0; t < B.catch.dropSafe; t++) {
+      expect(w.items).toContain(chest);
+      step(w);
+      g.d = chest.d;
+      g.w = chest.w;
+    }
+    expect(chest.safe).toBe(0);
+    for (let t = 0; t < 300 && w.items.includes(chest); t++) {
+      step(w);
+      g.d = chest.d;
+      g.w = chest.w;
+    }
+    expect(w.items).not.toContain(chest);
   });
 });
