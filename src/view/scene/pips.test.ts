@@ -89,20 +89,22 @@ describe('the layered health bar', () => {
     expect(shapes(g).map((o) => o.action)).toEqual(['fill', 'stroke']);
   });
 
-  it('stacks a sheet for each layer under the top one, offset so they are counted', () => {
+  it('stacks a full sheet for each layer under the top one, so they are counted', () => {
     const g = new Graphics();
     drawBar(g, 100, 50, 60, 1, { left: 3, fill: 1, size: 1 }, true);
     const s = shapes(g);
-    // the two sheets first, the deepest furthest out, then the top sheet on them
+    // the two sheets first, laid out under the top one, the nearest one first
     expect(s.map((o) => [o.action, o.x, o.y])).toEqual([
-      ['fill', 75, 55],
-      ['stroke', 75, 55],
-      ['fill', 72.5, 52.5],
-      ['stroke', 72.5, 52.5],
+      ['fill', 70, 57.5],
+      ['stroke', 70, 57.5],
+      ['fill', 70, 65],
+      ['stroke', 70, 65],
       ['fill', 70, 50],
       ['fill', 70, 50],
       ['stroke', 70, 50],
     ]);
+    // and painted in the bar's own colour: a sheet still to come is a full sheet, not an empty one
+    expect(s[0].color).toBe(HEAVY);
   });
 
   it('notches the top sheet into the hits it stands for, so they can be counted', () => {

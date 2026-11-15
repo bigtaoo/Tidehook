@@ -9,8 +9,8 @@ import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import { HEAVY, P } from '../kit/palette';
 import type { Bars } from './look';
 
-/** The layered bar's height and how far each sheet under the top one peeks out, both in screen
- *  pixels before the layout scale. */
+/** The layered bar's height and the gap between one sheet and the next, both in screen pixels
+ *  before the layout scale. */
 const BAR_H = 5;
 /** A boss's bar, which the player reads from across the lane, is drawn this tall instead. */
 const BOSS_H = 8;
@@ -35,12 +35,16 @@ const MAX_SHEETS = 4;
 export function drawBar(g: Graphics, x: number, y: number, w: number, k: number, b: Bars, steel: boolean, big = false): void {
   const h = (big ? BOSS_H : BAR_H) * k;
   const x0 = x - w / 2;
-  for (let i = Math.min(b.left - 1, MAX_SHEETS); i > 0; i--) {
-    const d = i * SHEET * k;
-    g.roundRect(x0 + d, y + d, w, h, h / 2).fill({ color: P.line, alpha: 0.3 }).stroke({ color: P.line, width: 1.2 * k, alpha: 0.5 });
+  const paint = steel ? HEAVY : P.cream;
+  // the sheets still to come, laid out under the draining one and filled, like the full sheets
+  // they are. They used to peek out from behind it by a pixel or two, empty: on a phone that is a
+  // smudge, and a boss at two thirds health read as an all but empty bar.
+  for (let i = 1; i <= Math.min(b.left - 1, MAX_SHEETS); i++) {
+    const yy = y + i * (h + SHEET * k);
+    g.roundRect(x0, yy, w, h, h / 2).fill({ color: paint, alpha: 0.5 }).stroke({ color: P.line, width: 1.2 * k, alpha: 0.7 });
   }
   g.roundRect(x0, y, w, h, h / 2).fill({ color: P.line, alpha: 0.45 });
-  if (b.fill > 0) g.roundRect(x0, y, Math.max(h, w * b.fill), h, h / 2).fill(steel ? HEAVY : P.cream);
+  if (b.fill > 0) g.roundRect(x0, y, Math.max(h, w * b.fill), h, h / 2).fill(paint);
   const step = w / b.size;
   if (step >= NOTCH_STEP * k) {
     const nw = NOTCH_W * k;

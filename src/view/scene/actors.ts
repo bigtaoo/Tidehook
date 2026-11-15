@@ -35,6 +35,9 @@ const CRANE_W = B.crane.w / FP;
 const AIM_LEN = 260;
 /** The winch's and the hook's drawn size, world units of area radius. */
 const WINCH_R = 28;
+/** A boss's health bar is never narrower than this, in world units across the lane (the lane is
+ *  480 wide), however it is drawn: a notch has to be big enough to count on a phone. */
+const BOSS_BAR_W = 130;
 /** Where the winch sprite's pulley wheel is, as a share of its height (it is centred across). */
 const WINCH_PULLEY = 0.142;
 const HOOK_R = 9;
@@ -259,8 +262,10 @@ export class Actors extends Container {
     const steel = m.hp > (boss ? 0 : grip);
     if (m.hp0 > MAX_PIPS) {
       // too deep for a row of pips: a stack of sheets, the top one draining with every hit
-      // as wide as the thing itself, so every notch on it is a hit the player can count
-      const w = Math.max(44 * k, look * acrossHalf(art, f.wide) * 2);
+      // as wide as the thing itself, so every notch on it is a hit the player can count - and for
+      // a boss wider still: at the sprite's own width a notch is about five screen pixels on a
+      // phone, too fine to count, and counting it is the whole point of the bar
+      const w = Math.max((boss ? BOSS_BAR_W : 44) * k, look * acrossHalf(art, f.wide) * 2);
       drawBar(over, p.x, y - pr, w, k, bars(m.hp, m.hp0), steel, boss);
     } else {
       const { n, heavy } = pips(m.hp, boss ? 0 : grip);
@@ -308,14 +313,37 @@ function drawCracks(g: Graphics, f: Field, time: number): void {
       const off = i % 2 ? (i === 1 ? 9 : -8) : 0;
       return toDesign(f, (d0 + (d1 - d0) * u) * dock + off, w0 + (w1 - w0) * u);
     });
-    // a pale split with a dark gap down its middle, so it reads as broken wood, not rope
-    for (const [color, width] of [[P.cream, 7], [0x1a0e08, 3.5]] as const) {
-      g.moveTo(pts[0].x, pts[0].y);
-      for (const p of pts.slice(1)) g.lineTo(p.x, p.y);
-      g.stroke({ color, width: width * k, alpha: 0.9, cap: 'round', join: 'miter' });
-    }
+    // a dark split that tapers to nothing at both ends, with a lit lip down one side: wood broken
+    // open, not something laid on it. An even stroke reads as an object every time - pale and
+    // round-capped, which this was, as a rope; dark and square-ended as a crowbar.
+    const side = split(pts, 3.4 * k);
+    g.poly([...side.a, ...[...side.b].reverse()]).fill({ color: 0x1a0e08, alpha: 0.8 });
+    g.poly(side.a).stroke({ color: P.cream, width: 1.4 * k, alpha: 0.35, cap: 'butt' });
   }
 }
+
+/** The two sides of a crack `max` wide at its middle and nothing at its ends, from the points it
+ *  runs through: the lens that makes a split in wood read as a split and not as a stick. */
+function split(pts: readonly { x: number; y: number }[], max: number): { a: XY[]; b: XY[] } {
+  const a: XY[] = [];
+  const b: XY[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const q = pts[Math.min(i + 1, pts.length - 1)];
+    const o = pts[Math.max(i - 1, 0)];
+    const dx = q.x - o.x;
+    const dy = q.y - o.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const h = max * Math.sin((Math.PI * i) / (pts.length - 1));
+    const nx = (-dy / len) * h;
+    const ny = (dx / len) * h;
+    a.push({ x: p.x + nx, y: p.y + ny });
+    b.push({ x: p.x - nx, y: p.y - ny });
+  }
+  return { a, b };
+}
+
+interface XY { x: number; y: number }
 
 const LANE_W = 480;
 /** Where the cracks run on the dock: lane w from and to, and depth as a share of the dock. */
