@@ -137,7 +137,7 @@ export class Scene extends Container {
       noAds: () => void noAds?.buy().then((ok) => ok && ui.shop(true)),
     }, ui.settings ? { s: ui.settings, ids: settingIds } : null);
     this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());
-    this.field.addChild(drawField(fr.field), this.weather, this.actors, this.weatherTop, this.fx);
+    this.field.addChild(drawField(fr.field, fit), this.weather, this.actors, this.weatherTop, this.fx);
     this.addChild(this.field, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.voyageEnd, this.pausePanel, this.lobby);
     this.scale.set(fit.scale);
     this.position.set(fit.x, fit.y);

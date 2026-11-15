@@ -1,16 +1,20 @@
 // The lane's still parts, drawn once per layout (a resize, a turn of the phone): the chart sea with
 // the pier (art.ts seaTex, turned so the pier is at the dock end), dotted depth lines where the
 // fish value steps up, and the lane's edge. Without the picture (tests, a failed load) the water is
-// flat bands and the dock planks. Over it, the sea's weather (drawWeather). Everything that moves
-// is actors.ts.
+// flat bands and the dock planks. Over it, the sea's weather (drawWeather). Around the lane, where
+// a screen of another shape leaves room the world's fixed 800x480 cannot take, the same chart is
+// blown up and sunk under deep water, so the game sits in open sea rather than in a navy band
+// (beyondBox). Everything that moves is actors.ts.
 
-import { Container, Graphics, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { B } from '../../sim/balance';
 import { LANE_LEN, LANE_WIDTH } from '../../sim/lane';
 import { FP } from '../../sim/math/fixed';
 import { seaTex } from '../art';
 import { P, SEA } from '../kit/palette';
 import { toDesign, type Field } from '../orient';
+import type { Rect } from '../hud/frame';
+import type { Fit } from '../viewport';
 
 const DOCK = B.dock.edge / FP;
 
@@ -28,27 +32,50 @@ const DASH = 9;
 const DASH_GAP = 9;
 
 /** A lane rectangle from distance d0 to d1, across the whole width, in design units. */
-export function bandRect(f: Field, d0: number, d1: number): { x: number; y: number; w: number; h: number } {
+export function bandRect(f: Field, d0: number, d1: number): Rect {
   const a = toDesign(f, d0, 0);
   const b = toDesign(f, d1, LANE_WIDTH);
   return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y) };
 }
 
-export function drawField(f: Field): Container {
+/** How deeply the sea beyond the lane is sunk under the deep water: enough that the chart the
+ *  game is played on is the lit part of the screen, little enough that what surrounds it still
+ *  reads as water. */
+const BEYOND_WASH = 0.38;
+
+/** The sea beyond the lane, in design units: the lane's own chart blown up from the lane's
+ *  centre until it covers the whole design. The lane keeps the world's fixed 800x480 shape, so a
+ *  screen of another shape (a tablet's 4:3, a phone turned sideways) leaves room the lane cannot
+ *  take; this fills it with open water instead of a bare band, and the lane's edge still frames
+ *  the part that is played. */
+export function beyondBox(lane: Rect, designW: number, designH: number): Rect {
+  const cx = lane.x + lane.w / 2;
+  const cy = lane.y + lane.h / 2;
+  const k = Math.max((2 * Math.max(cx, designW - cx)) / lane.w, (2 * Math.max(cy, designH - cy)) / lane.h, 1);
+  return { x: cx - (lane.w * k) / 2, y: cy - (lane.h * k) / 2, w: lane.w * k, h: lane.h * k };
+}
+
+/** The sea picture stretched over the design rectangle `r`, turned a quarter left in portrait so
+ *  the pier is at the bottom. */
+function seaSprite(t: Texture, f: Field, r: Rect): Sprite {
+  const s = new Sprite(t);
+  s.anchor.set(0.5);
+  s.position.set(r.x + r.w / 2, r.y + r.h / 2);
+  if (!f.wide) s.rotation = -Math.PI / 2;
+  s.scale.set((f.wide ? r.w : r.h) / t.width, (f.wide ? r.h : r.w) / t.height);
+  return s;
+}
+
+export function drawField(f: Field, fit: Fit): Container {
   const box = new Container();
   const t = seaTex();
   const lane = bandRect(f, 0, LANE_LEN);
   const g = new Graphics();
   if (t) {
-    const s = new Sprite(t);
-    s.anchor.set(0.5);
-    s.position.set(lane.x + lane.w / 2, lane.y + lane.h / 2);
-    // the picture runs along its width; portrait turns it a quarter left, pier to the bottom
-    if (!f.wide) s.rotation = -Math.PI / 2;
-    const along = f.wide ? lane.w : lane.h;
-    const across = f.wide ? lane.h : lane.w;
-    s.scale.set(along / t.width, across / t.height);
-    box.addChild(s);
+    // the open sea first, then the wash that sinks it, then the chart the game is played on
+    box.addChild(seaSprite(t, f, beyondBox(lane, fit.w, fit.h)));
+    box.addChild(new Graphics().rect(0, 0, fit.w, fit.h).fill({ color: SEA.deep, alpha: BEYOND_WASH }));
+    box.addChild(seaSprite(t, f, lane));
     for (const b of BANDS.slice(2)) depthLine(g, f, b.from);
   } else {
     for (const b of BANDS) {

@@ -4,7 +4,7 @@
 // bar. Landscape: one sidebar on the right holds the HUD; the shop opens over the lane beside it.
 // Nothing here turns with the lane.
 
-import { fieldFor, LANDSCAPE_SIDE, PORTRAIT_BOTTOM, PORTRAIT_TOP, type Field } from '../orient';
+import { fieldFor, LANDSCAPE_SIDE, PORTRAIT_BOTTOM, PORTRAIT_HINT, PORTRAIT_TOP, type Field } from '../orient';
 import { textBoost, type Fit } from '../viewport';
 
 export interface Rect {
@@ -25,7 +25,8 @@ export interface Frame {
   /** The sound toggle, beside pause: to its left in portrait, above it in landscape. */
   sound: Rect;
   shop: Rect;
-  /** Where hints show: across the top of the lane. */
+  /** Where hints show: in portrait the band the lane leaves above it (orient.ts); in landscape
+   *  across the top of the lane, which runs the other way there. */
   banner: Rect;
 }
 
@@ -63,6 +64,6 @@ export function frameFor(fit: Fit): Frame {
     pause,
     sound: { ...pause, x: pause.x - PAUSE - GAP },
     shop: { x: GAP, y: bottom.y - GAP - SHOP_PORTRAIT_H, w: fit.w - GAP * 2, h: SHOP_PORTRAIT_H },
-    banner: { x: GAP, y: PORTRAIT_TOP + GAP, w: fit.w - GAP * 2, h: 130 },
+    banner: { x: GAP, y: PORTRAIT_TOP + GAP, w: fit.w - GAP * 2, h: PORTRAIT_HINT - GAP * 2 },
   };
 }

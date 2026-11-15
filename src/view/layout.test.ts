@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LANE_LEN, LANE_WIDTH } from '../sim/lane';
-import { fieldFor, LANDSCAPE_SIDE, PORTRAIT_BOTTOM, PORTRAIT_TOP, toDesign, toLane } from './orient';
-import { DESIGN_LONG, DESIGN_SHORT, fitDesign, isWide, PORTRAIT_MAX_W, textBoost } from './viewport';
+import { fieldFor, LANDSCAPE_SIDE, PORTRAIT_BOTTOM, PORTRAIT_HINT, PORTRAIT_TOP, toDesign, toLane } from './orient';
+import { DESIGN_LONG, DESIGN_MAX_ALONG, DESIGN_SHORT, fitDesign, isWide, PORTRAIT_MAX_W, textBoost } from './viewport';
 
 describe('fitDesign', () => {
   it('picks the orientation from the screen and fits the design whole', () => {
@@ -39,6 +39,27 @@ describe('fitDesign', () => {
     const field = fieldFor(false, f.w, f.h);
     expect(field.x + field.w / 2).toBeCloseTo(f.w / 2);
   });
+
+  it('lengthens the design for a screen longer than 9:16 rather than letterboxing it', () => {
+    for (const [sw, sh] of [[375, 812], [390, 844], [412, 915], [812, 375]] as const) {
+      const f = fitDesign(sw, sh);
+      // all but a pixel of the screen is design: a phone is left no black band either way
+      expect(Math.min(sw - f.w * f.scale, sh - f.h * f.scale)).toBeLessThan(1);
+      expect(Math.min(f.w, f.h)).toBe(DESIGN_SHORT);
+      expect(Math.max(f.w, f.h)).toBeLessThanOrEqual(DESIGN_MAX_ALONG);
+    }
+  });
+
+  it('stops lengthening past 21:9, so a freak screen keeps sea at its ends', () => {
+    expect(fitDesign(400, 1600).h).toBe(DESIGN_MAX_ALONG);
+  });
+
+  it('spends the length a tall phone adds on the lane', () => {
+    const f = fitDesign(390, 844);
+    const lane = fieldFor(false, f.w, f.h);
+    expect((lane.w * f.scale) / 390).toBeGreaterThan(0.9);
+    expect((lane.h * f.scale) / 844).toBeGreaterThan(0.7);
+  });
 });
 
 describe('orient', () => {
@@ -56,9 +77,9 @@ describe('orient', () => {
     expect(dockL.y).toBeCloseTo(DESIGN_SHORT / 2);
   });
 
-  it('keeps the lane clear of the bars', () => {
+  it('keeps the lane clear of the bars and of the hint band', () => {
     const p = fieldFor(false);
-    expect(p.y).toBeGreaterThanOrEqual(PORTRAIT_TOP);
+    expect(p.y).toBeGreaterThanOrEqual(PORTRAIT_TOP + PORTRAIT_HINT);
     expect(p.y + p.h).toBeLessThanOrEqual(DESIGN_LONG - PORTRAIT_BOTTOM + 1e-6);
     expect(p.x).toBeGreaterThanOrEqual(0);
     const l = fieldFor(true);

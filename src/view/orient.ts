@@ -11,6 +11,14 @@ export const PORTRAIT_TOP = 140;
 export const PORTRAIT_BOTTOM = 300;
 /** Landscape: the HUD and shop sidebar down the right. */
 export const LANDSCAPE_SIDE = 360;
+/** Portrait: the band between the top strip and the lane that a hint banner shows in
+ *  (hud/frame.ts draws it there, inset by a gap). The lane stops below it, so a hint cannot
+ *  cover the far end - which is where the monster it is naming has just swum in. A phone pays
+ *  nothing for it: the lane there is as wide as the design allows, so the band comes out of
+ *  length the lane could not have used anyway. Landscape keeps the banner over the lane's top
+ *  edge: the lane runs the other way there, so a hint hides a strip of open water rather than
+ *  the arrivals, and a band would cost the lane a seventh of its size. */
+export const PORTRAIT_HINT = 178;
 
 export interface Field {
   wide: boolean;
@@ -24,17 +32,18 @@ export interface Field {
 }
 
 /** Where the lane sits in a design `designW` wide and `designH` tall (viewport.ts fitDesign), as
- *  large as it fits beside the bars, centred in the rest. */
+ *  large as it fits beside the bars and, in portrait, under the hint band, centred in the rest. */
 export function fieldFor(wide: boolean, designW = wide ? DESIGN_LONG : DESIGN_SHORT, designH = wide ? DESIGN_SHORT : DESIGN_LONG): Field {
+  const top = wide ? 0 : PORTRAIT_TOP + PORTRAIT_HINT;
   const roomW = wide ? designW - LANDSCAPE_SIDE : designW;
-  const roomH = wide ? designH : designH - PORTRAIT_TOP - PORTRAIT_BOTTOM;
+  const roomH = (wide ? designH : designH - PORTRAIT_BOTTOM) - top;
   const along = wide ? roomW : roomH;
   const across = wide ? roomH : roomW;
   const scale = Math.min(along / LANE_LEN, across / LANE_WIDTH);
   const w = (wide ? LANE_LEN : LANE_WIDTH) * scale;
   const h = (wide ? LANE_WIDTH : LANE_LEN) * scale;
   const x = (roomW - w) / 2;
-  const y = (wide ? 0 : PORTRAIT_TOP) + (roomH - h) / 2;
+  const y = top + (roomH - h) / 2;
   return { wide, scale, x: wide ? 0 : x, y, w, h };
 }
 

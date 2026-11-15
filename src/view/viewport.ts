@@ -1,12 +1,17 @@
 // The design is 1080x1920 in portrait and 1920x1080 in landscape (docs/01-tech-plan.md section
-// 4), fitted whole inside the screen; the rest is filled with sea. A portrait screen wider than
-// 9:16 (a square embed, a tablet) gets a wider design, up to PORTRAIT_MAX_W, so the bars and
-// panels use the width the lane cannot. After Potion Siege's viewport.
+// 4), fitted whole inside the screen. A screen of another shape grows the design along the side
+// it has to spare instead of being letterboxed: one stubbier than 9:16 (a square embed, a
+// tablet) widens it across the lane, up to PORTRAIT_MAX_W, so the bars and panels use the room
+// the lane cannot, and one longer than 9:16 (every phone made this decade) lengthens it along
+// the lane, up to DESIGN_MAX_ALONG, which the lane itself takes. After Potion Siege's viewport.
 
 export const DESIGN_SHORT = 1080;
 export const DESIGN_LONG = 1920;
-/** The widest portrait design: 3:4. */
+/** The widest design across the lane: 3:4 in portrait. Past this the bars are all the screen is,
+ *  so the rest of a very stubby screen is left as sea. */
 export const PORTRAIT_MAX_W = 1440;
+/** The longest design along the lane: 21:9, as long as a phone is made. */
+export const DESIGN_MAX_ALONG = 2520;
 
 export interface Fit {
   /** Landscape: the dock on the left and the sidebar on the right. */
@@ -30,8 +35,13 @@ export function fitDesign(screenW: number, screenH: number): Fit {
   // a page with no size yet (a portal's iframe at boot) gets the design at scale 1, never NaN
   if (!(screenW > 0 && screenH > 0)) return { wide: false, w: DESIGN_SHORT, h: DESIGN_LONG, scale: 1, x: 0, y: 0 };
   const wide = isWide(screenW, screenH);
-  const w = wide ? DESIGN_LONG : Math.min(PORTRAIT_MAX_W, Math.max(DESIGN_SHORT, Math.round((DESIGN_LONG * screenW) / screenH)));
-  const h = wide ? DESIGN_SHORT : DESIGN_LONG;
+  const along = wide ? screenW : screenH;
+  const across = wide ? screenH : screenW;
+  // the screen is either longer than 9:16 or stubbier, so only one of these two leaves its floor
+  const lenAlong = Math.min(DESIGN_MAX_ALONG, Math.max(DESIGN_LONG, Math.round((DESIGN_SHORT * along) / across)));
+  const lenAcross = Math.min(PORTRAIT_MAX_W, Math.max(DESIGN_SHORT, Math.round((DESIGN_LONG * across) / along)));
+  const w = wide ? lenAlong : lenAcross;
+  const h = wide ? lenAcross : lenAlong;
   const scale = Math.min(screenW / w, screenH / h);
   return { wide, w, h, scale, x: (screenW - w * scale) / 2, y: (screenH - h * scale) / 2 };
 }
