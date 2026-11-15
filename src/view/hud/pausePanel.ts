@@ -1,18 +1,21 @@
-// The pause cover's panel (game/session.ts): the player's settings as toggles, and under them the
-// way to put in early — end the voyage here and bring the catch home instead of losing it. The
+// The pause cover's panel (game/session.ts): the player's settings as toggles, then the language
+// picker (hud/langRow.ts), and under them the way to put in early — end the voyage here and bring the catch home instead of losing it. The
 // Overlay's card takes no taps, so this lives over it, in the slot the card leaves for it (like
 // hud/overAds.ts). The button carries the pearls it would bank, so the choice is an honest one.
 
 import { Container } from 'pixi.js';
 import type { SettingId, Settings } from '../../game/settings';
-import { t } from '../../i18n';
+import { t, type Locale } from '../../i18n';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
 import { TYPE } from '../kit/tokens';
+import { drawLangs, langRows, langsH } from './langRow';
 import { slotButtonW, type Slot } from './slotRow';
 import { drawToggles } from './settingsPanel';
 
 const GAP = 24;
+/** The toggles and the picker are both settings, so they sit closer than the button does. */
+const LANG_GAP = 16;
 const BTN_W = 380;
 const BTN_H = 96;
 /** Setting toggles to a row; hud/overlay.ts PAUSE_ROWS leaves the slot room for them and the button. */
@@ -32,6 +35,8 @@ export class PausePanel extends Container {
     private readonly ids: readonly SettingId[],
     private readonly onToggle: (id: SettingId) => void,
     private readonly act: PauseActions | null = null,
+    /** Picks a language, null where there is nothing to pick with (a test). */
+    private readonly onLang: ((l: Locale) => void) | null = null,
   ) {
     super();
   }
@@ -51,14 +56,24 @@ export class PausePanel extends Container {
     const rows = s ? Math.ceil(this.ids.length / COLS) : 0;
     const bh = BTN_H * k;
     const togglesH = rows ? rows * bh + (rows - 1) * GAP : 0;
-    const total = togglesH + (put ? bh + (rows ? GAP : 0) : 0);
+    // the picker takes the whole slot, not the toggles' width: eight names in two columns' worth
+    // of room come out at a size no one reads
+    const lrows = this.onLang ? langRows(slot.w) : 0;
+    const langH = lrows ? langsH(lrows, k) : 0;
+    const total = togglesH + (langH ? (rows ? LANG_GAP : 0) + langH : 0) + (put ? (rows || langH ? GAP : 0) + bh : 0);
     let y = slot.y - total / 2;
     if (s && rows) {
       const w = Math.min(slot.w, BTN_W * k * COLS + GAP);
       this.addChild(drawToggles(s, this.ids, { x: slot.x - w / 2, y, w, h: togglesH }, k, COLS, this.onToggle));
-      y += togglesH + GAP;
+      y += togglesH;
+    }
+    if (langH && this.onLang) {
+      if (rows) y += LANG_GAP;
+      this.addChild(drawLangs(slot.x - slot.w / 2, y, slot.w, k, lrows, this.onLang));
+      y += langH;
     }
     if (put) {
+      if (rows || langH) y += GAP;
       const w = slotButtonW(slot, BTN_W * k, GAP);
       const b = new Button({ w, h: bh, text: t('overlay.putIn'), size: TYPE.lead * k, price: pearls, pearl: true, color: P.secondary, onPress: () => this.act?.putIn() });
       b.position.set(slot.x - w / 2, y);

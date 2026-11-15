@@ -1,4 +1,5 @@
-// The harbour's cabin tab: the player's settings (settingsPanel.ts) on top, then the paint for the
+// The harbour's cabin tab: the player's settings (settingsPanel.ts) on top, then the language
+// picker (langRow.ts) - a player who never pauses a game would otherwise never meet one - then the paint for the
 // rope and the hook (game/meta/paint.ts), a pearl sink with no say in how the hook fishes. Each paint
 // is a tile with its colour, its name and a button: its price while not owned, Wear once it is, and
 // Worn on the one in use. Portrait gives each kind two rows of three, landscape a row of six.
@@ -7,7 +8,7 @@ import { Container, Graphics } from 'pixi.js';
 import type { Harbour } from '../../game/meta/harbour';
 import { PAINTS, type PaintKind, type PaintSpec } from '../../game/meta/paint';
 import type { SettingId, Settings } from '../../game/settings';
-import { t, type TextKey } from '../../i18n';
+import { t, type Locale, type TextKey } from '../../i18n';
 import { artSprite, aspect } from '../art';
 import { Button } from '../kit/button';
 import { P, SEA } from '../kit/palette';
@@ -16,12 +17,15 @@ import { rowSize, type RowItem } from '../kit/row';
 import { fitIn, label } from '../kit/text';
 import { RADIUS, STROKE, TYPE } from '../kit/tokens';
 import type { Rect } from './frame';
+import { drawLangs, langRows, langsH } from './langRow';
 import { drawToggles } from './settingsPanel';
 
 export interface CabinActions {
   /** Buys paint `id` when it is not owned, wears it when it is. */
   paint(id: string): void;
   toggle(id: SettingId): void;
+  /** Picks a language, absent where there is nothing to pick with (a test). */
+  lang?(l: Locale): void;
   denied?(): void;
 }
 
@@ -52,6 +56,11 @@ export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: num
     const th = TOGGLE_H * rows + GAP * (rows - 1);
     box.addChild(drawToggles(set.s, set.ids, { x: r.x, y, w: r.w, h: th }, k, cols, act.toggle));
     y += th + GAP;
+  }
+  if (act.lang) {
+    const rows = langRows(r.w);
+    box.addChild(drawLangs(r.x, y, r.w, k, rows, act.lang));
+    y += langsH(rows, k) + GAP;
   }
   const head = label(t('paint.head'), TYPE.lead * k, { fill: P.brassLight, weight: '700' });
   fitIn(head, r.w, HEAD);

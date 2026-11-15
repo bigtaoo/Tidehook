@@ -35,6 +35,7 @@ import type { Fit } from '../viewport';
 import { Actors } from './actors';
 import { drawField, drawWeather } from './field';
 import { WeatherTop } from './weather';
+import type { Locale } from '../../i18n';
 import { Fx } from './fx';
 
 /** What the scene's buttons do beyond the Session: the sound and the settings. */
@@ -49,6 +50,8 @@ export interface SceneUi {
   settings?: Settings | null;
   /** The device can buzz, so the vibration setting shows. */
   canBuzz?: boolean;
+  /** Switches the game's language, absent in a test: the picker shows only where it can act. */
+  setLang?(l: Locale): void;
 }
 
 /** The rewarded ads' side of the screen (game/ads.ts): what to offer and what the buttons do. */
@@ -121,7 +124,13 @@ export class Scene extends Container {
       ui.settings?.toggle(id);
       ui.click?.();
     };
-    this.pausePanel = new PausePanel(fr.boost, ui.settings ?? null, settingIds, toggle, { putIn: () => ui.shop(session.putIn()) });
+    const lang = ui.setLang
+      ? (l: Locale) => {
+          ui.click?.();
+          ui.setLang?.(l);
+        }
+      : null;
+    this.pausePanel = new PausePanel(fr.boost, ui.settings ?? null, settingIds, toggle, { putIn: () => ui.shop(session.putIn()) }, lang);
     this.lobby = new LobbyPanel(fr, {
       buy: (id) => ui.shop(session.buyMeta(id)),
       sail: () => session.sail(),
@@ -134,6 +143,7 @@ export class Scene extends Container {
         ui.shop(!!h && (h.hasPaint(id) ? h.wearPaint(id) : h.buyPaint(id)));
       },
       toggle,
+      lang: lang ?? undefined,
       noAds: () => void noAds?.buy().then((ok) => ok && ui.shop(true)),
     }, ui.settings ? { s: ui.settings, ids: settingIds } : null);
     this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());

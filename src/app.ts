@@ -18,7 +18,7 @@ import { SEEN_MS, Session, type SessionOptions } from './game/session';
 import { Settings, wantsCalm } from './game/settings';
 import { urlSwitches } from './game/switches';
 import { Telemetry } from './game/telemetry';
-import { detectLocale, loadLocale, setLocale } from './i18n';
+import { detectLocale, getLocale, loadLocale, setLocale, type Locale } from './i18n';
 import { fakeBoard } from './platform/fakeBoard';
 import { fakePayments } from './platform/fakePayments';
 import { NoAds } from './game/noAds';
@@ -120,6 +120,21 @@ export async function boot(platform: Platform): Promise<Application> {
     soundOn: () => sound.on,
     settings,
     canBuzz: haptics.able,
+    // a language is a table away: it is fetched first, and the screen is built again only once it
+    // is there, so a failed fetch leaves the player where they were rather than in a half
+    // translated game. Every panel reads t() as it is built, so the whole scene goes.
+    setLang: (l: Locale) => {
+      if (l === getLocale()) return;
+      void loadLocale(l).then((ok) => {
+        if (!ok) return;
+        setLocale(l);
+        platform.storage.setItem(LANG_KEY, l);
+        // the player picked the language from the harbour, so they come back to the tab they were on
+        const tab = scene?.lobby.tab;
+        rebuild();
+        if (scene && tab !== undefined) scene.lobby.tab = tab;
+      });
+    },
   };
   bindKeys(window, session, (key) => key === 'm' && (sound.toggle(), true));
   const pause = () => session.pause();
@@ -147,6 +162,11 @@ export async function boot(platform: Platform): Promise<Application> {
     scene?.destroy({ children: true });
     scene = new Scene(next, session, ui, ads, board, noAds);
     app.stage.addChild(scene);
+  };
+  /** Builds the scene again at the same size: a new language means new words in every panel. */
+  const rebuild = () => {
+    fit = null;
+    layout();
   };
   layout();
   app.renderer.on('resize', layout);

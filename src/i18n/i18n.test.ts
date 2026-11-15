@@ -3,7 +3,7 @@ import { en } from './en';
 import { de } from './de';
 import { es } from './es';
 import { fr } from './fr';
-import { detectLocale, getLocale, LOCALES, loadLocale, pluralCategory, setLocale, t } from './index';
+import { detectLocale, getLocale, LOCALE_NAMES, LOCALES, loadLocale, pluralCategory, setLocale, t } from './index';
 import { pt } from './pt';
 import { ru } from './ru';
 import { tr } from './tr';
@@ -60,6 +60,8 @@ describe('i18n', () => {
       expect(await loadLocale(l)).toBe(true);
       setLocale(l);
       names.add(t('lang.name'));
+      // the picker names all eight at once, before seven of the tables have been fetched
+      expect(LOCALE_NAMES[l]).toBe(t('lang.name'));
     }
     expect(names.size).toBe(LOCALES.length);
   });

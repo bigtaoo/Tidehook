@@ -8,6 +8,20 @@ export type Locale = 'en' | 'zh' | 'ru' | 'es' | 'pt' | 'tr' | 'de' | 'fr';
 /** Every language, in the picker's order. */
 export const LOCALES: readonly Locale[] = ['en', 'zh', 'ru', 'es', 'pt', 'tr', 'de', 'fr'];
 
+/** Every language named in itself, for the picker (view/hud/langRow.ts). A table that has not
+ *  been fetched yet cannot answer t('lang.name'), and the picker names all eight at once;
+ *  i18n.test.ts pins each of these against its own table. */
+export const LOCALE_NAMES: Record<Locale, string> = {
+  en: 'English',
+  zh: '中文',
+  ru: 'Русский',
+  es: 'Español',
+  pt: 'Português',
+  tr: 'Türkçe',
+  de: 'Deutsch',
+  fr: 'Français',
+};
+
 const MORE: Record<Exclude<Locale, 'en'>, () => Promise<Table>> = {
   zh: () => import('./zh').then((m) => m.zh),
   ru: () => import('./ru').then((m) => m.ru),
