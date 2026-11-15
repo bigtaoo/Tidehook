@@ -130,7 +130,7 @@ export class Scene extends Container {
           ui.setLang?.(l);
         }
       : null;
-    this.pausePanel = new PausePanel(fr.boost, ui.settings ?? null, settingIds, toggle, { putIn: () => ui.shop(session.putIn()) }, lang);
+    this.pausePanel = new PausePanel(fr, ui.settings ?? null, settingIds, toggle, { putIn: () => ui.shop(session.putIn()) }, lang);
     this.lobby = new LobbyPanel(fr, {
       buy: (id) => ui.shop(session.buyMeta(id)),
       sail: () => session.sail(),

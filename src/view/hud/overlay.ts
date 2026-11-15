@@ -24,11 +24,9 @@ const CAPTAIN_H = 340;
 /** The gap the game over card leaves for the ad buttons (hud/overAds.ts), design units; a row of
  *  the pause cover's settings takes as much. */
 const SLOT_H = 150;
-/** The rows the pause cover's panel fills: the settings buttons, the language picker and the
- *  button that puts in early (hud/pausePanel.ts). Portrait takes a row more, where the eight
- *  languages go over two rows; landscape is short of height and holds them in one. */
-const PAUSE_ROWS = 4;
-const PAUSE_ROWS_WIDE = 3;
+/** The rows the pause cover's panel fills: the settings buttons, and under them the language
+ *  picker beside the button that puts in early (hud/pausePanel.ts). */
+const PAUSE_ROWS = 3;
 /** Card lines this size and up (the headline) shrink to one line; smaller ones wrap onto two. */
 const WRAP_BELOW = 90;
 /** Stands in the queue for the one-time sea event hint, whose words are looked up as it shows. */
@@ -159,7 +157,7 @@ export class Overlay extends Container {
       this.cover === 'title'
         ? [[t('title'), TYPE.display, P.brassLight], [t('boot.tapToStart'), TYPE.title, P.cream]]
         : this.cover === 'paused'
-          ? [[t('overlay.paused'), TYPE.display, P.brassLight], [t('overlay.resume'), TYPE.title, P.cream], ['', fit.wide ? PAUSE_ROWS_WIDE : PAUSE_ROWS, 0]]
+          ? [[t('overlay.paused'), TYPE.display, P.brassLight], [t('overlay.resume'), TYPE.title, P.cream], ['', PAUSE_ROWS, 0]]
           : this.cover === 'voyage'
             ? [[t('voyage.title'), TYPE.display, P.brassLight], [t('voyage.body', { n: this.wave }), TYPE.title, P.cream], ['', 0, 0]]
             : this.overLines();

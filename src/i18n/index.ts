@@ -8,7 +8,7 @@ export type Locale = 'en' | 'zh' | 'ru' | 'es' | 'pt' | 'tr' | 'de' | 'fr';
 /** Every language, in the picker's order. */
 export const LOCALES: readonly Locale[] = ['en', 'zh', 'ru', 'es', 'pt', 'tr', 'de', 'fr'];
 
-/** Every language named in itself, for the picker (view/hud/langRow.ts). A table that has not
+/** Every language named in itself, for the picker (view/hud/langPick.ts). A table that has not
  *  been fetched yet cannot answer t('lang.name'), and the picker names all eight at once;
  *  i18n.test.ts pins each of these against its own table. */
 export const LOCALE_NAMES: Record<Locale, string> = {

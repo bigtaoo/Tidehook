@@ -1,5 +1,6 @@
-// The harbour's cabin tab: the player's settings (settingsPanel.ts) on top, then the language
-// picker (langRow.ts) - a player who never pauses a game would otherwise never meet one - then the paint for the
+// The harbour's cabin tab: the player's settings (settingsPanel.ts) on top, the language picker
+// among them (langPick.ts) - a player who never pauses a game would otherwise never meet one -
+// then the paint for the
 // rope and the hook (game/meta/paint.ts), a pearl sink with no say in how the hook fishes. Each paint
 // is a tile with its colour, its name and a button: its price while not owned, Wear once it is, and
 // Worn on the one in use. Portrait gives each kind two rows of three, landscape a row of six.
@@ -17,7 +18,7 @@ import { rowSize, type RowItem } from '../kit/row';
 import { fitIn, label } from '../kit/text';
 import { RADIUS, STROKE, TYPE } from '../kit/tokens';
 import type { Rect } from './frame';
-import { drawLangs, langRows, langsH } from './langRow';
+import { drawLangList, langItem, langPlate, type LangSlot } from './langPick';
 import { drawToggles } from './settingsPanel';
 
 export interface CabinActions {
@@ -47,20 +48,28 @@ function btnHeight(ht: number): number {
   return Math.min(72, ht * 0.3);
 }
 
-export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: number, wide: boolean, act: CabinActions): Container {
+/** `lang`: the picker's state and the layer its open list goes on, null in a test. */
+export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: number, wide: boolean, act: CabinActions, lang: LangSlot | null = null): Container {
   const box = new Container();
   let y = r.y;
+  const setCols = wide ? (set?.ids.length ?? 4) : 2;
   if (set && set.ids.length) {
-    const cols = wide ? set.ids.length : 2;
-    const rows = Math.ceil(set.ids.length / cols);
+    const rows = Math.ceil(set.ids.length / setCols);
     const th = TOGGLE_H * rows + GAP * (rows - 1);
-    box.addChild(drawToggles(set.s, set.ids, { x: r.x, y, w: r.w, h: th }, k, cols, act.toggle));
+    box.addChild(drawToggles(set.s, set.ids, { x: r.x, y, w: r.w, h: th }, k, setCols, act.toggle));
     y += th + GAP;
   }
-  if (act.lang) {
-    const rows = langRows(r.w);
-    box.addChild(drawLangs(r.x, y, r.w, k, rows, act.lang));
-    y += langsH(rows, k) + GAP;
+  // the picker wears a toggle's plate and a toggle's share of the row: one more setting, rather
+  // than a bar across the cabin
+  if (act.lang && lang) {
+    const pick = lang.pick;
+    const w = (r.w - GAP * (setCols - 1)) / setCols;
+    const press = () => pick.toggle();
+    const p = langPlate(w, TOGGLE_H, rowSize([langItem(w, TOGGLE_H, press)], TYPE.lead * k), pick.open, press);
+    p.position.set(r.x, y);
+    box.addChild(p);
+    if (pick.open) lang.top.addChild(drawLangList({ x: r.x, y, w, h: TOGGLE_H }, r, k, pick));
+    y += TOGGLE_H + GAP;
   }
   const head = label(t('paint.head'), TYPE.lead * k, { fill: P.brassLight, weight: '700' });
   fitIn(head, r.w, HEAD);

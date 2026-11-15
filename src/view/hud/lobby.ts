@@ -11,6 +11,7 @@ import type { Harbour } from '../../game/meta/harbour';
 import { t, type TextKey } from '../../i18n';
 import { B, type UpgradeSpec } from '../../sim/balance';
 import { artSprite, aspect, harbourTex } from '../art';
+import { type LangPick } from './langPick';
 import { drawCabin, type CabinActions, type CabinSettings } from './lobbyCabin';
 import { drawCodex } from './lobbyCodex';
 import { drawDaily, type DailyActions, type DailyView } from './lobbyDaily';
@@ -70,6 +71,19 @@ export class LobbyPanel extends Container {
   private last = '';
   /** The tab on show. */
   tab: LobbyTab = 'gear';
+  /** The cabin's language picker (langPick.ts); public so a test can drop its list. */
+  readonly lang: LangPick = {
+    open: false,
+    toggle: () => {
+      this.lang.open = !this.lang.open;
+      this.last = '';
+    },
+    pick: (l) => {
+      this.lang.open = false;
+      this.last = '';
+      this.act.lang?.(l);
+    },
+  };
   private readonly deny = () => this.act.denied?.();
 
   constructor(
@@ -85,9 +99,10 @@ export class LobbyPanel extends Container {
     this.visible = show && !!h;
     if (!this.visible || !h) {
       this.last = '';
+      this.lang.open = false;
       return;
     }
-    const key = [this.tab, h.pearls, voyage.wave, voyage.pearls, h.done.length, h.sea, h.charts.length, h.flat, daily.day, h.dailyBest(daily.day), daily.rows === undefined ? '-' : (daily.rows?.length ?? 'x'), daily.rows?.map((r) => r.name + r.wave).join(), noAds.state, noAds.price, noAds.busy, h.totals.games, h.totals.golds, h.paints.length, h.wear.rope, h.wear.hook, h.streak.n, h.streak.day, this.settings?.s.key ?? '', ...B.meta.upgrades.map((u) => h.level(u.id))].join('|');
+    const key = [this.tab, h.pearls, voyage.wave, voyage.pearls, h.done.length, h.sea, h.charts.length, h.flat, daily.day, h.dailyBest(daily.day), daily.rows === undefined ? '-' : (daily.rows?.length ?? 'x'), daily.rows?.map((r) => r.name + r.wave).join(), noAds.state, noAds.price, noAds.busy, h.totals.games, h.totals.golds, h.paints.length, h.wear.rope, h.wear.hook, h.streak.n, h.streak.day, this.settings?.s.key ?? '', this.lang.open, ...B.meta.upgrades.map((u) => h.level(u.id))].join('|');
     if (key === this.last) return;
     this.last = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
@@ -167,7 +182,9 @@ export class LobbyPanel extends Container {
     const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - rowH - GAP - gridY };
     if (this.tab === 'log') this.addChild(drawLog(h, area, k));
     if (this.tab === 'codex') this.addChild(drawCodex(h, area, k, wide));
-    if (this.tab === 'cabin') this.addChild(drawCabin(h, this.settings, area, k, wide, this.act));
+    // the cabin's open list hangs over the cards and Set sail, which are drawn after it
+    const top = new Container();
+    if (this.tab === 'cabin') this.addChild(drawCabin(h, this.settings, area, k, wide, this.act, { pick: this.lang, top }));
     if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, wide, this.act));
     if (this.tab === 'daily') this.addChild(drawDaily(h, daily, area, k, wide, this.act));
     // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read; a
@@ -187,13 +204,14 @@ export class LobbyPanel extends Container {
     if (sale) place(drawNoAds(noAds, cardW, cardH, k, wide, () => this.act.noAds?.()), ups.length);
     const sail = new Button({ w: sailW, h: rowH, text: h.sea ? t('lobby.sailTo', { sea: seaName(h.sea) }) : t('lobby.sail'), size: TYPE.title * k, color: P.go, onPress: () => this.act.sail() });
     sail.position.set(r.x + r.w - PAD - sailW, r.y + r.h - PAD - rowH);
-    this.addChild(sail);
+    this.addChild(sail, top);
   }
 
   /** Turns to `tab`. */
   private show(tab: LobbyTab): void {
     if (tab === this.tab) return;
     this.tab = tab;
+    this.lang.open = false;
     this.last = '';
   }
 

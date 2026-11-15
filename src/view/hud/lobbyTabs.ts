@@ -14,13 +14,6 @@ import { TYPE } from '../kit/tokens';
 export const TAB_H = 84;
 const GAP = 20;
 
-/** What a row that is not the harbour's tabs may set: the language picker's plates are their own
- *  height and wear the settings' off colour, not the tabs' walnut (hud/langRow.ts). */
-export interface TabStyle {
-  h?: number;
-  off?: number;
-}
-
 export interface TabItem {
   text: string;
   /** The tab shown now: brass, not walnut. */
@@ -28,9 +21,9 @@ export interface TabItem {
   onPress: () => void;
 }
 
-/** How tall a row `rows` deep is, of plates `h` tall. */
-export function tabsH(rows: number, h = TAB_H): number {
-  return rows * h + (rows - 1) * GAP;
+/** How tall a row of tabs `rows` deep is. */
+export function tabsH(rows: number): number {
+  return rows * TAB_H + (rows - 1) * GAP;
 }
 
 /** `n` tabs over `rows` rows, the fullest row first: 7 over 2 is 4 then 3. */
@@ -46,9 +39,8 @@ function split(n: number, rows: number): number[] {
 }
 
 /** The tabs, filling `w` from (`x`, `y`) over `rows` rows. */
-export function drawTabs(items: readonly TabItem[], x: number, y: number, w: number, k: number, rows: number, o: TabStyle = {}): Container {
+export function drawTabs(items: readonly TabItem[], x: number, y: number, w: number, k: number, rows: number): Container {
   const box = new Container();
-  const h = o.h ?? TAB_H;
   const lines = split(items.length, rows);
   const max = TYPE.lead * k;
   const widths: number[] = [];
@@ -58,13 +50,13 @@ export function drawTabs(items: readonly TabItem[], x: number, y: number, w: num
     widths.push(...shareWidths(texts, w - GAP * (n - 1), max));
     i += n;
   }
-  const row: RowItem[] = items.map((it, j) => ({ w: widths[j], h, text: it.text, color: it.on ? P.brass : (o.off ?? P.wood), onPress: it.onPress }));
+  const row: RowItem[] = items.map((it, j) => ({ w: widths[j], h: TAB_H, text: it.text, color: it.on ? P.brass : P.wood, onPress: it.onPress }));
   const built = buttonRow(row, max);
   i = 0;
   lines.forEach((n, line) => {
     let at = x;
     for (let j = i; j < i + n; j++) {
-      built[j].position.set(at, y + line * (h + GAP));
+      built[j].position.set(at, y + line * (TAB_H + GAP));
       box.addChild(built[j]);
       at += widths[j] + GAP;
     }

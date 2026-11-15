@@ -136,7 +136,20 @@ function screens(fr: Frame): Screen[] {
       const box = new Box();
       const o = new Overlay(fr);
       o.update('play', true, false, 188, [], 16);
-      const ps = new PausePanel(fr.boost, new Settings(null), SETTING_IDS, () => {}, { putIn: () => {} }, () => {});
+      const ps = new PausePanel(fr, new Settings(null), SETTING_IDS, () => {}, { putIn: () => {} }, () => {});
+      ps.update(o.slot, 42, true);
+      box.addChild(o, ps);
+      return box;
+    },
+  });
+  out.push({
+    name: 'cover/paused, the language list down',
+    build: () => {
+      const box = new Box();
+      const o = new Overlay(fr);
+      o.update('play', true, false, 188, [], 16);
+      const ps = new PausePanel(fr, new Settings(null), SETTING_IDS, () => {}, { putIn: () => {} }, () => {});
+      ps.lang.toggle();
       ps.update(o.slot, 42, true);
       box.addChild(o, ps);
       return box;
