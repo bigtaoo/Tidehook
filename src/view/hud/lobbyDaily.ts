@@ -2,14 +2,16 @@
 // with the day's best, the streak of days sailed in a row (game/meta/harbour.ts) and a button to sail it; beside it today's leaderboard where the host has one
 // (game/board.ts). Portrait stacks the two, landscape puts them side by side.
 
-import { Container, Graphics } from 'pixi.js';
+import { Container } from 'pixi.js';
 import type { DailyRow } from '../../game/board';
 import { dailySea } from '../../game/meta/daily';
 import type { Harbour } from '../../game/meta/harbour';
 import { t } from '../../i18n';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
+import { plate } from '../kit/panel';
 import { fitIn, fitWrap, label } from '../kit/text';
+import { TYPE } from '../kit/tokens';
 import type { Rect } from './frame';
 import { seaName } from './lobbySeas';
 
@@ -38,43 +40,37 @@ export function drawDaily(h: Harbour, v: DailyView, r: Rect, k: number, wide: bo
   return box;
 }
 
-function paper(r: Rect, fill: number): Graphics {
-  const g = new Graphics();
-  g.roundRect(r.x, r.y, r.w, r.h, 24).fill(fill).stroke({ color: P.line, width: 5 });
-  return g;
-}
-
 function dayCard(h: Harbour, day: string, r: Rect, k: number, act: DailyActions): Container {
   const box = new Container();
-  box.addChild(paper(r, P.paper));
+  box.addChild(plate(r, { fill: P.paper }));
   const inner = r.w - PAD * 2;
   const cx = r.x + r.w / 2;
   const btnH = Math.min(100, r.h * 0.2);
   const rowH = r.h * 0.12;
-  const title = label(t('daily.title'), 40 * k, { fill: P.ink, stroke: false });
+  const title = label(t('daily.title'), TYPE.head * k, { fill: P.ink, stroke: false });
   fitIn(title, inner, rowH);
   title.anchor.set(0.5);
   title.position.set(cx, r.y + PAD + rowH / 2);
-  const sea = label(t('daily.sea', { sea: seaName(dailySea(day)) }), 32 * k, { fill: P.brassDark, stroke: false });
+  const sea = label(t('daily.sea', { sea: seaName(dailySea(day)) }), TYPE.lead * k, { fill: P.brassDark, stroke: false });
   fitIn(sea, inner, rowH * 0.8);
   sea.anchor.set(0.5);
   sea.position.set(cx, r.y + PAD + rowH * 1.5);
   const n = h.dailyBest(day);
-  const best = label(n > 0 ? t('daily.best', { n }) : t('daily.none'), 30 * k, { fill: P.brassDark, stroke: false });
+  const best = label(n > 0 ? t('daily.best', { n }) : t('daily.none'), TYPE.body * k, { fill: P.brassDark, stroke: false });
   fitIn(best, inner, rowH * 0.8);
   best.anchor.set(0.5);
   best.position.set(cx, r.y + PAD + rowH * 2.4);
   const st = h.streakOn(day);
-  const streak = label(st.today ? t('daily.streakDone', { n: st.n }) : t('daily.streakNext', { n: st.n, p: st.pearls }), 30 * k, { fill: P.go, stroke: false });
+  const streak = label(st.today ? t('daily.streakDone', { n: st.n }) : t('daily.streakNext', { n: st.n, p: st.pearls }), TYPE.body * k, { fill: P.go, stroke: false });
   fitIn(streak, inner, rowH * 0.8);
   streak.anchor.set(0.5);
   streak.position.set(cx, r.y + PAD + rowH * 3.3);
   const descTop = r.y + PAD + rowH * 3.9;
-  const desc = label(t('daily.rules'), 28 * k, { fill: P.ink, stroke: false, weight: '600', wrap: inner });
+  const desc = label(t('daily.rules'), TYPE.small * k, { fill: P.ink, stroke: false, weight: '600', wrap: inner });
   fitWrap(desc, inner, r.y + r.h - btnH - PAD * 2 - descTop);
   desc.anchor.set(0.5, 0);
   desc.position.set(cx, descTop);
-  const b = new Button({ w: inner, h: btnH, text: t('daily.sail'), size: 36 * k, color: P.go, onPress: () => act.daily() });
+  const b = new Button({ w: inner, h: btnH, text: t('daily.sail'), size: TYPE.head * k, color: P.go, onPress: () => act.daily() });
   b.position.set(r.x + PAD, r.y + r.h - btnH - PAD);
   box.addChild(title, sea, best, streak, desc, b);
   return box;
@@ -82,10 +78,10 @@ function dayCard(h: Harbour, day: string, r: Rect, k: number, act: DailyActions)
 
 function list(rows: DailyRow[] | null, r: Rect, k: number): Container {
   const box = new Container();
-  box.addChild(paper(r, P.paperDark));
+  box.addChild(plate(r, { fill: P.paperDark }));
   const inner = r.w - PAD * 2;
   const headH = Math.min(70, r.h * 0.16);
-  const head = label(t('daily.board'), 34 * k, { fill: P.ink, stroke: false });
+  const head = label(t('daily.board'), TYPE.lead * k, { fill: P.ink, stroke: false });
   fitIn(head, inner, headH);
   head.anchor.set(0.5);
   head.position.set(r.x + r.w / 2, r.y + PAD + headH / 2);
@@ -93,7 +89,7 @@ function list(rows: DailyRow[] | null, r: Rect, k: number): Container {
   const top = r.y + PAD + headH;
   const left = r.y + r.h - PAD - top;
   if (!rows || rows.length === 0) {
-    const say = label(rows ? t('daily.empty') : t('daily.loading'), 28 * k, { fill: P.brassDark, stroke: false, wrap: inner });
+    const say = label(rows ? t('daily.empty') : t('daily.loading'), TYPE.small * k, { fill: P.brassDark, stroke: false, wrap: inner });
     fitWrap(say, inner, left);
     say.anchor.set(0.5, 0);
     say.position.set(r.x + r.w / 2, top + 8);
@@ -103,11 +99,11 @@ function list(rows: DailyRow[] | null, r: Rect, k: number): Container {
   const lineH = left / Math.max(5, rows.length);
   rows.forEach((row, i) => {
     const y = top + i * lineH + lineH / 2;
-    const name = label(`${row.rank}. ${row.name || t('daily.anon')}`, 28 * k, { fill: P.ink, stroke: false, weight: '600' });
+    const name = label(`${row.rank}. ${row.name || t('daily.anon')}`, TYPE.small * k, { fill: P.ink, stroke: false, weight: '600' });
     fitIn(name, inner * 0.68, lineH * 0.9);
     name.anchor.set(0, 0.5);
     name.position.set(r.x + PAD, y);
-    const wave = label(t('daily.wave', { n: row.wave }), 28 * k, { fill: P.brassDark, stroke: false });
+    const wave = label(t('daily.wave', { n: row.wave }), TYPE.small * k, { fill: P.brassDark, stroke: false });
     fitIn(wave, inner * 0.3, lineH * 0.9);
     wave.anchor.set(1, 0.5);
     wave.position.set(r.x + r.w - PAD, y);

@@ -5,6 +5,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { t } from '../../i18n';
 import type { World } from '../../sim/world';
 import { Button } from '../kit/button';
+import { drawCoin } from '../kit/counter';
 import { CATCH, P } from '../kit/palette';
 import { Redraw } from '../kit/redraw';
 import { fitIn, label } from '../kit/text';
@@ -122,10 +123,10 @@ export class Hud extends Container {
     this.put(this.held, w.held ? t('hud.held') : '', s.held);
 
     const g = this.marks.clear();
-    // a coin before the count
+    // a coin before the count, the same one the buttons and the harbour draw (kit/counter.ts)
     const cr = this.size * 0.36;
     const cx = this.coins.x - this.coins.width * this.coins.anchor.x - cr * 1.6;
-    g.circle(cx, s.coins.y, cr).fill(P.brassLight).stroke({ color: P.line, width: 4 });
+    drawCoin(g, cx, s.coins.y, cr);
     // the dock's hit points
     const b = s.bar;
     g.roundRect(b.x, b.y, b.w, b.h, b.h / 2).fill(P.line);

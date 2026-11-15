@@ -8,10 +8,11 @@ import type { Cue } from '../../game/guide/guide';
 import type { Session } from '../../game/session';
 import { t } from '../../i18n';
 import { FP } from '../../sim/math/fixed';
+import { bubble } from '../kit/bubble';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
 import { Redraw } from '../kit/redraw';
-import { fitIn, label } from '../kit/text';
+import { TYPE } from '../kit/tokens';
 import { toDesign } from '../orient';
 import type { Frame, Rect } from './frame';
 import type { ShopPanel } from './shop';
@@ -133,25 +134,22 @@ export class Pointer extends Container {
     if (!cue?.text) return;
     const r = this.fr.banner;
     const k = this.fr.boost;
-    const g = new Graphics();
-    g.roundRect(r.x, r.y, r.w, r.h, 20).fill({ color: P.line, alpha: 0.88 }).stroke({ color: P.brassLight, width: 4 });
-    this.bubble.addChild(g);
     const skipW = r.w * SKIP_SHARE;
     const room = r.w - skipW - 60;
-    const words = label(t(cue.text), 48 * k, { fill: P.brassLight, wrap: room, weight: '800' });
-    fitIn(words, room, r.h - 30);
-    words.anchor.set(0.5);
-    words.position.set(r.x + 24 + room / 2, r.y + r.h / 2);
+    // the hint banner's plate, in the captain's voice (kit/bubble.ts); the plate goes in first so
+    // the layout check reads it as the words' box (view/layout/check.ts)
+    const { plate: g, words } = bubble({ r, text: t(cue.text), k, tone: 'talk', room, cx: r.x + 24 + room / 2 });
     const bh = Math.min(r.h - 36, 96);
     const skip = new Button({
       w: skipW,
       h: bh,
       text: t(armed ? 'guide.skipSure' : 'guide.skip'),
-      size: 30 * k,
-      color: armed ? P.red : P.woodLight,
+      size: TYPE.body * k,
+      // a lesser action beside what the captain is saying, the same wood as give up and sail on
+      color: armed ? P.red : P.secondary,
       onPress: this.onSkip,
     });
     skip.position.set(r.x + r.w - skipW - 18, r.y + (r.h - bh) / 2);
-    this.bubble.addChild(words, skip);
+    this.bubble.addChild(g, words, skip);
   }
 }

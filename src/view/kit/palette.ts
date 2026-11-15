@@ -18,6 +18,13 @@ export const P = {
   red: 0xe5484d,
   /** The go buttons (next wave, sail) and a healthy dock: chart teal, not a glossy green. */
   go: 0x2f7f78,
+  /** A button that cannot be pressed. Grey wood, never a lit one: the captain reads "not now"
+   *  from the colour before reading the words. */
+  disabled: 0x6b5f55,
+  /** A switch that is off, still pressable (hud/settingsPanel.ts). Lit wood, warmer than grey. */
+  off: 0x7a5233,
+  /** A second, lesser action beside a go button: give up, sail on, put in early, wear. */
+  secondary: 0x5b3a22,
 } as const;
 
 /** The water, by distance from the dock: teal near shore, steel blue, then deep indigo far out,

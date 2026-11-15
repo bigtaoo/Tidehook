@@ -17,10 +17,14 @@ import { drawDaily, type DailyActions, type DailyView } from './lobbyDaily';
 import { drawLog } from './lobbyLog';
 import { drawNoAds, NO_SALE, type NoAdsView } from './lobbyNoAds';
 import { drawSeas, seaName, type SeaActions } from './lobbySeas';
+import { drawTabs, tabsH, TAB_H } from './lobbyTabs';
 import { harbourTip } from '../../game/meta/tip';
-import { Button, drawPearl } from '../kit/button';
+import { Button } from '../kit/button';
+import { card } from '../kit/card';
+import { counter } from '../kit/counter';
 import { P } from '../kit/palette';
 import { fitIn, fitWrap, label } from '../kit/text';
+import { RADIUS as R, STROKE, TYPE } from '../kit/tokens';
 import type { Frame, Rect } from './frame';
 
 export interface LobbyActions extends SeaActions, DailyActions, CabinActions {
@@ -48,8 +52,7 @@ const COLS = 3;
 /** A portrait design this wide (viewport.ts fitDesign) has room for a fourth column. */
 const WIDE_PORTRAIT = 1300;
 const CAPTAIN_H = 150;
-const TAB_H = 84;
-const RADIUS = 32;
+const RADIUS = R.panel;
 /** How much of the panel's walnut lies over the harbour picture, so the cards and words read. */
 const SHADE = 0.64;
 
@@ -115,7 +118,7 @@ export class LobbyPanel extends Container {
     this.addChild(dim, bg);
     const pic = backdrop(r);
     if (pic) this.addChild(pic);
-    this.addChild(new Graphics().roundRect(r.x, r.y, r.w, r.h, RADIUS).stroke({ color: P.line, width: 6 }));
+    this.addChild(new Graphics().roundRect(r.x, r.y, r.w, r.h, RADIUS).stroke({ color: P.line, width: STROKE.panel }));
 
     const inner = r.w - PAD * 2;
     const capW = CAPTAIN_H * aspect('captain') + 12;
@@ -125,25 +128,21 @@ export class LobbyPanel extends Container {
       this.addChild(captain);
     }
     if (!wide) {
-      const title = label(t('lobby.title'), 56 * k);
+      const title = label(t('lobby.title'), TYPE.title * k);
       fitIn(title, inner * 0.6 - capW, HEAD);
       title.anchor.set(0, 0.5);
       title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
       this.addChild(title);
     }
-    const pearls = label(String(h.pearls), 52 * k, { fill: P.cream });
-    fitIn(pearls, inner * 0.3, HEAD);
-    pearls.anchor.set(1, 0.5);
-    pearls.position.set(r.x + r.w - PAD, r.y + PAD + HEAD / 2);
-    const pearl = new Graphics();
-    const pr = 18 * k;
-    drawPearl(pearl, pearls.x - pearls.width - pr * 1.6, pearls.y, pr);
-    this.addChild(pearls, pearl);
+    // the purse the shop's header and the HUD draw too (kit/counter.ts)
+    const purse = counter({ text: String(h.pearls), size: TYPE.title * k, pearl: true, maxW: inner * 0.3, maxH: HEAD });
+    purse.position.set(r.x + r.w - PAD, r.y + PAD + HEAD / 2);
+    this.addChild(purse);
 
     const lineY = r.y + PAD + HEAD + 8;
     const said = tipLine(h) ?? (voyage.wave > 0 ? t('lobby.earned', { wave: voyage.wave, n: voyage.pearls }) : t('lobby.hint'));
     const sailW = wide ? inner / 2 : inner;
-    const line = label(said, 36 * k, { fill: P.brassLight, weight: '700', wrap: wide ? sailW - GAP * 2 : undefined });
+    const line = label(said, TYPE.lead * k, { fill: P.brassLight, weight: '700', wrap: wide ? sailW - GAP * 2 : undefined });
     line.anchor.set(0, 0.5);
     if (wide) {
       fitWrap(line, sailW - GAP * 2, rowH);
@@ -156,30 +155,20 @@ export class LobbyPanel extends Container {
 
     // landscape: the tabs sit in the title row, between the captain and the pearls
     const tabX = wide ? r.x + PAD + capW : r.x + PAD;
-    const tabsW = wide ? pearl.getLocalBounds().x - 40 - tabX : inner;
+    const tabsW = wide ? purse.x + purse.getLocalBounds().x - 40 - tabX : inner;
     const tabY = wide ? r.y + PAD + (HEAD - TAB_H) / 2 : lineY + LINE + 16;
-    const tabW = (tabsW - GAP * (LOBBY_TABS.length - 1)) / LOBBY_TABS.length;
-    LOBBY_TABS.forEach((tab, i) => {
-      const on = tab === this.tab;
-      const b = new Button({
-        w: tabW,
-        h: TAB_H,
-        text: t(`lobby.tabs.${tab}` as TextKey),
-        size: 38 * k,
-        color: on ? P.brass : P.wood,
-        onPress: () => this.show(tab),
-      });
-      b.position.set(tabX + i * (tabW + GAP), tabY);
-      this.addChild(b);
-    });
+    // portrait: seven tabs on one row leave each word a fifth of a phone's width, so they take two
+    const tabRows = wide ? 1 : 2;
+    const tabs = LOBBY_TABS.map((tab) => ({ text: t(`lobby.tabs.${tab}` as TextKey), on: tab === this.tab, onPress: () => this.show(tab) }));
+    this.addChild(drawTabs(tabs, tabX, tabY, tabsW, k, tabRows));
 
     const ups = tabCards(this.tab);
-    const gridY = wide ? r.y + PAD + HEAD + GAP : tabY + TAB_H + 20;
+    const gridY = wide ? r.y + PAD + HEAD + GAP : tabY + tabsH(tabRows) + 20;
     const area = { x: r.x + PAD, y: gridY, w: inner, h: r.y + r.h - PAD - rowH - GAP - gridY };
     if (this.tab === 'log') this.addChild(drawLog(h, area, k));
     if (this.tab === 'codex') this.addChild(drawCodex(h, area, k, wide));
     if (this.tab === 'cabin') this.addChild(drawCabin(h, this.settings, area, k, wide, this.act));
-    if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, this.act));
+    if (this.tab === 'seas') this.addChild(drawSeas(h, area, k, wide, this.act));
     if (this.tab === 'daily') this.addChild(drawDaily(h, daily, area, k, wide, this.act));
     // Landscape's panel is short: more columns keep the cards to two rows, tall enough to read; a
     // widened portrait (a square embed) takes a fourth column, so its cards grow taller too.
@@ -196,7 +185,7 @@ export class LobbyPanel extends Container {
     };
     ups.forEach((u, i) => place(this.card(h, u, cardW, cardH), i));
     if (sale) place(drawNoAds(noAds, cardW, cardH, k, wide, () => this.act.noAds?.()), ups.length);
-    const sail = new Button({ w: sailW, h: rowH, text: h.sea ? t('lobby.sailTo', { sea: seaName(h.sea) }) : t('lobby.sail'), size: 60 * k, color: P.go, onPress: () => this.act.sail() });
+    const sail = new Button({ w: sailW, h: rowH, text: h.sea ? t('lobby.sailTo', { sea: seaName(h.sea) }) : t('lobby.sail'), size: TYPE.title * k, color: P.go, onPress: () => this.act.sail() });
     sail.position.set(r.x + r.w - PAD - sailW, r.y + r.h - PAD - rowH);
     this.addChild(sail);
   }
@@ -211,43 +200,26 @@ export class LobbyPanel extends Container {
   /** Upgrade `u`: its name, level and what it does on paper, and its pearl price on a button. A
    *  blueprint shows the shop card it unlocks. */
   private card(h: Harbour, u: UpgradeSpec, cw: number, ch: number): Container {
-    const k = this.fr.boost;
     const id = u.id;
     const plan = u.unlock;
     const cost = h.price(id);
-    const box = new Container();
-    const paper = new Graphics();
-    paper.roundRect(0, 0, cw, ch, 24).fill(cost === null ? P.paperDark : P.paper).stroke({ color: P.line, width: 5 });
-    box.addChild(paper);
-    const text = 16;
-    const btnH = Math.min(100, ch * (this.fr.fit.wide ? 0.18 : 0.22));
-    const nameH = ch * (this.fr.fit.wide ? 0.23 : 0.2);
     const said = plan
       ? { name: t(`cards.${plan}.name` as TextKey), lv: t('lobby.planNew'), desc: t(`cards.${plan}.desc` as TextKey) }
       : { name: t(`meta.${id}.name` as TextKey), lv: t('shop.level', { n: h.level(id), max: u.max }), desc: t(`meta.${id}.desc` as TextKey) };
-    const name = label(said.name, 40 * k, { fill: P.ink, stroke: false, wrap: cw - text * 2 });
-    fitWrap(name, cw - text * 2, nameH);
-    name.anchor.set(0.5);
-    name.position.set(cw / 2, text + nameH / 2);
-    const lv = label(said.lv, 28 * k, { fill: P.brassDark, stroke: false });
-    // the level line is short words: a bigger share keeps them readable (they were 9 pixels tall)
-    const lvH = ch * 0.12;
-    fitIn(lv, cw - text * 2, lvH);
-    lv.anchor.set(0.5);
-    lv.position.set(cw / 2, text + nameH + lvH * 0.6);
-    const descTop = text + nameH + lvH + ch * 0.03;
-    const desc = label(said.desc, 28 * k, { fill: P.ink, stroke: false, weight: '600', wrap: cw - text * 2 });
-    fitWrap(desc, cw - text * 2, ch - descTop - btnH - text * 1.5);
-    desc.anchor.set(0.5, 0);
-    desc.position.set(cw / 2, descTop);
-    box.addChild(name, lv, desc);
-    const b =
-      cost === null
-        ? new Button({ w: cw - text * 2, h: btnH, text: t(plan ? 'lobby.owned' : 'lobby.max'), size: 34 * k, enabled: false, onPress: () => {} })
-        : new Button({ w: cw - text * 2, h: btnH, text: '', size: 42 * k, price: cost, pearl: true, enabled: h.pearls >= cost, onPress: () => this.act.buy(id), onDenied: this.deny });
-    b.position.set(text, ch - btnH - text);
-    box.addChild(b);
-    return box;
+    return card({
+      w: cw,
+      h: ch,
+      wide: this.fr.fit.wide,
+      k: this.fr.boost,
+      fill: cost === null ? P.paperDark : P.paper,
+      name: said.name,
+      sub: said.lv,
+      desc: said.desc,
+      action:
+        cost === null
+          ? { text: t(plan ? 'lobby.owned' : 'lobby.max'), enabled: false, onPress: () => {} }
+          : { text: '', price: cost, pearl: true, enabled: h.pearls >= cost, onPress: () => this.act.buy(id), onDenied: this.deny },
+    });
   }
 }
 

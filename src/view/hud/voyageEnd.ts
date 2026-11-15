@@ -1,23 +1,19 @@
 // The voyage's end (game/session.ts): the last wave of the voyage is cleared, and the captain
 // chooses home, with its pearls, or to sail on. The card is the Overlay's, which takes no taps, so
-// the two buttons live here, over it, in the slot it leaves for them (like hud/overAds.ts).
+// the two buttons live here, over it, in the slot it leaves for them (hud/slotRow.ts, shared with
+// hud/overAds.ts: the same row in the same place should not be two sizes).
 
 import { Container } from 'pixi.js';
 import { t } from '../../i18n';
-import { Button } from '../kit/button';
 import { P } from '../kit/palette';
 import type { Frame } from './frame';
-import { slotButtonW, type Slot } from './overAds';
+import { slotRow, type Slot } from './slotRow';
 
 /** What the buttons do. */
 export interface VoyageActions {
   home(): void;
   sailOn(): void;
 }
-
-const BTN_W = 420;
-const BTN_H = 120;
-const GAP = 32;
 
 export class VoyageEnd extends Container {
   private key = '';
@@ -36,17 +32,10 @@ export class VoyageEnd extends Container {
     this.key = key;
     for (const c of this.removeChildren()) c.destroy({ children: true });
     if (!slot) return;
-    const k = this.fr.boost;
-    const w = slotButtonW(slot, BTN_W * k, GAP);
-    const h = BTN_H * k;
-    const buttons = [
-      new Button({ w, h, text: t('voyage.goHome', { n: bonus }), size: 40 * k, color: P.go, onPress: () => this.act.home() }),
-      new Button({ w, h, text: t('voyage.sailOn'), size: 40 * k, onPress: () => this.act.sailOn() }),
+    const items = [
+      { text: t('voyage.goHome', { n: bonus }), color: P.go, onPress: () => this.act.home() },
+      { text: t('voyage.sailOn'), color: P.secondary, onPress: () => this.act.sailOn() },
     ];
-    const total = buttons.length * w + (buttons.length - 1) * GAP;
-    buttons.forEach((b, i) => {
-      b.position.set(slot.x - total / 2 + i * (w + GAP), slot.y - h / 2);
-      this.addChild(b);
-    });
+    this.addChild(...slotRow(items, slot, this.fr.boost));
   }
 }

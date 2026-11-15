@@ -8,11 +8,14 @@ import type { Offer } from '../../game/ads';
 import type { Mode } from '../../game/session';
 import type { SimEvent } from '../../sim/events';
 import { artSprite, aspect } from '../art';
+import { bubble } from '../kit/bubble';
 import { P } from '../kit/palette';
+import { panel } from '../kit/panel';
 import { fitIn, fitWrap, label } from '../kit/text';
+import { SPACE, TYPE } from '../kit/tokens';
 import { toDesign } from '../orient';
 import type { Frame } from './frame';
-import type { Slot } from './overAds';
+import type { Slot } from './slotRow';
 
 /** How long a hint stays up, ms. */
 const BANNER_MS = 4000;
@@ -124,14 +127,9 @@ export class Overlay extends Container {
     this.banner.removeChildren().forEach((c) => c.destroy());
     if (text === null) return;
     this.bannerMs = BANNER_MS;
-    const r = this.fr.banner;
-    const g = new Graphics();
-    g.roundRect(r.x, r.y, r.w, r.h, 20).fill({ color: P.line, alpha: 0.7 }).stroke({ color: P.brassLight, width: 3 });
-    const size = 40 * this.fr.boost;
-    const words = label(text, size, { fill: P.cream, wrap: r.w - 60, weight: '700' });
-    fitIn(words, r.w - 60, r.h - 30);
-    words.anchor.set(0.5);
-    words.position.set(r.x + r.w / 2, r.y + r.h / 2);
+    // the same plate the tutorial speaks from (kit/bubble.ts); overlay.test.ts reads the words as
+    // the banner's first Text child, so plate and words go in side by side
+    const { plate: g, words } = bubble({ r: this.fr.banner, text, k: this.fr.boost, tone: 'hint' });
     this.banner.addChild(g, words);
   }
 
@@ -149,14 +147,19 @@ export class Overlay extends Container {
     const dim = new Graphics();
     dim.rect(0, 0, fit.w, fit.h).fill({ color: P.line, alpha: this.cover === 'title' ? 0.25 : 0.6 });
     this.coverBox.addChild(dim);
+    // the title is a splash: its words stand on the art, and a plate under them would hide the
+    // harbour the game opens on. Every other cover is a card the captain reads, so it gets the
+    // panel the shop and the harbour use - drawn now so the words land on top of it, filled in
+    // once the block's height is known
+    const back = this.cover === 'title' ? null : this.coverBox.addChild(new Graphics());
     const mid = toDesign(f, 300, 240);
     const lines: Line[] =
       this.cover === 'title'
-        ? [[t('title'), 120, P.brassLight], [t('boot.tapToStart'), 60, P.cream]]
+        ? [[t('title'), TYPE.display, P.brassLight], [t('boot.tapToStart'), TYPE.title, P.cream]]
         : this.cover === 'paused'
-          ? [[t('overlay.paused'), 100, P.brassLight], [t('overlay.resume'), 56, P.cream], ['', PAUSE_ROWS, 0]]
+          ? [[t('overlay.paused'), TYPE.display, P.brassLight], [t('overlay.resume'), TYPE.title, P.cream], ['', PAUSE_ROWS, 0]]
           : this.cover === 'voyage'
-            ? [[t('voyage.title'), 96, P.brassLight], [t('voyage.body', { n: this.wave }), 52, P.cream], ['', 0, 0]]
+            ? [[t('voyage.title'), TYPE.display, P.brassLight], [t('voyage.body', { n: this.wave }), TYPE.title, P.cream], ['', 0, 0]]
             : this.overLines();
     const cx = fit.wide ? f.x + f.w / 2 : fit.w / 2;
     // a widened portrait (a square embed) lets the words run past the lane, over the dim
@@ -186,6 +189,7 @@ export class Overlay extends Container {
       captain?.position.set(fit.wide ? cx - maxW / 2 - capW / 2 - 20 : cx, fit.wide ? mid.y : y - 10);
       if (captain) this.coverBox.addChild(captain);
     }
+    const top = y;
     items.forEach((tx, i) => {
       if (!tx) {
         const h = slotH(i);
@@ -198,6 +202,7 @@ export class Overlay extends Container {
       this.coverBox.addChild(tx);
       y += tx.height + gap(i);
     });
+    if (back) panel({ x: cx - maxW / 2 - SPACE.wide, y: top - SPACE.wide, w: maxW + SPACE.wide * 2, h: y - top + SPACE.wide * 2 }, P.woodDark, 0.92, back);
   }
 
   /** The game over card's lines; an empty line is the ad buttons' slot. While the revive is on
@@ -205,20 +210,23 @@ export class Overlay extends Container {
   private overLines(): Line[] {
     // a captain who came home — at the voyage's end or by putting in early — did not lose the
     // dock, so the card does not shout that it fell
+    // three sizes, whatever state the card is in: the headline, the lines the captain acts on
+    // (what he reached, what he brought home, what to do next), and the notes beside them. It used
+    // to carry four sizes between 48 and 60 that moved with the offer on screen
     const title: Line = this.end === 'home'
-      ? [t('voyage.home'), 96, P.brassLight]
+      ? [t('voyage.home'), TYPE.display, P.brassLight]
       : this.end === 'putIn'
-        ? [t('overlay.putInHead'), 96, P.brassLight]
-        : [t('overlay.over'), 96, P.red];
-    const head: Line[] = [title, [t('overlay.reached', { n: this.wave }), 60, P.cream]];
-    if (this.offer === 'revive') return [...head, [t('ads.reviveNote'), 48, P.brassLight], ['', 0, 0]];
+        ? [t('overlay.putInHead'), TYPE.display, P.brassLight]
+        : [t('overlay.over'), TYPE.display, P.red];
+    const head: Line[] = [title, [t('overlay.reached', { n: this.wave }), TYPE.title, P.cream]];
+    if (this.offer === 'revive') return [...head, [t('ads.reviveNote'), TYPE.head, P.brassLight], ['', 0, 0]];
     return [
       ...head,
-      ...(this.pearls ? [[t('overlay.pearls', { n: this.pearls }), 56, P.cream] as Line] : []),
-      ...this.notes.map((n): Line => [n, 48, P.brassLight]),
-      ...(this.lesson ? [[this.lesson, 52, P.brassLight] as Line] : []),
+      ...(this.pearls ? [[t('overlay.pearls', { n: this.pearls }), TYPE.title, P.cream] as Line] : []),
+      ...this.notes.map((n): Line => [n, TYPE.head, P.brassLight]),
+      ...(this.lesson ? [[this.lesson, TYPE.head, P.brassLight] as Line] : []),
       ...(this.offer === 'double' ? [['', 0, 0] as Line] : []),
-      [t(this.pearls === null ? 'overlay.again' : 'overlay.harbour'), 56, P.cream],
+      [t(this.pearls === null ? 'overlay.again' : 'overlay.harbour'), TYPE.title, P.cream],
     ];
   }
 }

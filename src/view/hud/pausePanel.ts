@@ -8,7 +8,8 @@ import type { SettingId, Settings } from '../../game/settings';
 import { t } from '../../i18n';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
-import { slotButtonW, type Slot } from './overAds';
+import { TYPE } from '../kit/tokens';
+import { slotButtonW, type Slot } from './slotRow';
 import { drawToggles } from './settingsPanel';
 
 const GAP = 24;
@@ -59,7 +60,7 @@ export class PausePanel extends Container {
     }
     if (put) {
       const w = slotButtonW(slot, BTN_W * k, GAP);
-      const b = new Button({ w, h: bh, text: t('overlay.putIn'), size: 34 * k, price: pearls, pearl: true, color: P.woodLight, onPress: () => this.act?.putIn() });
+      const b = new Button({ w, h: bh, text: t('overlay.putIn'), size: TYPE.lead * k, price: pearls, pearl: true, color: P.secondary, onPress: () => this.act?.putIn() });
       b.position.set(slot.x - w / 2, y);
       this.addChild(b);
     }

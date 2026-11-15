@@ -3,6 +3,7 @@
 
 import { Text, type TextStyleFontWeight } from 'pixi.js';
 import { P, TEXT_STROKE } from './palette';
+import { TYPE } from './tokens';
 
 export const FONT = 'system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif';
 
@@ -66,12 +67,29 @@ export function label(text: string, size: number, o: LabelOpts = {}): Text {
   });
 }
 
-/** Shrinks `t` (never grows it) until it fits `w` by `h` design units. */
-export function fitIn<T extends Text>(t: T, w: number, h = Infinity): T {
+/** The smallest words a phone can still read, design units. A box too short for its words is a
+ *  layout to fix, not words to shrink away: pass this as `min` and the words keep their size and
+ *  run a little past the box's height, where the layout sweep (view/layout) finds them. The width
+ *  is never given up, so they stay on the card either way. */
+export const MIN_SIZE = TYPE.meta;
+
+/** Shrinks `t` (never grows it) until it fits `w` by `h` design units. `min`: the size below
+ *  which the height stops shrinking it (MIN_SIZE above); 0, the default, shrinks as far as it
+ *  must. */
+export function fitIn<T extends Text>(t: T, w: number, h = Infinity, min = 0): T {
   t.scale.set(1);
-  const k = Math.min(1, w / Math.max(1, t.width), h / Math.max(1, t.height));
+  const wide = w / Math.max(1, t.width);
+  const tall = h / Math.max(1, t.height);
+  const floor = min > 0 ? Math.min(min / size(t), wide) : 0;
+  const k = Math.min(1, wide, Math.max(tall, floor));
   t.scale.set(k);
   return t;
+}
+
+/** The size `t` was built at, whatever pixi made of the style. */
+function size(t: Text): number {
+  const s = t.style.fontSize;
+  return typeof s === 'number' ? s : parseFloat(s) || 1;
 }
 
 /** fitIn for a wrapped label: each smaller size wraps again at the width it now has, so a long

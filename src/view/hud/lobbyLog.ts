@@ -6,9 +6,11 @@ import type { Harbour } from '../../game/meta/harbour';
 import { t, type TextKey } from '../../i18n';
 import { B, type GoalSpec } from '../../sim/balance';
 import { goalValue } from '../../sim/goals';
-import { drawPearl } from '../kit/button';
+import { counter } from '../kit/counter';
 import { P } from '../kit/palette';
-import { fitIn, label } from '../kit/text';
+import { tile } from '../kit/panel';
+import { MIN_SIZE, fitIn, label } from '../kit/text';
+import { STROKE, TYPE } from '../kit/tokens';
 import type { Rect } from './frame';
 
 const GAP = 14;
@@ -41,7 +43,7 @@ export function drawLog(h: Harbour, r: Rect, k: number): Container {
   const box = new Container();
   const done = h.done.length;
   const all = done >= B.goals.length;
-  const head = label(all ? t('lobby.logAll') : t('lobby.logDone', { n: done, max: B.goals.length }), 34 * k, { fill: P.brassLight, weight: '700' });
+  const head = label(all ? t('lobby.logAll') : t('lobby.logDone', { n: done, max: B.goals.length }), TYPE.lead * k, { fill: P.brassLight, weight: '700' });
   fitIn(head, r.w, HEAD);
   head.anchor.set(0.5);
   head.position.set(r.x + r.w / 2, r.y + HEAD / 2);
@@ -62,31 +64,28 @@ function row(h: Harbour, g: GoalSpec, x: number, y: number, w: number, rh: numbe
   const box = new Container();
   const pad = 14;
   const payW = Math.min(150, w * 0.22);
-  const paper = new Graphics();
-  paper.roundRect(x, y, w, rh, 18).fill(P.paper).stroke({ color: P.line, width: 4 });
+  const paper = tile({ x, y, w, h: rh }, P.paper);
   const textW = w - payW - pad * 3;
-  const said = label(goalText(g), 30 * k, { fill: P.ink, stroke: false, align: 'left' });
+  const said = label(goalText(g), TYPE.body * k, { fill: P.ink, stroke: false, align: 'left' });
   fitIn(said, textW, rh * 0.5);
   said.anchor.set(0, 0.5);
   said.position.set(x + pad, y + rh * 0.34);
   const have = Math.min(g.n, goalValue(g, h.best, h.totals));
   const barY = y + rh * 0.68;
   const barH = Math.max(10, rh * 0.14);
-  const barW = textW * 0.7;
+  // the bar gave the count a tenth of the row and it came out unreadable; the count keeps its own
+  // third and stops at the smallest a phone can read (kit/text.ts MIN_SIZE)
+  const barW = textW * 0.62;
   const bar = new Graphics();
-  bar.roundRect(x + pad, barY, barW, barH, barH / 2).fill(P.paperDark).stroke({ color: P.line, width: 2 });
+  bar.roundRect(x + pad, barY, barW, barH, barH / 2).fill(P.paperDark).stroke({ color: P.line, width: STROKE.hair });
   if (have > 0) bar.roundRect(x + pad, barY, Math.max(barH, (barW * have) / g.n), barH, barH / 2).fill(P.brass);
-  const count = label(`${have}/${g.n}`, 24 * k, { fill: P.brassDark, stroke: false, weight: '700' });
-  fitIn(count, textW - barW - pad, rh * 0.42);
+  const count = label(`${have}/${g.n}`, TYPE.meta * k, { fill: P.brassDark, stroke: false, weight: '700' });
+  fitIn(count, textW - barW - pad, rh * 0.42, MIN_SIZE * k);
   count.anchor.set(0, 0.5);
   count.position.set(x + pad * 2 + barW, barY + barH / 2);
-  const pay = label(String(g.pearls), 36 * k, { fill: P.ink, stroke: false });
-  fitIn(pay, payW * 0.55, rh * 0.6);
-  pay.anchor.set(1, 0.5);
+  // the pearls it pays, drawn as the purse everywhere else is (kit/counter.ts)
+  const pay = counter({ text: String(g.pearls), size: TYPE.head * k, pearl: true, maxW: payW, maxH: rh * 0.6 });
   pay.position.set(x + w - pad, y + rh / 2);
-  const pr = Math.min(16 * k, rh * 0.16);
-  const pearl = new Graphics();
-  drawPearl(pearl, pay.x - pay.width - pr * 1.5, y + rh / 2, pr);
-  box.addChild(paper, bar, said, count, pay, pearl);
+  box.addChild(paper, bar, said, count, pay);
   return box;
 }

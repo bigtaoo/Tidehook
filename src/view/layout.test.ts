@@ -83,7 +83,8 @@ describe('orient', () => {
     expect(p.y + p.h).toBeLessThanOrEqual(DESIGN_LONG - PORTRAIT_BOTTOM + 1e-6);
     expect(p.x).toBeGreaterThanOrEqual(0);
     const l = fieldFor(true);
-    expect(l.x + l.w).toBeLessThanOrEqual(DESIGN_LONG - LANDSCAPE_SIDE + 1e-6);
+    expect(l.x).toBeGreaterThanOrEqual(LANDSCAPE_SIDE - 1e-6);
+    expect(l.x + l.w).toBeLessThanOrEqual(DESIGN_LONG + 1e-6);
     expect(l.y).toBeGreaterThanOrEqual(0);
     expect(l.y + l.h).toBeLessThanOrEqual(DESIGN_SHORT + 1e-6);
   });

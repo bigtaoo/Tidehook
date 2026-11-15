@@ -5,7 +5,7 @@
 import { Container } from 'pixi.js';
 import type { SettingId, Settings } from '../../game/settings';
 import { t } from '../../i18n';
-import { Button } from '../kit/button';
+import { buttonRow, type RowItem } from '../kit/row';
 import { P } from '../kit/palette';
 import type { Rect } from './frame';
 
@@ -22,10 +22,12 @@ export function drawToggles(s: Settings, ids: readonly SettingId[], r: Rect, k: 
   const rows = Math.max(1, Math.ceil(ids.length / cols));
   const w = (r.w - GAP * (cols - 1)) / cols;
   const h = (r.h - GAP * (rows - 1)) / rows;
-  ids.forEach((id, i) => {
+  // one size for the whole grid: "Calm motion: off" is a longer line than "Music: on" above it
+  const items: RowItem[] = ids.map((id) => {
     const on = s.get(id);
-    const text = t('settings.line', { name: t(`settings.${id}`), state: t(on ? 'settings.on' : 'settings.off') });
-    const b = new Button({ w, h, text, size: 38 * k, color: on ? P.brass : P.woodLight, onPress: () => onToggle(id) });
+    return { w, h, text: t('settings.line', { name: t(`settings.${id}`), state: t(on ? 'settings.on' : 'settings.off') }), color: on ? P.brass : P.off, onPress: () => onToggle(id) };
+  });
+  buttonRow(items, 38 * k).forEach((b, i) => {
     b.position.set(r.x + (i % cols) * (w + GAP), r.y + Math.floor(i / cols) * (h + GAP));
     box.addChild(b);
   });

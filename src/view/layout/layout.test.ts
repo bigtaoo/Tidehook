@@ -3,7 +3,7 @@
 // Windows Chromium glyph widths (see measure.ts), so this runs in node without a browser.
 import './measure';
 import { describe, expect, it } from 'vitest';
-import type { Container } from 'pixi.js';
+import { Text, type Container } from 'pixi.js';
 import { LOCALES, loadLocale, setLocale, t, type TextKey } from '../../i18n';
 import { B, MONSTER_KINDS } from '../../sim/balance';
 import { Pilot } from '../../sim/bot/bot';
@@ -205,6 +205,52 @@ function screens(fr: Frame): Screen[] {
   return out;
 }
 
+/** The words a button renders, and how big: its own lines, after kit/button.ts shrank them into
+ *  its plate. A price under the words is drawn smaller on purpose, so the largest line is the
+ *  size the button was built at. */
+function builtAt(b: Button): { size: number; text: string } | null {
+  let size = 0;
+  let text = '';
+  for (const k of b.children) {
+    if (!(k instanceof Text)) continue;
+    const s = Number(k.style.fontSize) * k.scale.y;
+    if (s > size) [size, text] = [s, k.text];
+  }
+  return size > 0 ? { size, text } : null;
+}
+
+/** Buttons the eye reads as one row - same parent, same top, same height - that do not render
+ *  their words at one size. A Button shrinks only against its own plate, so a row built without
+ *  kit/row.ts comes out at as many sizes as it has buttons. */
+function rowDrift(root: Container): string[] {
+  const rows = new Map<Container, Map<string, { size: number; text: string }[]>>();
+  const walk = (c: Container): void => {
+    for (const k of c.children) {
+      if (k instanceof Button) {
+        const built = builtAt(k);
+        if (built) {
+          const by = rows.get(c) ?? new Map();
+          rows.set(c, by);
+          const key = `${Math.round(k.y)}x${Math.round(k.height)}`;
+          by.set(key, [...(by.get(key) ?? []), built]);
+        }
+      } else walk(k);
+    }
+  };
+  walk(root);
+  const out: string[] = [];
+  for (const by of rows.values()) {
+    for (const row of by.values()) {
+      if (row.length < 2) continue;
+      const sizes = row.map((r) => r.size);
+      // a hair of rounding is not drift; a size the eye can tell apart is
+      if (Math.max(...sizes) - Math.min(...sizes) <= 0.5) continue;
+      out.push(row.map((r) => `${JSON.stringify(r.text)} at ${r.size.toFixed(1)}`).join(', '));
+    }
+  }
+  return out;
+}
+
 /** One locale's sweep builds every screen at six sizes and takes seconds on its own, so a busy
  *  machine (a parallel build, another sim running) can push it past vitest's 5 s default and fail
  *  a suite that is in fact green. The work is bounded, so a wide timeout costs nothing. */
@@ -216,6 +262,7 @@ describe('every language fits its boxes', () => {
       expect(await loadLocale(l)).toBe(true);
       setLocale(l);
       const found: string[] = [];
+      const drift: string[] = [];
       for (const [sw, sh] of SIZES) {
         const fr = frameFor(fitDesign(sw, sh));
         for (const s of screens(fr)) {
@@ -223,11 +270,13 @@ describe('every language fits its boxes', () => {
           for (const o of overflows(root, { x: 0, y: 0, width: fr.fit.w, height: fr.fit.h }, [Button])) {
             found.push(`${sw}x${sh} ${s.name}: ${JSON.stringify(o.text)} ${o.side === 'button' ? 'runs into a button by' : `sticks out ${o.side} by`} ${o.by}px`);
           }
+          for (const d of rowDrift(root)) drift.push(`${sw}x${sh} ${s.name}: ${d}`);
           root.destroy({ children: true });
         }
       }
       setLocale('en');
       expect([...new Set(found)]).toEqual([]);
+      expect([...new Set(drift)]).toEqual([]);
     }, SWEEP_MS);
   }
 

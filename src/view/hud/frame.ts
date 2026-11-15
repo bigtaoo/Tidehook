@@ -40,7 +40,7 @@ export function frameFor(fit: Fit): Frame {
   const field = fieldFor(fit.wide, fit.w, fit.h);
   const boost = textBoost(fit);
   if (fit.wide) {
-    const side = { x: fit.w - LANDSCAPE_SIDE, y: 0, w: LANDSCAPE_SIDE, h: fit.h };
+    const side = { x: 0, y: 0, w: LANDSCAPE_SIDE, h: fit.h };
     const pause = { x: side.x + (side.w - PAUSE) / 2, y: fit.h - PAUSE - 48, w: PAUSE, h: PAUSE };
     return {
       fit,
@@ -49,8 +49,8 @@ export function frameFor(fit: Fit): Frame {
       bars: [side],
       pause,
       sound: { ...pause, y: pause.y - PAUSE - GAP },
-      shop: { x: side.x - GAP - SHOP_LANDSCAPE_W, y: GAP, w: SHOP_LANDSCAPE_W, h: fit.h - GAP * 2 },
-      banner: { x: field.x + 220, y: GAP, w: side.x - field.x - 220 - GAP, h: 150 },
+      shop: { x: side.w + GAP, y: GAP, w: SHOP_LANDSCAPE_W, h: fit.h - GAP * 2 },
+      banner: { x: field.x + 220, y: GAP, w: fit.w - field.x - 220 - GAP, h: 150 },
     };
   }
   const top = { x: 0, y: 0, w: fit.w, h: PORTRAIT_TOP };

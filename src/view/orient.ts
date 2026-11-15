@@ -1,6 +1,7 @@
 // The one place that knows the screen's orientation: the lane's (d, w) in world units (sim/lane.ts)
 // to design units and back. Portrait puts the dock at the bottom with the sea going up
-// (x = w, y = bottom - d); landscape puts it on the left with the sea going right (x = d, y = w).
+// (x = w, y = bottom - d); landscape puts it on the left with the sea going right (x = d, y = w),
+// with the HUD sidebar on that same left edge, so the dock's numbers stay beside the dock.
 // HUD and shop bars are not turned: they take a band of their own (docs/01-tech-plan.md section 4).
 
 import { LANE_LEN, LANE_WIDTH } from '../sim/lane';
@@ -9,7 +10,8 @@ import { DESIGN_LONG, DESIGN_SHORT } from './viewport';
 /** Portrait: the HUD strip across the top and the shop bar under the dock, in design units. */
 export const PORTRAIT_TOP = 140;
 export const PORTRAIT_BOTTOM = 300;
-/** Landscape: the HUD and shop sidebar down the right. */
+/** Landscape: the HUD sidebar down the left, on the dock's side - the dock's hit points and its
+ *  bar belong beside the dock they count, as they do under it in portrait. The lane takes the rest. */
 export const LANDSCAPE_SIDE = 360;
 /** Portrait: the band between the top strip and the lane that a hint banner shows in
  *  (hud/frame.ts draws it there, inset by a gap). The lane stops below it, so a hint cannot
@@ -44,7 +46,7 @@ export function fieldFor(wide: boolean, designW = wide ? DESIGN_LONG : DESIGN_SH
   const h = (wide ? LANE_WIDTH : LANE_LEN) * scale;
   const x = (roomW - w) / 2;
   const y = top + (roomH - h) / 2;
-  return { wide, scale, x: wide ? 0 : x, y, w, h };
+  return { wide, scale, x: wide ? LANDSCAPE_SIDE + x : x, y, w, h };
 }
 
 /** A lane point (world units, floats on the view side) to design units. */

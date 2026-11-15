@@ -9,8 +9,12 @@ import { level, mineCost, pairedWith, price, repairCost, rerollCost, upgrade } f
 import type { World } from '../../sim/world';
 import type { ShopPick } from '../../game/guide/shopPick';
 import { Button } from '../kit/button';
+import { card, cardBox } from '../kit/card';
 import { P } from '../kit/palette';
+import { panel } from '../kit/panel';
+import { buttonRow, type RowItem } from '../kit/row';
 import { fitIn, fitWrap, label } from '../kit/text';
+import { STROKE, TYPE } from '../kit/tokens';
 import type { Frame, Rect } from './frame';
 
 export interface ShopActions {
@@ -72,9 +76,7 @@ export class ShopPanel extends Container {
     this.spots.clear();
     const r = this.fr.shop;
     const k = this.fr.boost;
-    const bg = new Graphics();
-    bg.roundRect(r.x, r.y, r.w, r.h, 32).fill(P.woodDark).stroke({ color: P.line, width: 6 });
-    this.addChild(bg);
+    this.addChild(panel(r));
 
     const inner = r.w - PAD * 2;
     const capW = CAPTAIN_H * aspect('captain') + 12;
@@ -86,21 +88,15 @@ export class ShopPanel extends Container {
     // a new player's dock was patched for free after the wave (sim/tide.ts)
     const done = w.mended ? t('shop.titleMend', { n: w.wave, hp: w.mended }) : t('shop.title', { n: w.wave });
     // a new player's first shop says what it is for instead (game/guide/guide.ts shopTeach)
-    const titleW = inner * 0.62 - capW;
-    const title = teach && mine ? label(t('shop.teach'), 36 * k, { wrap: titleW }) : label(mine ? done : t('shop.bot'), 52 * k);
+    // the coins are the HUD's to show (hud.ts), which stays up behind the panel: a second purse
+    // here was the same number twice, in two sizes. The head is the title's alone
+    const titleW = inner - capW;
+    const title = teach && mine ? label(t('shop.teach'), 36 * k, { wrap: titleW }) : label(mine ? done : t('shop.bot'), TYPE.title * k);
     if (teach && mine) fitWrap(title, titleW, HEAD);
     else fitIn(title, titleW, HEAD);
     title.anchor.set(0, 0.5);
     title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
-    const coins = label(t('hud.coins', { n: w.coins }), 52 * k, { fill: P.brassLight });
-    fitIn(coins, inner * 0.3, HEAD);
-    coins.anchor.set(1, 0.5);
-    coins.position.set(r.x + r.w - PAD, r.y + PAD + HEAD / 2);
-    this.addChild(title, coins);
-    const coin = new Graphics();
-    const cr = 18 * k;
-    coin.circle(coins.x - coins.width - cr * 1.6, coins.y, cr).fill(P.brassLight).stroke({ color: P.line, width: 4 });
-    this.addChild(coin);
+    this.addChild(title);
 
     const cardsY = r.y + PAD + HEAD + 16;
     const cardH = r.h - PAD * 2 - HEAD - 16 - ROW * 2 - GAP * 2;
@@ -111,8 +107,8 @@ export class ShopPanel extends Container {
       const x = r.x + PAD + i * (cardW + GAP);
       card.position.set(x, cardsY);
       this.addChild(card);
-      const btnH = Math.min(110, cardH * 0.22);
-      this.spots.set(`card${i}`, { x: x + 16, y: cardsY + cardH - btnH - 16, w: cardW - 32, h: btnH });
+      const b = cardBox(cardW, cardH, this.fr.fit.wide);
+      this.spots.set(`card${i}`, { x: x + b.pad, y: cardsY + b.btnY, w: b.inner, h: b.btnH });
       if (i === tag) this.addChild(this.tag(x + cardW / 2, cardsY, cardW, t('guide.topPick')));
       else if (upgrade(w.cards[i].id).rare) this.addChild(this.tag(x + cardW / 2, cardsY, cardW, t('shop.rare'), P.brass));
     });
@@ -126,15 +122,24 @@ export class ShopPanel extends Container {
         ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go, icon: 'play' as const }
         : { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
-    small.forEach((s, i) => {
-      const color = 'color' in s ? s.color : undefined;
-      const icon = 'icon' in s ? s.icon : undefined;
-      const b = new Button({ w: cardW, h: ROW, text: s.text, size: 40 * k, price: s.price, color, icon, enabled: mine && s.ok, onPress: s.onPress, onDenied: this.deny });
+    // one size for the three: the reroll can carry a play mark, which leaves its words less room
+    const items: RowItem[] = small.map((s) => ({
+      w: cardW,
+      h: ROW,
+      text: s.text,
+      price: s.price,
+      color: 'color' in s ? s.color : undefined,
+      icon: 'icon' in s ? s.icon : undefined,
+      enabled: mine && s.ok,
+      onPress: s.onPress,
+      onDenied: this.deny,
+    }));
+    buttonRow(items, TYPE.head * k).forEach((b, i) => {
       b.position.set(r.x + PAD + i * (cardW + GAP), rowY);
       this.addChild(b);
       if (i === 0) this.spots.set('repair', { x: b.x, y: rowY, w: cardW, h: ROW });
     });
-    const next = new Button({ w: inner, h: ROW, text: t('shop.next'), size: 60 * k, color: P.go, enabled: mine, onPress: () => this.act.next() });
+    const next = new Button({ w: inner, h: ROW, text: t('shop.next'), size: TYPE.title * k, color: P.go, enabled: mine, onPress: () => this.act.next() });
     next.position.set(r.x + PAD, rowY + ROW + GAP);
     this.addChild(next);
     this.spots.set('next', { x: next.x, y: next.y, w: inner, h: ROW });
@@ -144,7 +149,7 @@ export class ShopPanel extends Container {
   private tag(cx: number, top: number, cw: number, text: string, fill: number = P.brassLight): Container {
     const k = this.fr.boost;
     const box = new Container();
-    const words = label(text, 30 * k, { fill: P.line, stroke: false, weight: '800' });
+    const words = label(text, TYPE.body * k, { fill: P.line, stroke: false, weight: '800' });
     fitIn(words, cw - 40, 44);
     const w = words.width + 36;
     const h = Math.max(44, words.height + 12);
@@ -161,37 +166,23 @@ export class ShopPanel extends Container {
   private card(w: World, i: number, cw: number, ch: number, mine: boolean): Container {
     const c = w.cards[i];
     const u = upgrade(c.id);
-    const k = this.fr.boost;
-    const box = new Container();
-    const paper = new Graphics();
-    paper.roundRect(0, 0, cw, ch, 24).fill(c.bought ? P.paperDark : u.rare ? P.brassLight : P.paper).stroke({ color: u.rare ? P.brassDark : P.line, width: u.rare ? 7 : 5 });
-    box.addChild(paper);
-    const text = 16;
-    const nameH = ch * 0.2;
-    const name = label(t(`cards.${c.id}.name` as TextKey), 42 * k, { fill: P.ink, stroke: false, wrap: cw - text * 2 });
-    fitIn(name, cw - text * 2, nameH);
-    name.anchor.set(0.5);
-    name.position.set(cw / 2, text + nameH / 2);
     const pair = c.bought ? null : pairedWith(w, c.id);
-    const lvText = pair ? t('shop.pairs', { name: t(`cards.${pair}.name` as TextKey) }) : t('shop.level', { n: level(w, c.id), max: u.max });
-    const lv = label(lvText, 30 * k, { fill: pair ? P.go : P.brassDark, stroke: false, weight: pair ? '800' : undefined });
-    fitIn(lv, cw - text * 2, ch * 0.08);
-    lv.anchor.set(0.5);
-    lv.position.set(cw / 2, text + nameH + ch * 0.06);
-    const btnH = Math.min(110, ch * 0.22);
-    const descTop = text + nameH + ch * 0.12;
-    const descH = ch - descTop - btnH - text * 2;
-    const desc = label(t(`cards.${c.id}.desc` as TextKey), 30 * k, { fill: P.ink, stroke: false, weight: '600', wrap: cw - text * 2 });
-    fitIn(desc, cw - text * 2, descH);
-    desc.anchor.set(0.5, 0);
-    desc.position.set(cw / 2, descTop);
-    box.addChild(name, lv, desc);
     const cost = price(w, c.id);
-    const b = c.bought
-      ? new Button({ w: cw - text * 2, h: btnH, text: t('shop.sold'), size: 36 * k, enabled: false, onPress: () => {} })
-      : new Button({ w: cw - text * 2, h: btnH, text: '', size: 44 * k, price: cost, enabled: mine && w.coins >= cost, onPress: () => this.act.buy(i), onDenied: this.deny });
-    b.position.set(text, ch - btnH - text);
-    box.addChild(b);
-    return box;
+    return card({
+      w: cw,
+      h: ch,
+      wide: this.fr.fit.wide,
+      k: this.fr.boost,
+      fill: c.bought ? P.paperDark : u.rare ? P.brassLight : P.paper,
+      line: u.rare ? P.brassDark : P.line,
+      width: u.rare ? STROKE.mark : STROKE.card,
+      name: t(`cards.${c.id}.name` as TextKey),
+      sub: pair ? t('shop.pairs', { name: t(`cards.${pair}.name` as TextKey) }) : t('shop.level', { n: level(w, c.id), max: u.max }),
+      subMark: !!pair,
+      desc: t(`cards.${c.id}.desc` as TextKey),
+      action: c.bought
+        ? { text: t('shop.sold'), enabled: false, onPress: () => {} }
+        : { text: '', price: cost, enabled: mine && w.coins >= cost, onPress: () => this.act.buy(i), onDenied: this.deny },
+    });
   }
 }

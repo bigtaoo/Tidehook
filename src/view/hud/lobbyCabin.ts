@@ -11,7 +11,10 @@ import { t, type TextKey } from '../../i18n';
 import { artSprite, aspect } from '../art';
 import { Button } from '../kit/button';
 import { P, SEA } from '../kit/palette';
+import { plate, tile as tilePlate } from '../kit/panel';
+import { rowSize, type RowItem } from '../kit/row';
 import { fitIn, label } from '../kit/text';
+import { RADIUS, STROKE, TYPE } from '../kit/tokens';
 import type { Rect } from './frame';
 import { drawToggles } from './settingsPanel';
 
@@ -32,6 +35,13 @@ const GAP = 16;
 const TOGGLE_H = 84;
 const HEAD = 50;
 const KIND_H = 44;
+/** A tile's own padding, design units. */
+const PAD = 10;
+
+/** The button's height on a tile `ht` tall; the row and the tile both need it. */
+function btnHeight(ht: number): number {
+  return Math.min(72, ht * 0.3);
+}
 
 export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: number, wide: boolean, act: CabinActions): Container {
   const box = new Container();
@@ -43,7 +53,7 @@ export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: num
     box.addChild(drawToggles(set.s, set.ids, { x: r.x, y, w: r.w, h: th }, k, cols, act.toggle));
     y += th + GAP;
   }
-  const head = label(t('paint.head'), 32 * k, { fill: P.brassLight, weight: '700' });
+  const head = label(t('paint.head'), TYPE.lead * k, { fill: P.brassLight, weight: '700' });
   fitIn(head, r.w, HEAD);
   head.anchor.set(0.5);
   head.position.set(r.x + r.w / 2, y + HEAD / 2);
@@ -55,14 +65,20 @@ export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: num
   const tileH = (r.y + r.h - y - kinds.length * KIND_H - GAP * (kinds.length * rowsPer - 1)) / (kinds.length * rowsPer);
   const tileW = (r.w - GAP * (cols - 1)) / cols;
   for (const kind of kinds) {
-    const name = label(t(`paint.${kind}`), 30 * k, { fill: P.cream, weight: '700' });
+    const name = label(t(`paint.${kind}`), TYPE.body * k, { fill: P.cream, weight: '700' });
     fitIn(name, r.w, KIND_H * 0.9);
     name.anchor.set(0, 0.5);
     name.position.set(r.x, y + KIND_H / 2);
     box.addChild(name);
     y += KIND_H;
-    PAINTS.filter((p) => p.kind === kind).forEach((p, i) => {
-      const tile = drawTile(h, p, tileW, tileH, k, act);
+    // the row decides one size for all its buttons, so Worn, Wear and a price do not come out at
+    // three sizes side by side (kit/row.ts)
+    const paints = PAINTS.filter((p) => p.kind === kind);
+    const btnH = btnHeight(tileH);
+    const opts = paints.map((p) => paintButton(h, p, tileW - PAD * 2, btnH, act));
+    const size = rowSize(opts, TYPE.body * k);
+    paints.forEach((p, i) => {
+      const tile = drawTile(h, p, tileW, tileH, k, new Button({ ...opts[i], size }));
       tile.position.set(r.x + (i % cols) * (tileW + GAP), y + Math.floor(i / cols) * (tileH + GAP));
       box.addChild(tile);
     });
@@ -71,23 +87,31 @@ export function drawCabin(h: Harbour, set: CabinSettings | null, r: Rect, k: num
   return box;
 }
 
+/** What a paint's button does: its price while not owned, Wear once it is, and Worn, in brass and
+ *  unpressable, on the one in use - the same brass as the tile's edge, so the pair say "this one"
+ *  together (kit/button.ts keeps a colour a caller gives a disabled plate). */
+function paintButton(h: Harbour, p: PaintSpec, w: number, ht: number, act: CabinActions): RowItem {
+  const worn = h.wear[p.kind] === p.id;
+  const owned = h.hasPaint(p.id);
+  const price = h.paintPrice;
+  if (worn) return { w, h: ht, text: t('paint.worn'), color: P.brass, enabled: false, onPress: () => {} };
+  if (owned) return { w, h: ht, text: t('paint.wear'), color: P.secondary, onPress: () => act.paint(p.id) };
+  return { w, h: ht, text: '', price, pearl: true, enabled: h.pearls >= price, onPress: () => act.paint(p.id), onDenied: () => act.denied?.() };
+}
+
 /** One paint: its colour (a length of rope, or the hook sprite tinted), its name and its button. */
-function drawTile(h: Harbour, p: PaintSpec, w: number, ht: number, k: number, act: CabinActions): Container {
+function drawTile(h: Harbour, p: PaintSpec, w: number, ht: number, k: number, b: Button): Container {
   const box = new Container();
   const worn = h.wear[p.kind] === p.id;
-  const paper = new Graphics();
-  paper.roundRect(0, 0, w, ht, 18).fill(worn ? P.paper : P.paperDark).stroke({ color: worn ? P.brass : P.line, width: worn ? 6 : 4 });
-  box.addChild(paper);
-  const pad = 10;
-  const btnH = Math.min(72, ht * 0.3);
+  box.addChild(tilePlate({ x: 0, y: 0, w, h: ht }, worn ? P.paper : P.paperDark, worn));
+  const pad = PAD;
+  const btnH = btnHeight(ht);
   const nameH = ht * 0.2;
   const picH = ht - btnH - nameH - pad * 3;
   const cx = w / 2;
   const picY = pad + picH / 2;
   // a patch of the sea the paint is seen on in the game: a white hook on cream paper did not show
-  const water = new Graphics();
-  water.roundRect(pad, pad, w - pad * 2, picH, 12).fill(SEA.mid).stroke({ color: P.line, width: 3 });
-  box.addChild(water);
+  box.addChild(plate({ x: pad, y: pad, w: w - pad * 2, h: picH }, { fill: SEA.mid, radius: RADIUS.pane, width: STROKE.glyph }));
   // the hook lies on its side: it is tall and thin, and the patch of water is wide and low
   const hook = p.kind === 'hook' ? artSprite('hook', Math.min(w - pad * 4, (picH * 0.85) / aspect('hook')), 0.5, 0.5) : null;
   if (hook) {
@@ -108,19 +132,11 @@ function drawTile(h: Harbour, p: PaintSpec, w: number, ht: number, k: number, ac
     }
     box.addChild(g);
   }
-  const name = label(t(`paint.names.${p.id}` as TextKey), 26 * k, { fill: P.ink, stroke: false, weight: '700' });
+  const name = label(t(`paint.names.${p.id}` as TextKey), TYPE.small * k, { fill: P.ink, stroke: false, weight: '700' });
   fitIn(name, w - pad * 2, nameH);
   name.anchor.set(0.5);
   name.position.set(cx, pad + picH + pad / 2 + nameH / 2);
   box.addChild(name);
-  const bw = w - pad * 2;
-  const owned = h.hasPaint(p.id);
-  const price = h.paintPrice;
-  const b = worn
-    ? new Button({ w: bw, h: btnH, text: t('paint.worn'), size: 28 * k, enabled: false, onPress: () => {} })
-    : owned
-      ? new Button({ w: bw, h: btnH, text: t('paint.wear'), size: 28 * k, color: P.wood, onPress: () => act.paint(p.id) })
-      : new Button({ w: bw, h: btnH, text: '', size: 32 * k, price, pearl: true, enabled: h.pearls >= price, onPress: () => act.paint(p.id), onDenied: () => act.denied?.() });
   b.position.set(pad, ht - btnH - pad);
   box.addChild(b);
   return box;
