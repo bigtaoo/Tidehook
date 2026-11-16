@@ -61,8 +61,10 @@ export interface BridgeGlobal {
   bridge?: BridgeShape;
 }
 
-/** How long boot waits for initialize(); a blocked platform script never answers. */
-export const BRIDGE_WAIT_MS = 5000;
+/** How long boot waits for initialize(); a blocked platform script never answers. Ten seconds,
+ *  not the five it used to be: giving up early costs a returning player their save (it goes to
+ *  memory for the visit), which is worse than ten seconds of loading page on a bad line. */
+export const BRIDGE_WAIT_MS = 10_000;
 /** An ad that has not opened by then is given up, and one that opened but never closes is given
  *  up after AD_PLAY_MS, as on CrazyGames: a platform that never answers must not freeze the game. */
 export const AD_START_MS = 10_000;

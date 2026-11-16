@@ -25,6 +25,9 @@ export class WebPlatform implements Platform {
   gameplayStop(): void {}
   celebrate(): void {}
   track(_event: string, _data: TrackData): void {}
+  info(): TrackData {
+    return {};
+  }
 
   rewardedAvailable(): boolean {
     return this.fakeAds;

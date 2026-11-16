@@ -18,8 +18,14 @@ const BACKDROPS = ['sea', 'harbour'] as const;
 type Backdrop = (typeof BACKDROPS)[number];
 const backdrops = new Map<Backdrop, Texture>();
 
-/** Fetches every sprite. Never rejects: a missing file is logged and left to its placeholder. */
-export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<void> {
+/** How many files loadArt fetches, for the loading page's bar (boot/screen.ts). */
+export const ART_COUNT = BACKDROPS.length + ART_NAMES.length;
+
+/** Fetches every sprite, telling `onStep` how many of ART_COUNT are in. Never rejects: a missing
+ *  file is logged and left to its placeholder. */
+export async function loadArt(base: string = import.meta.env.BASE_URL, onStep?: (done: number) => void): Promise<void> {
+  let done = 0;
+  const step = () => onStep?.(++done);
   await Promise.all([
     ...BACKDROPS.map((n) =>
       Assets.load<Texture>(`${base}art/${n}.webp`).then(
@@ -28,7 +34,7 @@ export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<
           backdrops.set(n, t);
         },
         (err) => console.warn(`art: the ${n} backdrop failed to load, keeping flat colour`, err),
-      ),
+      ).finally(step),
     ),
     ...ART_NAMES.map(async (n) => {
       try {
@@ -38,6 +44,8 @@ export async function loadArt(base: string = import.meta.env.BASE_URL): Promise<
         textures.set(n, t);
       } catch (err) {
         console.warn(`art: ${n} failed to load, keeping the placeholder`, err);
+      } finally {
+        step();
       }
     }),
   ]);

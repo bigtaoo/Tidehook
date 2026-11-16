@@ -5,7 +5,6 @@ export const fr: Table = {
   lang: { name: 'Français' },
   boot: {
     tapToStart: 'Touche pour lancer ton premier crochet',
-    failed: 'Démarrage impossible : {error}',
   },
   hud: {
     wave: 'Vague {n}',

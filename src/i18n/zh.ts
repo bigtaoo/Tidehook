@@ -5,7 +5,6 @@ export const zh: Table = {
   lang: { name: '中文' },
   boot: {
     tapToStart: '点一下，甩出第一钩',
-    failed: '启动失败：{error}',
   },
   hud: {
     wave: '第 {n} 波',

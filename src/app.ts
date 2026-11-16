@@ -2,6 +2,8 @@
 // that draws it, laid out again whenever the screen turns or resizes, and the Sound that hears it.
 
 import { Application } from 'pixi.js';
+import { artAt, bootScreen, STAGE_AT, type BootScreen } from './boot/screen';
+import type { BootTrack } from './game/bootTrack';
 import { WebAudioOut } from './audio/engine';
 import { Sound } from './audio/sound';
 import { Ads } from './game/ads';
@@ -25,7 +27,7 @@ import { NoAds } from './game/noAds';
 import { seaOf } from './sim/seas';
 import type { Platform } from './platform/types';
 import { SEA } from './view/kit/palette';
-import { loadArt } from './view/art';
+import { ART_COUNT, loadArt } from './view/art';
 import { Scene, type SceneUi } from './view/scene/scene';
 import { fitDesign, sameFit, type Fit } from './view/viewport';
 import { waitForSize } from './view/waitForSize';
@@ -49,13 +51,18 @@ export function sessionOptions(params: URLSearchParams, now: number): SessionOpt
   };
 }
 
-export async function boot(platform: Platform): Promise<Application> {
+/** `screen` and `track` come from boot/run.ts, which owns the loading page and reports the boot;
+ *  without them (tests) the game boots the same, silently. */
+export async function boot(platform: Platform, screen: BootScreen = bootScreen(null), track?: BootTrack): Promise<Application> {
   const params = urlSwitches(location.search);
   const want = detectLocale([params.get('lang'), platform.storage.getItem(LANG_KEY), ...platform.languages()]);
   const table = loadLocale(want);
   // both are plain fetches and want no renderer, so they run while the page is still finding its
   // size (a portal's iframe can sit at 0x0 for a while) and while the WebGL context comes up
-  const art = loadArt();
+  const art = loadArt(undefined, (n) => screen.set(artAt(n, ART_COUNT)));
+  // the Bridge is behind us by now (src/main.playgama.ts); the renderer is the next wait
+  screen.set(STAGE_AT.sdk);
+  track?.stage('gpu');
   await waitForSize(window);
 
   const app = new Application();
@@ -68,10 +75,13 @@ export async function boot(platform: Platform): Promise<Application> {
     antialias: resolution < 2,
     preference: 'webgl',
   });
+  screen.set(STAGE_AT.gpu);
+  track?.stage('art');
   (platform.mount ?? document.body).appendChild(app.canvas);
   app.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   if (await table) setLocale(want);
   await art;
+  screen.set(STAGE_AT.art);
 
   const opts = sessionOptions(params, Date.now());
   // the tutorial (docs/02-onboarding.md): a new player's first game starts at once, on the seed
@@ -106,7 +116,7 @@ export async function boot(platform: Platform): Promise<Application> {
     hostMuted = m;
     sound.hostMute(hostMuted || ads.on);
   });
-  const telemetry = new Telemetry(platform, session, __TH_BUILD__);
+  const telemetry = new Telemetry(platform, session, __TH_BUILD__, screen.t0);
   // the daily voyage's leaderboard, where the host has one (?board=fake in a dev build)
   const board = new DailyBoard(params.get('board') === 'fake' ? fakeBoard() : (platform.board?.() ?? null), today);
   // the remove-ads purchase, where the host sells it (?pay=fake in a dev build): no interstitials once owned
@@ -200,6 +210,11 @@ export async function boot(platform: Platform): Promise<Application> {
   });
 
   if (import.meta.env.DEV) Object.assign(window, { __th: { app, session, sound, settings, ads, noAds, build: __TH_BUILD__ } });
+  // the first frame is drawn, so the loading page goes and the wait is reported (game/bootTrack.ts)
+  app.render();
+  screen.done();
+  telemetry.started();
+  track?.loaded({ games: Math.min(99, guide?.games ?? 0), lang: getLocale() });
   platform.loaded();
   return app;
 }

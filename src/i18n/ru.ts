@@ -5,7 +5,6 @@ export const ru: Table = {
   lang: { name: 'Русский' },
   boot: {
     tapToStart: 'Нажми, чтобы забросить первый крюк',
-    failed: 'Не удалось запустить: {error}',
   },
   hud: {
     wave: 'Волна {n}',

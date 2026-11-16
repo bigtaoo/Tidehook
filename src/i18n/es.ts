@@ -5,7 +5,6 @@ export const es: Table = {
   lang: { name: 'Español' },
   boot: {
     tapToStart: 'Toca para lanzar tu primer gancho',
-    failed: 'No se pudo iniciar: {error}',
   },
   hud: {
     wave: 'Oleada {n}',

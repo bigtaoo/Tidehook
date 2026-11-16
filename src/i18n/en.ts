@@ -5,7 +5,6 @@ export const en = {
   lang: { name: 'English' },
   boot: {
     tapToStart: 'Tap to make your first cast',
-    failed: 'Could not start: {error}',
   },
   hud: {
     wave: 'Wave {n}',

@@ -12,9 +12,79 @@
       canvas { display: block; }
       /* no text selection, long-press menu or tap flash on touch screens (a portal requirement) */
       html, body, canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+
+      /* The loading page (docs/01-tech-plan.md section 6). It is in the HTML, not in the bundle,
+         so it is on screen while the 3.5 MB of game and art come down rather than after. The hook
+         swings, the bar fills, and nothing here is a word: no table is loaded yet. */
+      #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7vmin; background: #123a52; transition: opacity .35s ease; }
+      #boot svg { width: 22vmin; max-width: 140px; transform-origin: 50% 14%; animation: boot-swing 2.6s ease-in-out infinite; }
+      #boot .bar { width: 46vmin; max-width: 280px; height: 6px; border-radius: 3px; background: #0b2a3d; overflow: hidden; }
+      #boot .bar i { display: block; width: 0; height: 100%; border-radius: 3px; background: #d9a441; transition: width .3s ease; }
+      #boot button { display: none; width: 16vmin; max-width: 96px; aspect-ratio: 1; border: 2px solid #d9a441; border-radius: 50%; background: transparent; color: #d9a441; font: 700 7vmin/1 system-ui, sans-serif; cursor: pointer; }
+      #boot.failed .bar { display: none; }
+      #boot.failed svg { animation: none; opacity: .35; }
+      #boot.failed button { display: block; }
+      #boot.gone { opacity: 0; pointer-events: none; }
+      @keyframes boot-swing { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+      @media (prefers-reduced-motion: reduce) { #boot svg { animation: none; } }
     </style>
   </head>
   <body>
+    <div id="boot">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <g fill="none" stroke="#d9a441" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="21" cy="8" r="2.6" stroke-width="2" />
+          <path d="M21 10.6v9a5 5 0 0 1-10 0v-5" stroke-width="3" />
+          <path d="M11 14.5l4 4" stroke-width="2.4" />
+        </g>
+      </svg>
+      <div class="bar"><i id="boot-fill"></i></div>
+      <button id="boot-retry" type="button" aria-label="Reload">&#8635;</button>
+    </div>
+    <!-- Plain script, no module: it must run before the bundle, which is the thing being waited
+         for. It owns the bar, the watchdog (a line that stalls gets the retry button rather than a
+         blue wall) and the clock the `load` event is measured against (src/boot/screen.ts). -->
+    <script>
+      window.__thBoot = (function () {
+        var el = document.getElementById('boot');
+        var fill = document.getElementById('boot-fill');
+        var retry = document.getElementById('boot-retry');
+        var STALL_MS = 25000;
+        var at = 0, done = false, watch = null, creep = null;
+        function arm() { clearTimeout(watch); watch = setTimeout(fail, STALL_MS); }
+        function set(p) {
+          if (done) return;
+          p = Math.max(at, Math.min(1, p));
+          if (p === at) return;
+          at = p;
+          fill.style.width = (at * 100).toFixed(1) + '%';
+          arm();
+        }
+        function fail() {
+          clearInterval(creep); clearTimeout(watch);
+          el.className = 'failed';
+        }
+        // nothing can be measured until the bundle runs, so the bar creeps towards a third:
+        // a slow line still looks like it is moving
+        creep = setInterval(function () { set(at + 0.01); if (at >= 0.33) clearInterval(creep); }, 240);
+        retry.addEventListener('click', function () { location.reload(); });
+        arm();
+        return {
+          t0: Date.now(),
+          at: function () { return at; },
+          started: function () { clearInterval(creep); arm(); },
+          set: set,
+          fail: fail,
+          done: function () {
+            if (done) return;
+            done = true;
+            clearInterval(creep); clearTimeout(watch);
+            el.className = 'gone';
+            setTimeout(function () { el.style.display = 'none'; }, 400);
+          }
+        };
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -5,7 +5,6 @@ export const de: Table = {
   lang: { name: 'Deutsch' },
   boot: {
     tapToStart: 'Tippe für deinen ersten Wurf',
-    failed: 'Start fehlgeschlagen: {error}',
   },
   hud: {
     wave: 'Welle {n}',

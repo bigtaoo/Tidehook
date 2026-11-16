@@ -6,7 +6,6 @@ export const tr: Table = {
   lang: { name: 'Türkçe' },
   boot: {
     tapToStart: 'İlk atışını yapmak için dokun',
-    failed: 'Başlatılamadı: {error}',
   },
   hud: {
     wave: 'Dalga {n}',

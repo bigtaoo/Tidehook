@@ -64,6 +64,9 @@ export interface Platform {
   celebrate(): void;
   /** One telemetry event for the host (game/telemetry.ts). */
   track(event: string, data: TrackData): void;
+  /** What the host is, for the `load` event (game/bootTrack.ts): bounded words only, and nothing
+   *  about the player. Absent: the host has nothing to add. */
+  info?(): TrackData;
   /** Called with the host's mute state now and whenever it changes. */
   onHostMute(listener: (muted: boolean) => void): void;
   /** Called whenever the host pauses the game; absent: never. */

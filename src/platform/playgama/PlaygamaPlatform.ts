@@ -20,6 +20,8 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
   /** 'web' on a test platform, so a preview never counts as a Playgama player. */
   override readonly name: string;
   private playing = false;
+  /** Whether the save goes to Bridge; without it it lives in memory for this visit only. */
+  private readonly savesOn: boolean;
   /** game_ready has gone out; until then a gameplayStart only waits for it. */
   private ready = false;
   private startWaiting = false;
@@ -35,6 +37,7 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
     win: Window,
   ) {
     super();
+    this.savesOn = saves !== null;
     const id = bridge.platformId();
     this.name = id && !TEST_PLATFORMS.has(id) ? 'playgama' : 'web';
     // without Bridge the save lives in memory for this visit only: Playgama allows no writes past
@@ -65,8 +68,16 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
   /** `keys`: every key the game keeps, read from Bridge in one call. Without Bridge (blocked, or
    *  it never answered) the save is kept in memory, never in the browser's storage. */
   static async create(keys: string[], bridge = new PlaygamaBridge(), doc: Document = document, win: Window = window): Promise<PlaygamaPlatform> {
-    const ok = await bridge.init();
-    const saves = ok ? await BridgeStore.create(bridge, keys) : null;
+    // never rejects: a Bridge that is blocked, broken or simply absent costs the player their
+    // saves for this visit, not the game (the page would otherwise be a dead error screen)
+    let ok = false;
+    let saves: BridgeStore | null = null;
+    try {
+      ok = await bridge.init();
+      if (ok) saves = await BridgeStore.create(bridge, keys);
+    } catch (err) {
+      console.warn('[tidehook] Playgama Bridge failed, playing without it', err);
+    }
     console.info(`[tidehook] Playgama Bridge: ${ok ? bridge.platformId() : 'unavailable'}, save: ${saves ? 'bridge' : 'memory'}`);
     return new PlaygamaPlatform(bridge, saves, doc, win);
   }
@@ -94,6 +105,17 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
       owned: () => this.bridge.purchases(),
       price: (id) => this.bridge.price(id),
       buy: (id) => this.bridge.purchase(id),
+    };
+  }
+
+  /** What the host is, for the `load` event (game/bootTrack.ts). */
+  override info(): TrackData {
+    return {
+      sdk: this.bridge.version() ?? 'none',
+      host: this.bridge.platformId() ?? 'none',
+      device: this.bridge.deviceType() ?? 'unknown',
+      save: this.savesOn ? 'bridge' : 'memory',
+      adblock: this.bridge.hasAdblock(),
     };
   }
 
