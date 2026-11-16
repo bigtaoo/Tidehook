@@ -14,7 +14,7 @@ Playgama 表单三个封面位，尺寸固定：方形 800×800、竖版 1080×1
   - 方形和竖版比原画高，上面补的天空是原画最上面 20% 的几行镜像接上去的（只取鲨鱼水花上方那几行，不然会镜像出水花的残影）。
   - 横版裁出来鲨鱼在上面，标题放到左上那片空海里（中心在 34% 宽处，最宽 38%），不压鲨鱼。
   - 大小：方形 662 kB、竖版 1.5 MB、横版 1.9 MB，都在 10 MB 以内。
-  - **还没上传**：`start_cover_upload` 要用户点头。
+  - **已上传**（2026-11-16）：三个封面位都占上了，`get_launch_steps` 的 covers 这步是 DONE。
 
 ## 2. 游戏截图（2026-11-16）
 
@@ -40,7 +40,7 @@ Playgama 表单三个封面位，尺寸固定：方形 800×800、竖版 1080×1
    港口那张还要 `session.mode = 'lobby'`、给几颗珍珠（`session.harbour.pearls = 46`），不然卡片全是灰的。
 5. 分辨率：`app.renderer.resize(1280, 720, 2)` 出 2560×1440，竖屏同理。
 
-**还没上传**：截图只能人在后台传，没有工具（MCP 的说明里写死了）。
+**还没上传**：截图只能人在后台传，没有工具（MCP 的说明里写死了）。沙盒不需要截图，提审才要。
 
 ## 3. 文案（英文为主，其他语言跟游戏的 8 种语言）
 
@@ -76,3 +76,13 @@ Tap to cast the swinging hook. Fish and chests become coins when they reach the 
 
 > 你守着老码头尽头的绞盘。点一下甩钩：把鱼和宝箱拉上来换钱，甩得越远越值钱。可是海醒了，螃蟹、海鳗、海龟和贪吃的鲨鱼一波接一波往码头爬。
 > 钩住海怪砸在码头上，或者捞根木头、一只锚甩回去砸它们。每波之间用金币买更紧的抓力、更快的绞盘、水雷和串钩。码头撑不住时，攒下的珍珠能在港口买永久升级，还能去新的海：雾湾里看不见远处来的是什么，风暴海的风会把每一钩吹偏。
+
+## 4. 已发布的沙盒（2026-11-16）
+
+- 游戏 id `cmwj0uz1l2q3plk0hdnr1ppb9`，包 `tidehook-2026-11-16c`（`cmwj3u6p64ez1lz0hchada7g8`，Bridge 2.4.2，build check PASSED）。
+- 沙盒链接：<https://playgama.ai/play/l4lyg34afht6w2>（任何拿到链接的人都能玩，没过审核）。
+- 表单填的：category `arcade`（核心玩法是一键的时机判断，不是摆塔；`get_game_categories` 的规则是"玩家大部分时间在干什么"），
+  engine `js`，8 种语言（EN ZH DE ES FR PT_BR RU TR），三种设备，横竖屏都支持，leaderboards 开，multiplayer/social 关。
+  `distributeEverywhere` 没动（还是空）——那是把游戏分发到合作平台的授权，等用户自己定。
+- 内购目录：一个 `remove_ads`，non_consumable，$1.99。
+- 还没做的：商店截图（人工）、提审（人工）、`start_sandbox_traffic`（要花流量奖励，要用户点头）。
