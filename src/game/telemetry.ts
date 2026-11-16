@@ -30,6 +30,7 @@ import type { SimEvent } from '../sim/events';
 import { seaOf } from '../sim/seas';
 import { STEP_IDS } from './guide/guide';
 import { B } from '../sim/balance';
+import { LeaveTrack } from './leaveTrack';
 import { PerfSampler } from './perf';
 import type { Session } from './session';
 import { TICK_RATE } from '../sim/math/fixed';
@@ -41,6 +42,8 @@ export const MINUTES_CAP = 90;
 
 export class Telemetry {
   private readonly perf: PerfSampler;
+  /** Where the sitting stops: first_tap, idle, quit (game/leaveTrack.ts). */
+  private readonly leave: LeaveTrack;
   /** Tutorial steps already sent (Guide.log only grows within a sitting). */
   private steps: number;
   private tutorialDone: boolean;
@@ -53,8 +56,10 @@ export class Telemetry {
     private readonly platform: Platform,
     private readonly session: Session,
     build: string,
+    t0: number = Date.now(),
   ) {
     this.perf = new PerfSampler(build);
+    this.leave = new LeaveTrack(platform, session, t0);
     this.steps = session.guide?.log.length ?? 0;
     this.tutorialDone = session.guide?.finished ?? true;
     this.owned = this.holdings();
@@ -64,6 +69,7 @@ export class Telemetry {
 
   /** One frame: its length, whether the game was in active visible play, and its events. */
   frame(ms: number, active: boolean, events: readonly SimEvent[]): void {
+    this.leave.frame(ms, active);
     const s = this.session;
     const game = this.game();
     const step = { step_id: 'wave', step_index: s.world.wave, sea: seaOf(s.world).id, game, mode: s.daily ? 'daily' : 'voyage' };
@@ -89,6 +95,11 @@ export class Telemetry {
     }
     const sample = this.perf.frame(ms, active);
     if (sample) this.send('performance_sample', sample);
+  }
+
+  /** The game is up and can be played: the first-tap clock starts (game/leaveTrack.ts). */
+  started(): void {
+    this.leave.started();
   }
 
   /** The game's play time in whole minutes, capped (see the top of the file). */
