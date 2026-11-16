@@ -25,6 +25,7 @@ export const de: Table = {
     next: 'Her mit der nächsten',
     bot: 'Der Bot stöbert',
     rare: 'Selten',
+    bought: 'Nichts mehr zu kaufen: Restmünzen kommen als Perlen heim',
     pairs: 'Passt zu {name}',
   },
   cards: {
@@ -116,6 +117,7 @@ export const de: Table = {
     golds: 'Goldfische gefangen: {n}',
   },
   overlay: {
+    chest: 'Übrige Münzen: +{n} Perlen',
     codex: 'Neu im Kodex: +{n} Perlen',
     streak: 'Tägliche Serie {n}: +{p} Perlen',
     paused: 'Luft holen',

@@ -8,7 +8,7 @@ import { B } from '../../src/sim/balance';
 import { playGame } from '../../src/sim/bot/bot';
 import { addCounts, bestCounts, firstSunk, newlyMet, sunkCounts, type Counts } from '../../src/sim/goals';
 import { BF } from '../../src/sim/balanceFun';
-import { metaPrice, pearlsFor, type MetaLevels } from '../../src/sim/meta';
+import { metaPrice, pearlsFromWaves, type MetaLevels } from '../../src/sim/meta';
 import { chartOpen } from '../../src/sim/seas';
 import type { World } from '../../src/sim/world';
 
@@ -106,7 +106,9 @@ export function career(name: string, opts: CareerOptions = {}): Career {
     const met = newlyMet(logged, best, totals);
     logged.push(...met.map((g) => g.id));
     const log = met.reduce((s, g) => s + g.pearls, 0) + codex;
-    const got = pearlsFor({ phase: r.over ? 'over' : 'shop', wave: r.wave, st: r.st, sea } as World) + log;
+    // a game that bought the shop out brings its leftover coins home too (sim/meta.ts
+    // pearlsFromCoins), which the stand-in world below cannot work out for itself
+    const got = pearlsFromWaves({ phase: r.over ? 'over' : 'shop', wave: r.wave, st: r.st, sea } as World) + log + r.chest;
     pearls += got;
     total += r.secs / 60;
     const s = spend(lv, pearls, best);

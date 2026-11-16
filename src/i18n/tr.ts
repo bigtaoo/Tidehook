@@ -26,6 +26,7 @@ export const tr: Table = {
     next: 'Sıradaki gelsin',
     bot: 'Bot bakınıyor',
     rare: 'Nadir',
+    bought: 'Alacak bir şey kalmadı: artan paralar inci olarak döner',
     pairs: '{name} ile uyumlu',
   },
   cards: {
@@ -117,6 +118,7 @@ export const tr: Table = {
     golds: 'Yakalanan altın balık: {n}',
   },
   overlay: {
+    chest: 'Artan paralar: +{n} inci',
     codex: 'Kodekste yeni: +{n} inci',
     streak: 'Günlük seri {n}: +{p} inci',
     paused: 'Soluklanıyor',

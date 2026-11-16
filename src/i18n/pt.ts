@@ -26,6 +26,7 @@ export const pt: Table = {
     next: 'Manda a próxima',
     bot: 'O bot está olhando',
     rare: 'Raro',
+    bought: 'Nada mais para comprar: as moedas que sobram voltam como pérolas',
     pairs: 'Combina com {name}',
   },
   cards: {
@@ -117,6 +118,7 @@ export const pt: Table = {
     golds: 'Peixes dourados pescados: {n}',
   },
   overlay: {
+    chest: 'Moedas que sobraram: +{n} pérolas',
     codex: 'Novo no códice: +{n} pérolas',
     streak: 'Sequência diária {n}: +{p} pérolas',
     paused: 'Recuperando o fôlego',

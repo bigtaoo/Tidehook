@@ -7,7 +7,7 @@ import { B, radToBrad, type Stats } from '../balance';
 import { liftable } from '../monsters';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from '../lane';
 import { throwFirst } from '../lead';
-import type { MetaLevels } from '../meta';
+import { pearlsFromCoins, type MetaLevels } from '../meta';
 import { rayFirst } from '../ray';
 import { dist, TICK_RATE, toFp } from '../math/fixed';
 import { Prng } from '../math/prng';
@@ -136,6 +136,10 @@ export interface GameResult {
   shops: ShopVisit[];
   /** Monsters sunk by kind (the codex). */
   sunk: Record<string, number>;
+  /** The coins still in the purse at the end, and the pearls they are worth (sim/meta.ts
+   *  pearlsFromCoins): a game that bought the shop out brings them home. */
+  coins: number;
+  chest: number;
 }
 
 /** A persona at the controls of a live world: the view's ?autoplay and playGame both drive it.
@@ -184,5 +188,5 @@ export function playGame(seed: number, name: string, maxWave = 30, maxSecs = 360
     step(w);
     t++;
   }
-  return { seed, wave: w.wave, over: w.phase === 'over', secs: Math.round(t / TICK_RATE), st: w.st, lv: w.lv, up: w.up, shops, sunk: { ...w.sunk } };
+  return { seed, wave: w.wave, over: w.phase === 'over', secs: Math.round(t / TICK_RATE), st: w.st, lv: w.lv, up: w.up, shops, sunk: { ...w.sunk }, coins: w.coins, chest: pearlsFromCoins(w) };
 }

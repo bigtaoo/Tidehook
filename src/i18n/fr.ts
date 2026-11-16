@@ -25,6 +25,7 @@ export const fr: Table = {
     next: 'Envoyez la suivante',
     bot: 'Le bot fait son choix',
     rare: 'Rare',
+    bought: 'Plus rien à acheter : les pièces restantes rentrent en perles',
     pairs: 'Va avec {name}',
   },
   cards: {
@@ -116,6 +117,7 @@ export const fr: Table = {
     golds: 'Poissons dorés pêchés : {n}',
   },
   overlay: {
+    chest: 'Pièces restantes : +{n} perles',
     codex: 'Nouveau au codex : +{n} perles',
     streak: 'Série du jour {n} : +{p} perles',
     paused: 'On reprend son souffle',

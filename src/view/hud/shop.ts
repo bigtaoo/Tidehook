@@ -5,7 +5,7 @@ import { Container, Graphics } from 'pixi.js';
 import { t, type TextKey } from '../../i18n';
 import { B } from '../../sim/balance';
 import { artSprite, aspect } from '../art';
-import { level, mineCost, pairedWith, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
+import { dealable, level, mineCost, pairedWith, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
 import type { World } from '../../sim/world';
 import type { ShopPick } from '../../game/guide/shopPick';
 import { Button } from '../kit/button';
@@ -102,6 +102,17 @@ export class ShopPanel extends Container {
     const cardH = r.h - PAD * 2 - HEAD - 16 - ROW * 2 - GAP * 2;
     const n = Math.max(3, w.cards.length);
     const cardW = (inner - GAP * (n - 1)) / n;
+    // a captain who has bought every card there is gets an empty deal: say so where the cards
+    // would be, and say what the coins are for now (sim/meta.ts pearlsFromCoins), so the panel is
+    // not a blank wall with a reroll button that could only take the coins for nothing
+    const dry = !dealable(w).length;
+    if (dry) {
+      const note = label(t('shop.bought'), TYPE.head * k, { wrap: inner - PAD * 2, align: 'center' });
+      fitWrap(note, inner - PAD * 2, cardH);
+      note.anchor.set(0.5);
+      note.position.set(r.x + r.w / 2, cardsY + cardH / 2);
+      this.addChild(note);
+    }
     w.cards.forEach((_, i) => {
       const card = this.card(w, i, cardW, cardH, mine);
       const x = r.x + PAD + i * (cardW + GAP);
@@ -118,9 +129,9 @@ export class ShopPanel extends Container {
     const small = [
       { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: w.hp < w.maxHp && w.coins >= cost.repair, onPress: () => this.act.repair() },
       { text: t('shop.mine', { n: w.mines, max: B.mine.max }), price: cost.mine, ok: w.mines < B.mine.max && w.coins >= cost.mine, onPress: () => this.act.mine() },
-      free
+      free && !dry
         ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go, icon: 'play' as const }
-        : { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
+        : { text: t('shop.reroll'), price: cost.reroll, ok: !dry && w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
     // one size for the three: the reroll can carry a play mark, which leaves its words less room
     const items: RowItem[] = small.map((s) => ({

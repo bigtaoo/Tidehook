@@ -181,6 +181,7 @@
   ],
   "meta": {
     "perWave": 4,
+    "perCoin": 40,
     "upgrades": [
       { "id": "hull", "base": 20, "max": 5, "growth": 1.5, "effects": [{ "stat": "dock", "add": 2 }] },
       { "id": "purse", "base": 15, "max": 5, "growth": 1.5, "effects": [{ "stat": "coins", "add": 15 }] },

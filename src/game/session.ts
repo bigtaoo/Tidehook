@@ -12,7 +12,7 @@ import { buyCard, buyMine, buyRepair, fire, nextWave, reroll, startGame, step } 
 import { B, type GoalSpec } from '../sim/balance';
 import { counts } from '../sim/goals';
 import { seaOf } from '../sim/seas';
-import { pearlsFor } from '../sim/meta';
+import { pearlsFor, pearlsFromCoins } from '../sim/meta';
 import { revive } from '../sim/revive';
 import type { Shot, World } from '../sim/world';
 import { FixedStep } from '../view/fixedStep';
@@ -39,6 +39,8 @@ export interface LastGame {
   home: boolean;
   /** The captain put in early mid-voyage (putIn), which is not a dock that fell. */
   putIn: boolean;
+  /** The pearls the coins left in the purse were worth (sim/meta.ts pearlsFromCoins). */
+  chest: number;
   /** The codex's pearls for kinds first sunk, and the daily streak paid (meta/harbour.ts). */
   codex: number;
   streak: { n: number; pearls: number } | null;
@@ -118,7 +120,7 @@ export class Session {
   private finish = false;
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
-  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false, codex: 0, streak: null, putIn: false };
+  last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false, chest: 0, codex: 0, streak: null, putIn: false };
   /** An ad is on screen (game/ads.ts): nothing runs and taps do nothing, with no pause cover. */
   hold = false;
   /** Whether a fallen dock may be revived (a rewarded ad is there to watch); set by game/ads.ts. */
@@ -221,6 +223,7 @@ export class Session {
    *  put in early, which brings no bonus but is no wreck either (view/hud/overlay.ts). */
   private settle(home = false, putIn = false): void {
     const w = this.world;
+    const chest = pearlsFromCoins(w);
     const pearls = pearlsFor(w) + (home ? BF.voyage.home : 0);
     this.harbour?.earn(pearls);
     const id = seaOf(w).id;
@@ -237,7 +240,7 @@ export class Session {
     const codex = this.harbour?.lastCodex ?? 0;
     const streak = this.daily && this.harbour ? this.harbour.sailDaily(this.daily) : null;
     const extra = log.reduce((s, g) => s + g.pearls, 0) + codex + (streak?.pearls ?? 0);
-    this.last = { wave: w.wave, pearls: pearls + extra, won: pearls, log, sea: w.sea, record, daily: !!this.daily, home, codex, streak, putIn };
+    this.last = { wave: w.wave, pearls: pearls + extra, won: pearls, log, sea: w.sea, record, daily: !!this.daily, home, chest, codex, streak, putIn };
   }
 
   /** The voyage's last wave is cleared: the captain chooses home (the game ends, with pearls) or

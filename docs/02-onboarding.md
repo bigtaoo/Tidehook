@@ -215,6 +215,8 @@ CrazyGames 衡量的是“玩满 1 分钟的人 ÷ 访问数”。Holy Kicker �
 
 - 每守住一波得 `meta.perWave` = 4 颗（死在第 14 波 = 守住 13 波 = 52 颗）。
 - 按真实波数算，不按难度等级。
+- **卡池买光之后**，局末没花掉的金币按 `meta.perCoin` = 40 枚折 1 颗（`pearlsFromCoins`），和波数的珍珠一样按海域缩放。
+  还有卡能买时金币一颗珍珠都不折——那时候金币的价值就是那张卡（见 04-content 第 3.13 节）。
 
 ### 升级（`balance.json` 的 `meta.upgrades`）
 

@@ -25,6 +25,7 @@ export const en = {
     next: 'Bring on the next',
     bot: 'The bot is browsing',
     rare: 'Rare',
+    bought: 'Nothing left to buy: spare coins come home as pearls',
     pairs: 'Pairs with {name}',
   },
   cards: {
@@ -116,6 +117,7 @@ export const en = {
     golds: 'Gold fish landed: {n}',
   },
   overlay: {
+    chest: 'Coins left over: +{n} pearls',
     codex: 'New in the codex: +{n} pearls',
     streak: 'Daily streak {n}: +{p} pearls',
     paused: 'Catching breath',

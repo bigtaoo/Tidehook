@@ -6,7 +6,7 @@
 import { B, type UpgradeSpec } from './balance';
 import { muldiv } from './math/fixed';
 import { seaOf } from './seas';
-import { gain, level, priceAt, upgrade } from './shop';
+import { dealable, gain, level, priceAt, upgrade } from './shop';
 import type { World } from './world';
 
 /** Harbour upgrade levels owned, by id; a missing id is level 0. */
@@ -54,10 +54,32 @@ export function applyMeta(w: World, lv: MetaLevels): void {
   }
 }
 
-/** The pearls a game brings home: so many for each wave it cleared, and more for each boss, scaled
- *  by the sea (seas.ts). */
-export function pearlsFor(w: World): number {
+/** The pearls the coins still in the purse are worth, before the sea's scale, and only once the
+ *  shop has nothing left to deal (shop.ts dealable): a deep game buys every card there is and then
+ *  earns on, so what it cannot spend comes home instead of evaporating. While there is still a card
+ *  to buy the coins are worth nothing here - they are worth the card - so this never pays a captain
+ *  for hoarding, and the rate is poor besides: a wave cleared pays more than a wave's takings. */
+function coinPearls(w: World): number {
+  if (dealable(w).length) return 0;
+  return Math.floor(Math.max(0, w.coins) / B.meta.perCoin);
+}
+
+/** The pearls a game's leftover coins bring home, scaled by the sea like the rest. */
+export function pearlsFromCoins(w: World): number {
+  return muldiv(coinPearls(w), seaOf(w).pearls, 1000);
+}
+
+/** The pearls a game's waves and bosses bring home, scaled by the sea (seas.ts). Apart from the
+ *  purse (pearlsFromCoins) so that scripts/career, which has only a game's result to go on and no
+ *  upgrade levels to ask the shop about, can count this half itself. */
+export function pearlsFromWaves(w: World): number {
   const cleared = w.phase === 'shop' ? w.wave : w.wave - 1;
   const bosses = w.st.bosses * B.boss.pearls + w.st.krakens * (B.kraken.pearls - B.boss.pearls);
   return muldiv(Math.max(0, cleared) * B.meta.perWave + bosses, seaOf(w).pearls, 1000);
+}
+
+/** The pearls a game brings home: so many for each wave it cleared, more for each boss, and the
+ *  coins it never spent once the shop had nothing left to sell. */
+export function pearlsFor(w: World): number {
+  return pearlsFromWaves(w) + pearlsFromCoins(w);
 }

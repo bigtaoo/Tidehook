@@ -307,7 +307,10 @@ export const B = {
   tide: { waves: j.tide.waves, pace: pm(j.tide.pace), surgeFrom: j.tide.surgeFrom, surge: pm(j.tide.surge) },
   /** The daily voyage (game/meta/daily.ts): its waves of slow tide, fewer than a voyage's. */
   daily: { ease: j.daily.ease },
-  meta: { perWave: j.meta.perWave, upgrades: j.meta.upgrades.map(upgradeSpec) },
+  /** The harbour (sim/meta.ts): `perWave` pearls for each wave a game cleared, and one more for
+   *  every `perCoin` coins it came home with, so coins keep their worth after the shop has
+   *  nothing left to sell. */
+  meta: { perWave: j.meta.perWave, perCoin: j.meta.perCoin, upgrades: j.meta.upgrades.map(upgradeSpec) },
   catch: {
     startFish: c.startFish,
     startJunk: c.startJunk,

@@ -55,9 +55,17 @@ export function offered(w: World, u: UpgradeSpec): boolean {
   return !u.locked || w.plans.includes(u.id);
 }
 
+/** The cards the shop could still deal: everything not rare, not at its max, and unlocked. A deep
+ *  game buys the lot somewhere past wave twenty and this falls empty - the deal is then blank, and
+ *  rerolling it would only take coins for nothing. The coins are not wasted: what is left in the
+ *  purse comes home as pearls (meta.ts pearlsFromCoins). */
+export function dealable(w: World): UpgradeSpec[] {
+  return B.upgrades.filter((u) => !u.rare && level(w, u.id) < u.max && offered(w, u));
+}
+
 export function rollShop(w: World): void {
   const rng = w.rng.shop;
-  const pool = B.upgrades.filter((u) => !u.rare && level(w, u.id) < u.max && offered(w, u));
+  const pool = dealable(w);
   w.cards = [];
   const core = pool.filter((u) => u.core);
   if (core.length) {
@@ -119,6 +127,7 @@ export function buyMine(w: World): boolean {
 
 /** Deals fresh cards. A free one (a rewarded ad's) costs nothing and leaves the price where it was. */
 export function reroll(w: World, free = false): boolean {
+  if (!dealable(w).length) return false;
   if (free) {
     if (w.phase !== 'shop') return false;
     rollShop(w);

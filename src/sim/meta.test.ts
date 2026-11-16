@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { B } from './balance';
-import { applyMeta, metaLevel, metaPrice, metaUpgrade, pearlsFor } from './meta';
+import { applyMeta, metaLevel, metaPrice, metaUpgrade, pearlsFor, pearlsFromCoins } from './meta';
 import { gameOver } from './monsters';
 import { startGame } from './step';
 import { newWorld } from './world';
@@ -50,9 +50,25 @@ describe("the harbour's upgrades", () => {
 
   it('a game brings home pearls for each wave it cleared', () => {
     const w = startGame(2);
+    w.coins = 0;
     expect(pearlsFor(w)).toBe(0);
     w.wave = 14;
     gameOver(w);
     expect(pearlsFor(w)).toBe(13 * B.meta.perWave);
+  });
+
+  it('pays for the coins never spent, but only once the shop is bought out', () => {
+    const w = startGame(2);
+    w.wave = 14;
+    gameOver(w);
+    w.coins = 0;
+    const won = pearlsFor(w);
+    // a shop with cards left to deal pays nothing for coins: they are worth the card
+    w.coins = B.meta.perCoin * 3 + B.meta.perCoin - 1;
+    expect(pearlsFromCoins(w)).toBe(0);
+    expect(pearlsFor(w)).toBe(won);
+    for (const u of B.upgrades) if (!u.rare) w.lv[u.id] = u.max;
+    expect(pearlsFromCoins(w)).toBe(3);
+    expect(pearlsFor(w)).toBe(won + 3);
   });
 });

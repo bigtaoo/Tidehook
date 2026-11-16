@@ -215,11 +215,12 @@ export class Scene extends Container {
 /** The game over's extra lines: a new best on a sea, the captain's log entries written, the codex's
  *  pearls for kinds first sunk and the daily streak's. */
 function overNotes(s: Session): string[] {
-  const { log, record, sea, codex, streak } = s.last;
+  const { log, record, sea, chest, codex, streak } = s.last;
   const out: string[] = [];
   if (record) out.push(s.last.daily ? t('overlay.daily', { n: s.last.wave }) : t('overlay.record', { sea: seaName(sea) }));
   if (log.length === 1) out.push(t('overlay.logOne', { goal: goalText(log[0]) }));
   else if (log.length > 1) out.push(t('overlay.logMany', { n: log.length }));
+  if (chest) out.push(t('overlay.chest', { n: chest }));
   if (codex) out.push(t('overlay.codex', { n: codex }));
   if (streak?.pearls) out.push(t('overlay.streak', { n: streak.n, p: streak.pearls }));
   return out;

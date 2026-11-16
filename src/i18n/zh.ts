@@ -25,6 +25,7 @@ export const zh: Table = {
     next: '迎下一波',
     bot: '机器人在挑货',
     rare: '稀有',
+    bought: '没什么可买的了：剩下的金币会化作珍珠带回港',
     pairs: '与{name}搭配',
   },
   cards: {
@@ -116,6 +117,7 @@ export const zh: Table = {
     golds: '钓到金鱼：{n}',
   },
   overlay: {
+    chest: '剩下的金币：+{n} 珍珠',
     codex: '图鉴新收录：+{n} 珍珠',
     streak: '每日连续 {n} 天：+{p} 珍珠',
     paused: '歇口气',
