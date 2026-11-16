@@ -22,9 +22,15 @@ const PORTAL_ENTRY = '/src/main.playgama.ts';
  *  leaderboard (src/game/board.ts) is a Bridge SaaS one: Playgama has no leaderboard of its own. It
  *  needs the game's public SaaS token from the developer console (Bridge SaaS, Leaderboards), given
  *  as PLAYGAMA_SAAS_TOKEN at build time; without it Bridge reports no leaderboard and the game
- *  shows none. The one product, remove_ads (src/game/noAds.ts), is listed here by id only; its price,
+ *  shows none. SAAS_TOKEN below is that public token for this game (it ships inside the build
+ *  anyway, so it is no secret); the environment variable overrides it for another console app.
+ *  The one product, remove_ads (src/game/noAds.ts), is listed here by id only; its price,
  *  title and description are the developer console's (In-app purchases). */
-export function bridgeConfig(token = process.env.PLAYGAMA_SAAS_TOKEN) {
+
+/** Playgama console > Tidehook > Bridge SaaS, Leaderboards: the game's public SaaS token. */
+export const SAAS_TOKEN = 'cmwj0uz1l2q3plk0hdnr1ppb9';
+
+export function bridgeConfig(token = process.env.PLAYGAMA_SAAS_TOKEN || SAAS_TOKEN) {
   const config = {
     advertisement: { minimumDelayBetweenInterstitial: 60 },
     leaderboards: [{ id: 'daily' }],

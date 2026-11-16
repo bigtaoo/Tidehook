@@ -277,6 +277,7 @@ Tidehook/
     这一局打出当天新纪录时才提交。
   - 要两样东西才会出现：开发者后台建一个 id 为 `daily` 的 SaaS 排行榜（`create_leaderboard`，**要用户点头**），
     以及构建时的环境变量 `PLAYGAMA_SAAS_TOKEN`（后台给的 public token）。少一样 Bridge 就报没有排行榜，每日页只显示自己的今日最佳。
+  - **已经建好**（2026-11-16）：后台应用 `cmwj0uz1l2q3plk0hdnr1ppb9`（Tidehook，DRAFT）下的 `daily` 榜，Daily Voyage、numeric、desc。0 位小数。它的 public token 和应用 id 是同一串，已经写进 `vite.playgama.config.js` 的 `SAAS_TOKEN`（反正会被打进包里，不是秘密），环境变量还是可以覆盖它。
   - 传分数失败就算了：玩家掉线、平台拒收，`submit()` 都会 reject。不补发（补发要么每帧重试，要么攒着，都不值一条每日成绩），但必须 `catch` 掉，不然就是一条没人接的 unhandled rejection；榜本身进港时会重读一次。
   - **分数记在"开航那天"，不是"结束那天"**：23:55 开的一局，00:05 沉的，按 UTC 已经是第二天了。
     那局用的是昨天的种子、算的是昨天的最佳成绩（`session.daily` 一直留到局末），按今天的分数传上去，
