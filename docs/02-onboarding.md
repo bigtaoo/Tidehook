@@ -241,6 +241,9 @@ CrazyGames 衡量的是“玩满 1 分钟的人 ÷ 访问数”。Holy Kicker �
 
 - `src/sim/meta.ts`：升级表、读等级（坏数据夹到 0..max）、价格、`applyMeta`、`pearlsFor`。确定性，没有存储。
 - `src/game/meta/harbour.ts`：`Harbour` 管珍珠和等级，存在平台存储 `tidehook.harbour`（`{pearls, lv}`）。坏数据当空港口。
+- `src/game/meta/resume.ts`：打到一半的那一局存在 `tidehook.voyage`，关掉页面再打开接着打（第 4 节 5.6）。
+  世界本来就是纯数据（`sim/world.ts`），整个存下去，四条随机流各存游标（`Prng.peek`/`resume`），
+  回来一个 tick 都不差。读出来的是玩家数据，一概不信：版本不对、形状不对、码头已经沉了，就当没有。
 - `src/game/session.ts`：`Mode` 多了 `'lobby'`；`openLobby()`、`sail()`、`buyMeta(id)`；失守时记 `last = {wave, pearls}` 并 `harbour.earn`。
 - `src/view/hud/lobby.ts`：港口面板；`Button` 的 `pearl` 选项画珍珠代替金币。
 - 版面检查（`src/view/layout/layout.test.ts`）覆盖新港口、满级港口和带珍珠的结算卡，所有语言、所有尺寸。

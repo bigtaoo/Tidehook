@@ -15,6 +15,7 @@ import { Haptics, webBuzz } from './game/haptics';
 import { bindKeys, eventAge } from './game/input';
 import { today } from './game/meta/daily';
 import { Harbour } from './game/meta/harbour';
+import { Resume } from './game/meta/resume';
 import { startRecording } from './game/rec/wire';
 import { SEEN_MS, Session, type SessionOptions } from './game/session';
 import { Settings, wantsCalm } from './game/settings';
@@ -91,8 +92,12 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
   // the harbour between games (docs/02-onboarding.md section 7): a returning player boots into it
   const harbour = opts.autoplay ? null : new Harbour(platform.storage);
   const session = new Session(opts, guide, harbour);
-  if (guide?.fresh) session.start();
-  else session.openLobby();
+  // a voyage still in progress comes back where it stopped, paused (game/meta/resume.ts)
+  const resume = new Resume(platform.storage);
+  if (!resume.restore(session)) {
+    if (guide?.fresh) session.start();
+    else session.openLobby();
+  }
   // a tap anywhere that no button took casts (or starts, or resumes)
   app.stage.eventMode = 'static';
   app.stage.hitArea = app.screen;
@@ -147,7 +152,12 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     },
   };
   bindKeys(window, session, (key) => key === 'm' && (sound.toggle(), true));
-  const pause = () => session.pause();
+  const pause = () => {
+    session.pause();
+    resume.save(session);
+  };
+  // the page is going away for good, or into the back/forward cache: the last chance to write
+  window.addEventListener('pagehide', () => resume.save(session));
   platform.onHostPause?.(pause);
   // an ad holds the game already and steals the focus while it plays: pausing for that would hand
   // the player a pause cover every time one ends
@@ -197,6 +207,7 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     telemetry.frame(tk.deltaMS, now && !document.hidden, events);
     board.frame(session);
     const ms = performance.now();
+    resume.frame(session, ms);
     sound.setPaused(session.mode === 'play' && session.paused);
     sound.events(events, ms);
     if (live || now) haptics.events(events, ms);

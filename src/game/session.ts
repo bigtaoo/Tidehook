@@ -116,8 +116,9 @@ export class Session {
   private shopWait = 0;
   private events: SimEvent[] = [];
   private overMs = 0;
-  /** Waiting on the captain's choice at the voyage's end (atVoyageEnd). */
-  private finish = false;
+  /** Waiting on the captain's choice at the voyage's end (atVoyageEnd). Public so that a saved
+   *  voyage can be put back exactly as it stood (meta/resume.ts). */
+  finish = false;
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
   last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false, chest: 0, codex: 0, streak: null, putIn: false };
@@ -460,7 +461,8 @@ export class Session {
     this.guide?.observe(events, this.world);
   }
 
-  private snapshot(): void {
+  /** Public so that a restored voyage can fill it before its first frame (meta/resume.ts). */
+  snapshot(): void {
     const w = this.world;
     this.prev.clear();
     for (const m of w.mons) this.prev.set(m.id, { d: m.d, w: m.w });
