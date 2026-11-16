@@ -33,6 +33,7 @@ import { PausePanel } from '../hud/pausePanel';
 import { shownSettings } from '../hud/settingsPanel';
 import type { Fit } from '../viewport';
 import { Actors } from './actors';
+import { Bubbles } from './bubbles';
 import { drawField, drawWeather } from './field';
 import { WeatherTop } from './weather';
 import type { Locale } from '../../i18n';
@@ -85,6 +86,8 @@ export class Scene extends Container {
   private readonly weatherTop: WeatherTop;
   readonly pointer: Pointer;
   private readonly actors: Actors;
+  /** Bubbles on the water, under everything that is played (bubbles.ts). */
+  private readonly bubbles: Bubbles;
   private readonly fx: Fx;
   /** The field and all on it, which the shake moves (feel.ts); the HUD and panels stay put. */
   private readonly field = new Container();
@@ -104,6 +107,7 @@ export class Scene extends Container {
     const fr = (this.frame = frameFor(fit));
     this.fx = new Fx(fr.field);
     this.actors = new Actors(fr.field);
+    this.bubbles = new Bubbles(fr.field);
     this.weatherTop = new WeatherTop(fr.field);
     this.hud = new Hud(fr, () => session.togglePause(), () => ui.toggleSound());
     this.shop = new ShopPanel(fr, {
@@ -147,7 +151,7 @@ export class Scene extends Container {
       noAds: () => void noAds?.buy().then((ok) => ok && ui.shop(true)),
     }, ui.settings ? { s: ui.settings, ids: settingIds } : null);
     this.pointer = new Pointer(fr, this.shop, () => session.guide?.skip());
-    this.field.addChild(drawField(fr.field, fit), this.weather, this.actors, this.weatherTop, this.fx);
+    this.field.addChild(drawField(fr.field, fit), this.bubbles, this.weather, this.actors, this.weatherTop, this.fx);
     this.addChild(this.field, this.hud, this.shop, this.pointer, this.overlay, this.overAds, this.voyageEnd, this.pausePanel, this.lobby);
     this.scale.set(fit.scale);
     this.position.set(fit.x, fit.y);
@@ -174,6 +178,7 @@ export class Scene extends Container {
     }
     const w = s.world;
     this.actors.draw(s);
+    this.bubbles.update(s.paused ? 0 : frameMs);
     this.weatherTop.draw(s, frameMs);
     this.fx.add(events);
     this.fx.update(s.paused ? 0 : frameMs);

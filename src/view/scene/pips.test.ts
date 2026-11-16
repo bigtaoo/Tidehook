@@ -89,22 +89,22 @@ describe('the layered health bar', () => {
     expect(shapes(g).map((o) => o.action)).toEqual(['fill', 'stroke']);
   });
 
-  it('stacks a full sheet for each layer under the top one, so they are counted', () => {
+  it('piles the layers still to come under the top sheet, each smaller than the one above', () => {
     const g = new Graphics();
     drawBar(g, 100, 50, 60, 1, { left: 3, fill: 1, size: 1 }, true);
-    const s = shapes(g);
-    // the two sheets first, laid out under the top one, the nearest one first
-    expect(s.map((o) => [o.action, o.x, o.y])).toEqual([
-      ['fill', 70, 57.5],
-      ['stroke', 70, 57.5],
-      ['fill', 70, 65],
-      ['stroke', 70, 65],
-      ['fill', 70, 50],
-      ['fill', 70, 50],
-      ['stroke', 70, 50],
-    ]);
+    // the two sheets first, under the top one, the nearest one first
+    const sheets = shapes(g).slice(0, 4).filter((o) => o.action === 'fill');
+    expect(sheets).toHaveLength(2);
+    // each narrower, lower and fainter than the one over it, and all centred on the bar: a pile
+    // that tapers away, not four bars of equal weight
+    expect(sheets[0].w).toBeLessThan(60);
+    expect(sheets[1].w).toBeLessThan(sheets[0].w);
+    expect(sheets[0].y).toBeGreaterThan(50);
+    expect(sheets[1].y).toBeGreaterThan(sheets[0].y);
+    expect(sheets[1].alpha).toBeLessThan(sheets[0].alpha);
+    for (const o of sheets) expect(o.x + o.w / 2).toBeCloseTo(100);
     // and painted in the bar's own colour: a sheet still to come is a full sheet, not an empty one
-    expect(s[0].color).toBe(HEAVY);
+    expect(sheets[0].color).toBe(HEAVY);
   });
 
   it('notches the top sheet into the hits it stands for, so they can be counted', () => {

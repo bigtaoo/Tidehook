@@ -14,7 +14,16 @@ import type { Bars } from './look';
 const BAR_H = 5;
 /** A boss's bar, which the player reads from across the lane, is drawn this tall instead. */
 const BOSS_H = 8;
-const SHEET = 2.5;
+/** The gap between one sheet of the pile and the next, in screen pixels before the layout scale. */
+const SHEET = 1.6;
+/** Each sheet still to come is drawn this much of the one above it, in width and in height, and
+ *  this much of its opacity: four equal bars stacked read as four separate things nobody can
+ *  name, while a pile that tapers away reads as one bar with more health behind it. */
+const SHEET_TAPER = 0.78;
+const SHEET_FADE = 0.84;
+/** The nearest sheet's opacity, and how thin a sheet is ever drawn (screen pixels). */
+const SHEET_ALPHA = 0.62;
+const SHEET_MIN = 2.5;
 /** A notch is cut between every two points of damage on the top sheet while each point is at
  *  least this many screen pixels wide: that is what turns a draining bar into a count of the
  *  hits still to come. Below it the notches would be a texture, so the bar goes bare. */
@@ -26,7 +35,7 @@ const NOTCH_W = 1.4;
 const MAX_SHEETS = 4;
 
 /** The health bar under a monster with more hit points than a row of pips can show (look.ts
- *  bars): `left` sheets stacked, the top one `fill` full, centred on (x, y) and `w` wide. Pips
+ *  bars): `left` sheets piled up, the top one `fill` full, centred on (x, y) and `w` wide. Pips
  *  stop at twelve, so without this a boss of forty took twenty-eight hits with nothing to show
  *  for them. Few shapes and only for the few deep monsters on a lane, so it is drawn straight
  *  into the frame's Graphics rather than pooled. The top sheet is notched into its points of
@@ -36,12 +45,23 @@ export function drawBar(g: Graphics, x: number, y: number, w: number, k: number,
   const h = (big ? BOSS_H : BAR_H) * k;
   const x0 = x - w / 2;
   const paint = steel ? HEAVY : P.cream;
-  // the sheets still to come, laid out under the draining one and filled, like the full sheets
-  // they are. They used to peek out from behind it by a pixel or two, empty: on a phone that is a
-  // smudge, and a boss at two thirds health read as an all but empty bar.
+  // the sheets still to come, piled under the draining one and filled, like the full sheets they
+  // are. They used to peek out from behind it by a pixel or two, empty: on a phone that is a
+  // smudge, and a boss at two thirds health read as an all but empty bar. Then they were drawn at
+  // the top sheet's own size, and a boss carried four bars of the same weight under it with
+  // nothing to say which one was its health. So the pile tapers: every sheet narrower, flatter
+  // and fainter than the one above, which puts the draining bar at the top of a heap that
+  // visibly runs out.
+  let ww = w;
+  let hh = h;
+  let alpha = SHEET_ALPHA;
+  let yy = y + h + SHEET * k;
   for (let i = 1; i <= Math.min(b.left - 1, MAX_SHEETS); i++) {
-    const yy = y + i * (h + SHEET * k);
-    g.roundRect(x0, yy, w, h, h / 2).fill({ color: paint, alpha: 0.5 }).stroke({ color: P.line, width: 1.2 * k, alpha: 0.7 });
+    ww *= SHEET_TAPER;
+    hh = Math.max(SHEET_MIN * k, hh * SHEET_TAPER);
+    g.roundRect(x - ww / 2, yy, ww, hh, hh / 2).fill({ color: paint, alpha }).stroke({ color: P.line, width: 1.2 * k, alpha: 0.55 });
+    yy += hh + SHEET * k;
+    alpha *= SHEET_FADE;
   }
   g.roundRect(x0, y, w, h, h / 2).fill({ color: P.line, alpha: 0.45 });
   if (b.fill > 0) g.roundRect(x0, y, Math.max(h, w * b.fill), h, h / 2).fill(paint);
