@@ -79,7 +79,8 @@ Tap to cast the swinging hook. Fish and chests become coins when they reach the 
 
 ## 4. 已发布的沙盒（2026-11-16）
 
-- 游戏 id `cmwj0uz1l2q3plk0hdnr1ppb9`，包 `tidehook-2026-11-16c`（`cmwj3u6p64ez1lz0hchada7g8`，Bridge 2.4.2，build check PASSED）。
+- 游戏 id `cmwj0uz1l2q3plk0hdnr1ppb9`，线上的包 `tidehook-1f6fdbb`（`cmwjbz95r01uvn00hpvq8w11v`，Bridge 2.4.2，build check PASSED），
+  2026-11-16 14:04 发布，带上了「关页面不丢这一局」和「买空商店后余币折珍珠」。
 - 沙盒链接：<https://playgama.ai/play/l4lyg34afht6w2>（任何拿到链接的人都能玩，没过审核）。
 - 表单填的：category `arcade`（核心玩法是一键的时机判断，不是摆塔；`get_game_categories` 的规则是"玩家大部分时间在干什么"），
   engine `js`，8 种语言（EN ZH DE ES FR PT_BR RU TR），三种设备，横竖屏都支持，leaderboards 开，multiplayer/social 关。
