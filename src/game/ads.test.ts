@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { StubPlatform } from '../platform/stub';
 import { SafeStore } from '../platform/types';
 import { gameOver } from '../sim/monsters';
-import { Ads } from './ads';
+import { Ads, WAVES_PER_AD } from './ads';
 import { Guide } from './guide/guide';
 import { saveGuide } from './guide/store';
 import { Harbour } from './meta/harbour';
@@ -105,10 +105,15 @@ describe('Ads', () => {
     expect(await a.reroll()).toBe(false);
   });
 
-  it('fills the shop and the way to the harbour with an interstitial, holding the game meanwhile', async () => {
+  it('fills every third shop and the way to the harbour with an interstitial, holding the game meanwhile', async () => {
     const { p, s, a } = setup('skip');
     s.world.phase = 'shop';
-    a.frame([{ e: 'waveClear', wave: 1 }]);
+    // the first two waves clear with no ad over them
+    for (let w = 1; w < WAVES_PER_AD; w++) {
+      a.frame([{ e: 'waveClear', wave: w }]);
+      expect([s.hold, p.calls]).toEqual([false, []]);
+    }
+    a.frame([{ e: 'waveClear', wave: WAVES_PER_AD }]);
     expect(s.hold).toBe(true);
     await Promise.resolve();
     await Promise.resolve();
@@ -138,14 +143,21 @@ describe('Ads', () => {
   });
 
   it("shows no interstitial in a new player's first game, nor right after a rewarded ad", async () => {
+    const clear = (a: Ads, n: number) => {
+      for (let w = 1; w <= n; w++) a.frame([{ e: 'waveClear', wave: w }]);
+    };
     const first = setup('reward', 0);
     first.s.world.phase = 'shop';
-    first.a.frame([{ e: 'waveClear', wave: 1 }]);
+    clear(first.a, WAVES_PER_AD);
     expect(first.p.calls).not.toContain('midgame');
     const { p, s, a } = setup('reward');
     s.world.phase = 'shop';
     await a.reroll();
-    a.frame([{ e: 'waveClear', wave: 1 }]);
+    // a break the rewarded ad covers is not spent: the count waits for a break that shows one
+    clear(a, WAVES_PER_AD);
     expect(p.calls).not.toContain('midgame');
+    a.frame([{ e: 'waveStart', wave: WAVES_PER_AD + 1 }]);
+    clear(a, WAVES_PER_AD);
+    expect(p.calls.filter((c) => c === 'midgame')).toHaveLength(1);
   });
 });

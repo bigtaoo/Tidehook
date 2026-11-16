@@ -1,9 +1,11 @@
 // Where ads go in a game (docs/01-tech-plan.md section 9). Rewarded, each once a game and only
 // where the player asks: revive the fallen dock, double a game's pearls, a free reroll in the
 // shop. Interstitials only at natural breaks (the shop opening after a wave, leaving a game over
-// for the harbour), never in a new player's first game and never straight after a rewarded ad;
-// how often they really show is the host's to pace (Playgama's minimumDelayBetweenInterstitial),
-// so there is no timer here. While an ad is on screen the session holds and the sound is off. A
+// for the harbour), never in a new player's first game and never straight after a rewarded ad.
+// A wave is a small level and the shop opens after every one, so the shop break carries an ad
+// only every third time: the host paces interstitials too (Playgama's
+// minimumDelayBetweenInterstitial), but its floor is a clock, and a fast player clears waves
+// faster than that clock runs. While an ad is on screen the session holds and the sound is off. A
 // player who bought the remove-ads product (noAds.ts) sees no interstitial again; the rewarded ads
 // stay on offer.
 
@@ -14,11 +16,17 @@ import type { Mode, Session } from './session';
 /** What the game-over card offers under it. */
 export type Offer = 'revive' | 'double' | null;
 
+/** How many shop breaks one interstitial covers: an ad after every third wave, not every wave. */
+export const WAVES_PER_AD = 3;
+
 export class Ads {
   /** An ad is on screen. */
   on = false;
   /** A rewarded ad played since the last wave began: the next break shows no interstitial. */
   private rewardedLately = false;
+  /** Shop breaks passed since the last interstitial. A break that showed none - a rewarded ad just
+   *  before it, the first game - does not spend one, so the ad lands at the next real break. */
+  private breaks = 0;
   private mode: Mode;
   /** The player owns the remove-ads product: no interstitials (the app points it at NoAds). */
   adFree: () => boolean = () => false;
@@ -97,6 +105,9 @@ export class Ads {
   private async interstitial(placement: BreakPlacement): Promise<void> {
     const s = this.session;
     if (this.on || this.rewardedLately || this.adFree() || s.opts.autoplay || (s.guide && s.guide.games <= 1)) return;
+    // the way back to the harbour comes once a game and is a real stop; the shop comes every wave
+    if (placement === 'shop' && ++this.breaks < WAVES_PER_AD) return;
+    this.breaks = 0;
     await this.play(() => this.platform.midgame(() => this.hold(true), placement).then(() => true));
   }
 

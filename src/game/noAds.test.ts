@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { StubPlatform } from '../platform/stub';
 import { SafeStore, type Payments } from '../platform/types';
-import { Ads } from './ads';
+import { Ads, WAVES_PER_AD } from './ads';
 import { Guide } from './guide/guide';
 import { saveGuide } from './guide/store';
 import { Harbour } from './meta/harbour';
@@ -73,7 +73,8 @@ describe('NoAds', () => {
     await Promise.resolve();
     expect([s.hold, p.calls.includes('midgame'), ads.freeReroll()]).toEqual([false, false, true]);
     n.state = 'offer';
-    ads.frame([{ e: 'waveClear', wave: 2 }]);
+    // the shop carries an ad every third wave (WAVES_PER_AD), and the owned waves spent none
+    for (let w = 2; w < 2 + WAVES_PER_AD; w++) ads.frame([{ e: 'waveClear', wave: w }]);
     expect(p.calls).toContain('midgame');
   });
 });
