@@ -201,8 +201,26 @@ Tidehook/
   - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/packPlaygama.mjs`，纯 Node，不再需要 Python）。`npm run check` 最后也会跑一遍。
   - 存档只走 Bridge storage（语言、声音、教程、港口四个 key）。Bridge 没起来（被拦截、超时）时，存档只放在内存里，这次访问有效，
     **不再退回浏览器的 localStorage**（Playgama 要求 3.2.1：除了 Bridge 不许写任何存储）。2026-11-10 改。
+    等 Bridge 的时间 2026-11-16 从 5 秒放到 **10 秒**：早放弃一次，回头的玩家就丢一次存档，而慢的是网，不是人。
+    `PlaygamaPlatform.create()` 也不再可能 reject——Bridge 初始化或读存档炸了都在里面接住，退成内存存档、名字退回 `web`，
+    游戏照常起来。炸了却连加载页都过不去，是最坏的结果。
   - 语言只听 Bridge 的（要求 3.4.1、3.4.2）：Bridge 给的语言我们有就用，没有或没给就用英文，不再看浏览器语言。普通网页版照旧看浏览器。Bridge 给的只是默认值：玩家自己在游戏里选过语言之后以他的选择为准，存进同一批 Bridge storage 的 key（`LANG_KEY`）。
   - 上传和发布沙盒都要先问过人。
+- **加载页**（2026-11-16 加，`index.html` + `src/boot/`）：Playgama 的包有 2.7 MB，门户还要先起 Bridge。
+  在这之前浏览器只有一面空蓝墙，自检表里"`game_ready` 必须在加载画面还在时发"说的就是这段时间得有东西看。
+  - 画面写在 `index.html` 里，不在包里：一段纯脚本（不是 module）先于 bundle 跑，挂出 `window.__thBoot`。
+    一只晃动的钩子、一条进度条，**一个字都没有**——这时候一张语言表都还没下来。
+  - 进度分四段（`src/boot/screen.ts` 的 `STAGE_AT`）：Bridge 起来 0.35、渲染器拿到画布 0.5、美术一张张加载到 0.95、第一帧画完 1。
+    bundle 跑起来之前量不到任何东西，所以条子自己先慢慢爬到三分之一：线慢的时候也看得出在动。
+  - 看门狗 25 秒：25 秒内进度一点没动就认定卡死，收起条子、露出一个圆的 ↻ 按钮（重新加载）。按钮也没有字。
+  - 第一帧画完才 `done()`：淡出 0.35 秒，之后 `display:none`。
+- **启动遥测**（`src/game/bootTrack.ts`，从 Swarm Orbit 的 `docs/platform.md` 搬的经验）：
+  - `load`：成功启动一次发一次，带 `load_ms`（从 HTML 里那段脚本的 `t0` 算起）、platform、build_version、屏幕宽高和 dpr，
+    外加 Playgama 平台自己报的 `sdk`、`host`、`device`、`save`（bridge / memory）、`adblock`（`Platform.info()`）；
+  - `boot_left`：游戏还没起来人就走了，带走到哪一段（`stage`）、停留秒数和进度百分比。这是"加载太久，走了"的唯一证据；
+  - `boot_error`：启动炸了，带 `stage`、`kind`（fetch / webgl / other）和 `error_name`（只认 32 个字母以内的异常名，不然就是 unknown）。
+    **错误文本一个字都不发**：里面可能有 URL 和 token，门户也会把自由文本遮掉。
+  - 三个事件都在 window 的**捕获阶段**听 `pagehide` 和 `visibilitychange`：门户的 iframe 里，冒泡阶段经常轮不到。
 - **激励广告**（`src/game/ads.ts`），每局各一次，都由玩家自己点：
   - **修好码头**：码头被毁后，结算先挂起（`Session.pending`），卡片上只有“修好码头”和“算了”。看完广告后，码头回到一半血，离码头 300 内的怪被推回 300，所有怪晕 2 秒（`sim/revive.ts`），这一波接着打。点“算了”或者没有广告可放时，才正式结算。广告开始了但没看完，按钮保留。
   - **珍珠 ×2**：结算后，本局珍珠大于 0 时出现在卡片上。
@@ -224,6 +242,10 @@ Tidehook/
   - `tutorial_step` / `tutorial_completed`；
   - 每 30 秒有效游玩发一次 `performance_sample`（`src/game/perf.ts`）；
   - 出现新纪录或完成船长日志目标时调用 `celebrate()`（`player_got_achievement`）。
+  - **离开遥测**（`src/game/leaveTrack.ts`，2026-11-16 加）：`first_tap`（游戏能玩了到第一次点之间的秒数，一次会话只发一次，
+    加载页上的点不算）、`idle`（连着 25 秒没动，最多发 3 次，带当时在哪：boot / ad / paused / play / shop / over / lobby / title）、
+    `quit`（这次会话结束，页面藏起来或卸载都只发一次，带秒数、停在哪、第几局、第几波、daily 还是 voyage）。
+    没有自己的 session id，也不发心跳：会话长度由 `load` 和 `quit` 的秒数给出，平台自己也统计（指南禁止重复发）。
   - 不发任何玩家个人信息。
   - 2026-11-10 修掉一个 bug：每个模拟事件都被交出去两次（`Session.run` 用了 take 而不是 collect），
     遥测的波次事件翻倍、复活后又补发一次失败，音效、粒子和教程观察也都是双份。`session.test.ts` 钉住“每个事件只交一次”。
@@ -272,6 +294,8 @@ Tidehook/
 - 语言（2026-11）：en、zh、ru、es、pt（巴西葡语）、tr、de、fr，除英文外都是懒加载分包，按浏览器或平台语言自动选。语气短、直白，带点港口味。插进句子的名词（海域、目标、怪名）一律放在冒号后面，避开格变化；土耳其语里含 {sea} 的句子把海名放在最前。占位符由 `i18n.test.ts` 校验。德语和俄语偏长，放不下时先缩短文案，不改布局。玩家自己也能改：暂停罩子和港口“船舱”页各有一个下拉选择器（`view/hud/langPick.ts`，2026-11-15 加）。
 - 开发开关（`src/game/switches.ts`，只在 dev 构建里生效）：`?autoplay`、`?speed`、`?ads=fake`、`?lang`、`?seed`、`?lag`、`?ease=N`（每局 N 波慢潮，0 = 裸局）、`?board=fake`（假的每日榜）、`?pay=fake`（去广告内购打开）、`?rec=0`（关掉点击记录器）。
 - `.claude/launch.json` 为每个构建变体配一个预览服务。
+- 开发服务器上还挂着两个落盘口子（只有 dev）：`recordings/` 的点击记录（`scripts/rec/`）和 `art/store/` 的截图
+  （`scripts/shot/sink.mjs`，`POST /__shot?name=…` 收一张 PNG data URL，文件名只留字母数字和 `-_`）。
 - **画面性能的四条规矩**（都是量出来的，别回退）：
   - 每帧重画的小图形要共用 `GraphicsContext`，不要每帧新建 `Graphics`。怪物血条的点（`view/scene/pips.ts`）
     原来每帧重切约 170 个圆和方块，占 1.9 ms 一帧里的 1.5 ms；改成两个 context + 一池 `Graphics`（只改位置和缩放）后几乎为零。血多的怪改画的那条多层血条（同一文件的 `drawBar`）是反例：一条只有五六个圆角矩形，一条航道上也只有一两只这样的怪，所以直接画进当帧的 `Graphics`，不进池。

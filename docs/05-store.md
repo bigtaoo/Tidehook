@@ -16,7 +16,33 @@ Playgama 表单三个封面位，尺寸固定：方形 800×800、竖版 1080×1
   - 大小：方形 662 kB、竖版 1.5 MB、横版 1.9 MB，都在 10 MB 以内。
   - **还没上传**：`start_cover_upload` 要用户点头。
 
-## 2. 文案（英文为主，其他语言跟游戏的 8 种语言）
+## 2. 游戏截图（2026-11-16）
+
+六张，`art/store/`，都是真实画面，不是拼的：
+
+| 文件 | 尺寸 | 画的是 |
+| --- | --- | --- |
+| `land_play.png` | 2560×1440 | 横屏第 6 波：钩子在甩，螃蟹、鱼、木头和酒桶都在道上 |
+| `land_shop.png` | 2560×1440 | 横屏波间商店：三张升级牌加三个常驻按钮 |
+| `land_harbour.png` | 2560×1440 | 横屏港口：七张永久升级和七个页签 |
+| `port_play.png` | 1440×2560 | 竖屏第 6 波，同一局 |
+| `port_shop.png` | 1440×2560 | 竖屏波间商店 |
+| `port_harbour.png` | 1440×2560 | 竖屏港口 |
+
+怎么出的（要重出照这个来）：
+
+1. `npm run dev`，浏览器开 `?autoplay=good&speed=3&seed=7`，机器人自己打。
+2. 预览窗口被挡住时 rAF 会被节流，光等是等不到第 6 波的：在控制台里**手动推帧**
+   （`app.ticker.update(t)` 每次 +16.7 ms），推到想要的局面再停。
+3. `app.render()` 之后 `app.canvas.toDataURL('image/png')`，POST 给开发服务器的 `/__shot?name=…`
+   （`scripts/shot/sink.mjs`，只在 dev 挂着），落到 `art/store/`。
+4. 商店和港口那几张要去掉机器人：`session.pilot = null` 再推一帧，标题就从"The bot is browsing"回到正常文案。
+   港口那张还要 `session.mode = 'lobby'`、给几颗珍珠（`session.harbour.pearls = 46`），不然卡片全是灰的。
+5. 分辨率：`app.renderer.resize(1280, 720, 2)` 出 2560×1440，竖屏同理。
+
+**还没上传**：截图只能人在后台传，没有工具（MCP 的说明里写死了）。
+
+## 3. 文案（英文为主，其他语言跟游戏的 8 种语言）
 
 **名字**：Tidehook
 

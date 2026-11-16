@@ -3,6 +3,7 @@ import { buildId } from './buildId.mjs';
 import { countLines, lengthErrors } from './fileLength.mjs';
 import { overBudget } from './size.mjs';
 import { unzip, zip } from './zip.mjs';
+import { shotBytes, shotName } from './shot/sink.mjs';
 
 describe('file length', () => {
   it('counts lines as an editor numbers them', () => {
@@ -48,5 +49,17 @@ describe('zip', () => {
   it('refuses a backslash path or a directory entry', () => {
     expect(() => zip([{ name: 'assets\\a.js', data: Buffer.alloc(1) }])).toThrow(/bad zip entry/);
     expect(() => zip([{ name: 'assets/', data: Buffer.alloc(0) }])).toThrow(/bad zip entry/);
+  });
+});
+
+describe('shot sink', () => {
+  it('keeps a name to one file and reads a PNG data URL', () => {
+    expect(shotName('../../etc/passwd')).toBe('etcpasswd');
+    expect(shotName('')).toBe('shot');
+    expect(shotName('play_portrait')).toBe('play_portrait');
+    const png = Buffer.from([137, 80, 78, 71]);
+    expect(shotBytes(`data:image/png;base64,${png.toString('base64')}`)).toEqual(png);
+    expect(shotBytes('data:image/jpeg;base64,AAAA')).toBeNull();
+    expect(shotBytes('not a data url')).toBeNull();
   });
 });
