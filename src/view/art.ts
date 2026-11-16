@@ -75,12 +75,19 @@ export function acrossHalf(n: ArtName, wide: boolean): number {
   return (wide ? f.h : f.w) / 2 / f.r;
 }
 
-/** How far sprite `n` reaches along the lane from its middle, per unit of opaque-area radius:
- *  its half-height in portrait, its half-width in landscape. The other half of acrossHalf, for
- *  hanging something (a health bar) clear of the picture rather than over it. */
-export function alongHalf(n: ArtName, wide: boolean): number {
+/** How far sprite `n` reaches down the screen from its middle, per unit of opaque-area radius,
+ *  and how far across it. Screen measures, not lane ones: the sprite is drawn upright whichever
+ *  way the lane runs (landscape has its own side-on art, look.ts), so its half-height is its
+ *  half-height. For hanging something drawn in screen space - a health bar, a row of pips - clear
+ *  of the picture rather than over it. */
+export function halfH(n: ArtName): number {
   const f = FIT[n];
-  return (wide ? f.w : f.h) / 2 / f.r;
+  return f.h / 2 / f.r;
+}
+
+export function halfW(n: ArtName): number {
+  const f = FIT[n];
+  return f.w / 2 / f.r;
 }
 
 /** Sprite `n` scaled to `height` design units with its anchor at (ax, ay); null when it is not

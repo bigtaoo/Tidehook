@@ -18,7 +18,7 @@ import { BRAD_FULL } from '../../sim/math/trig';
 import type { Item, Monster } from '../../sim/world';
 import { CATCH, HEAVY, MON, P } from '../kit/palette';
 import { toDesign, type Field } from '../orient';
-import { alongHalf, acrossHalf, areaScale, tex } from '../art';
+import { areaScale, halfH, halfW, tex } from '../art';
 import { LANE_LEN } from '../../sim/lane';
 import { bandRect } from './field';
 import { isBoss, diving } from '../../sim/kinds';
@@ -259,7 +259,7 @@ export class Actors extends Container {
     if (under || seen < 1) return;
     const pr = 2.6 * k;
     // clear of the sprite, not over it: a boss's shell reaches further down than its hit circle
-    const y = p.y + Math.max(r * 1.3, look * alongHalf(art, f.wide)) + pr * 2;
+    const y = p.y + Math.max(r * 1.3, look * halfH(art)) + pr * 2;
     // over the hook's grip, so a cast bounces off it (monsters.ts liftable); a boss never lifts
     const steel = m.hp > (boss ? 0 : grip);
     if (m.hp0 > MAX_PIPS) {
@@ -267,7 +267,7 @@ export class Actors extends Container {
       // as wide as the thing itself, so every notch on it is a hit the player can count - and for
       // a boss wider still: at the sprite's own width a notch is about five screen pixels on a
       // phone, too fine to count, and counting it is the whole point of the bar
-      const w = Math.max((boss ? BOSS_BAR_W : 44) * k, look * acrossHalf(art, f.wide) * 2);
+      const w = Math.max((boss ? BOSS_BAR_W : 44) * k, look * halfW(art) * 2);
       drawBar(over, p.x, y - pr, w, k, bars(m.hp, m.hp0), steel, boss);
     } else {
       const { n, heavy } = pips(m.hp, boss ? 0 : grip);
