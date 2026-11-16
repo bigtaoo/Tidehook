@@ -145,8 +145,10 @@ export class Actors extends Container {
     // the winch: still and symmetric, with its pulley wheel on the launch point, so the rope and the
     // aim start from its middle. A turning boom swung about too much to watch, and its pulley off
     // to one side made the launch point look shifted. It is drawn before the rope and the hook, and
-    // small enough to sit on the planks, so the post never hides what is being aimed at.
-    if (!bodies.put('winch', hub.x, hub.y, WINCH_R * k, { ay: WINCH_PULLEY })) {
+    // small enough to sit on the planks, so the post never hides what is being aimed at. The art
+    // stands upright, the way the lane runs in portrait; landscape turns the lane a quarter to the
+    // right (orient.ts), and the winch with it, so its pulley still faces the sea.
+    if (!bodies.put('winch', hub.x, hub.y, WINCH_R * k, { ay: WINCH_PULLEY, rot: f.wide ? Math.PI / 2 : 0 })) {
       g.circle(hub.x, hub.y, 18 * k).fill(P.brass).stroke({ color: P.line, width: 3.5 * k });
     }
 
