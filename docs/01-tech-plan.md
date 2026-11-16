@@ -201,7 +201,7 @@ Tidehook/
   - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/packPlaygama.mjs`，纯 Node，不再需要 Python）。`npm run check` 最后也会跑一遍。
   - 存档只走 Bridge storage（语言、声音、教程、港口四个 key）。Bridge 没起来（被拦截、超时）时，存档只放在内存里，这次访问有效，
     **不再退回浏览器的 localStorage**（Playgama 要求 3.2.1：除了 Bridge 不许写任何存储）。2026-11-10 改。
-  - 语言只听 Bridge 的（要求 3.4.1、3.4.2）：Bridge 给的语言我们有就用，没有或没给就用英文，不再看浏览器语言。普通网页版照旧看浏览器。
+  - 语言只听 Bridge 的（要求 3.4.1、3.4.2）：Bridge 给的语言我们有就用，没有或没给就用英文，不再看浏览器语言。普通网页版照旧看浏览器。Bridge 给的只是默认值：玩家自己在游戏里选过语言之后以他的选择为准，存进同一批 Bridge storage 的 key（`LANG_KEY`）。
   - 上传和发布沙盒都要先问过人。
 - **激励广告**（`src/game/ads.ts`），每局各一次，都由玩家自己点：
   - **修好码头**：码头被毁后，结算先挂起（`Session.pending`），卡片上只有“修好码头”和“算了”。看完广告后，码头回到一半血，离码头 300 内的怪被推回 300，所有怪晕 2 秒（`sim/revive.ts`），这一波接着打。点“算了”或者没有广告可放时，才正式结算。广告开始了但没看完，按钮保留。
@@ -269,7 +269,7 @@ Tidehook/
 - 单文件 ≤ 500 行（含测试），由 `scripts/checkFileLength.mjs` 强制。
 - `npm run check` = typecheck + 文件长度 + 单测 + 平衡守卫 + 构建 + 包体大小（≤ 5 MB）。
 - 不写字面量文案，全部走 `t()`；所有数值进 `balance.json`。
-- 语言（2026-11）：en、zh、ru、es、pt（巴西葡语）、tr、de、fr，除英文外都是懒加载分包，按浏览器或平台语言自动选。语气短、直白，带点港口味。插进句子的名词（海域、目标、怪名）一律放在冒号后面，避开格变化；土耳其语里含 {sea} 的句子把海名放在最前。占位符由 `i18n.test.ts` 校验。德语和俄语偏长，放不下时先缩短文案，不改布局。
+- 语言（2026-11）：en、zh、ru、es、pt（巴西葡语）、tr、de、fr，除英文外都是懒加载分包，按浏览器或平台语言自动选。语气短、直白，带点港口味。插进句子的名词（海域、目标、怪名）一律放在冒号后面，避开格变化；土耳其语里含 {sea} 的句子把海名放在最前。占位符由 `i18n.test.ts` 校验。德语和俄语偏长，放不下时先缩短文案，不改布局。玩家自己也能改：暂停罩子和港口“船舱”页各有一个下拉选择器（`view/hud/langPick.ts`，2026-11-15 加）。
 - 开发开关（`src/game/switches.ts`，只在 dev 构建里生效）：`?autoplay`、`?speed`、`?ads=fake`、`?lang`、`?seed`、`?lag`、`?ease=N`（每局 N 波慢潮，0 = 裸局）、`?board=fake`（假的每日榜）、`?pay=fake`（去广告内购打开）、`?rec=0`（关掉点击记录器）。
 - `.claude/launch.json` 为每个构建变体配一个预览服务。
 - **画面性能的四条规矩**（都是量出来的，别回退）：
