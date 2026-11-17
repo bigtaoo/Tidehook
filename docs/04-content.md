@@ -615,3 +615,33 @@ reduced-motion；而 `toggle()` 原先把四个开关整体写进存档——于
 的指示箭头本来就按 `live` 收着。第 18 轮翻过 `audio/engine.ts` 的解锁与静音链路、`i18n` 的
 `detectLocale`（`zh-CN`、`pt_BR` 这种只取主标签）、`bridge.ts` 里 `language()`/`price()`/
 `purchases()` 这几处对主机数据的校验，也都是严的。
+
+### 5.11 第 19-21 轮：走掉的人与付过钱的人（2026-11-17）
+
+**十八、`pagehide` 发的时候，页面还在屏幕上。** `bootTrack.ts` 的离开处理里有一句
+「`visibilityState === 'visible'` 就不算走」。可规范里卸载一个文档的顺序是：先发 `pagehide`，
+之后才把页面藏起来、才发 `visibilitychange`（iOS 上更常见的是直接冻住，一个 `visibilitychange`
+都没有）。那句判断等于把唯一一个「这页要走了」的保证事件扔掉，而被扔掉的正是这个文件存在的理由
+——在加载页上放弃的那个玩家，主机自己的数字从 `game_ready` 才开始数，看不见他。现在只有
+visibility 那条路去问可见性，`pagehide` 一来就记；兄弟文件 `leaveTrack.ts` 本来就是这么写的。
+（`src/game/bootTrack.ts`）
+
+**十九、丢在路上的那笔钱，不是玩家不买。** `payments.purchase()` 对「玩家自己退出去了」和
+「答复在回来的路上丢了——弹窗自己关了、调用超时、frame 被重载」给的是同一个答复，而第二种情况里
+钱已经扣了。`noAds.buy()` 原先两种都当成没买成：付过钱的玩家插屏照旧，刚买下的那张卡还挂在架子上
+标着价，等他再买一次。现在买不成的时候先问一句主机「他拥有什么」再下结论——玩家主动取消的代价是
+一次很快的读，答复丢了的代价则被接住了。（`src/game/noAds.ts`）
+
+**二十、而那一句「问主机」，在门户上原本永远问不出结果。** Bridge 包装层的规矩是吞掉所有麻烦、
+交回空的东西——对榜单、对广告，这是对的：没东西可显示。对「玩家买过什么」却是错的，因为一个空列表
+同时也是「他什么都没买」的诚实答复。两者分不开，游戏就只能按后者办。更要命的是，`noAds.ts` 整个
+「下次进港口再问一遍」的机制是挂在*读取失败*上的，而门户上这个读取从不失败——它只是安静地回一个
+空列表。也就是说那套重试逻辑在真实门户上一次也没能触发过。现在 `purchases()` 和 `price()` 碰上
+「根本没有列表」会抛出去（失败了、不存在、或者回来的东西构不成列表），而真的回了个空列表仍然按
+字面算数。（`src/platform/playgama/bridge.ts`）
+
+**顺带记一笔：** 这三轮里还通读了 `game/ads.ts`（插屏的三波节奏、rewardedLately、航程末尾不插
+广告）、`game/telemetry.ts`（`waveStart`/`waveClear` 两头的 `world.wave` 确实是同一个数，漏斗对
+得上）、`game/meta/resume.ts` 与 `meta/harbour.ts` 的存档校验、`game/board.ts`、
+`platform/playgama/PlaygamaPlatform.ts`，没有发现同类问题。
+
