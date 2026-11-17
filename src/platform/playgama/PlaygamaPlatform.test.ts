@@ -164,6 +164,23 @@ describe('PlaygamaPlatform', () => {
     ]);
     expect(await (await platform(fakeBridge({ board: { entries: 'nope' } }))).board()!.top()).toEqual([]);
   });
+
+  it('numbers a board that answers in order without ranks of its own', async () => {
+    // a board behind Bridge is free to hand back an ordered list and leave the numbering to the
+    // game; every row of one used to be thrown away, which looks like a board for ever loading
+    const entries = [{ name: 'Ada', score: 5017 }, { name: 'Bo', score: 'x' }, { name: 'Cy', score: 4012 }];
+    expect(await (await platform(fakeBridge({ board: { entries } }))).board()!.top()).toEqual([
+      { name: 'Ada', score: 5017, rank: 1 },
+      { name: 'Cy', score: 4012, rank: 3 },
+    ]);
+    // one row without a rank is enough: the whole list is numbered by its order, so a board that
+    // counts from zero is not handed two firsts
+    const zero = [{ name: 'Ada', score: 5017, rank: 0 }, { name: 'Cy', score: 4012, rank: 1 }];
+    expect(await (await platform(fakeBridge({ board: { entries: zero } }))).board()!.top()).toEqual([
+      { name: 'Ada', score: 5017, rank: 1 },
+      { name: 'Cy', score: 4012, rank: 2 },
+    ]);
+  });
 });
 
 describe('PlaygamaPlatform payments', () => {

@@ -211,17 +211,29 @@ export class PlaygamaBridge {
     if (this.boardReady()) await settle(() => this.sdk?.leaderboards?.setScore?.(id, score));
   }
 
-  /** Leaderboard `id`'s entries, best first; empty on any trouble. */
+  /** Leaderboard `id`'s entries, best first; empty on any trouble.
+   *
+   *  A row stands on its score alone. `rank` is what the wiki's example prints, not something
+   *  every board behind Bridge answers with - a SaaS board is free to hand back a list that is
+   *  already in order and leave the numbering to the game - and a board whose rows all lacked it
+   *  used to be thrown away row by row here, which the player meets as a daily leaderboard that is
+   *  for ever still loading, on the portal only and with nothing said anywhere. So a row with no
+   *  rank of its own is numbered by its place in the list instead. The whole list is numbered that
+   *  way or none of it is: a board that numbers from zero would otherwise have its first row
+   *  filled in as 1 and its second left at 1 as well. */
   async entries(id: string): Promise<BoardRow[]> {
     if (!this.boardReady()) return [];
     const got = await settle(() => this.sdk?.leaderboards?.getEntries?.(id));
     if (!Array.isArray(got)) return [];
-    return got.flatMap((e: unknown): BoardRow[] => {
+    const ranked = got.every((e) => {
+      const rank = Number((e as Record<string, unknown> | null)?.rank);
+      return Number.isSafeInteger(rank) && rank > 0;
+    });
+    return got.flatMap((e: unknown, i: number): BoardRow[] => {
       const r = (e ?? {}) as Record<string, unknown>;
       const score = Number(r.score);
-      const rank = Number(r.rank);
-      if (!Number.isSafeInteger(score) || !Number.isSafeInteger(rank)) return [];
-      return [{ name: typeof r.name === 'string' ? r.name.slice(0, 40) : '', score, rank }];
+      if (!Number.isSafeInteger(score)) return [];
+      return [{ name: typeof r.name === 'string' ? r.name.slice(0, 40) : '', score, rank: ranked ? Number(r.rank) : i + 1 }];
     });
   }
 
