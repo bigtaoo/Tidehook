@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { StubPlatform } from '../platform/stub';
 import { SafeStore, type Payments } from '../platform/types';
 import { Ads, WAVES_PER_AD } from './ads';
@@ -76,5 +76,54 @@ describe('NoAds', () => {
     // the shop carries an ad every third wave (WAVES_PER_AD), and the owned waves spent none
     for (let w = 2; w < 2 + WAVES_PER_AD; w++) ads.frame([{ e: 'waveClear', wave: w }]);
     expect(p.calls).toContain('midgame');
+  });
+  it('asks the host again where the launch read never answered', async () => {
+    let up = false;
+    let asks = 0;
+    const p: Payments = {
+      owned: async () => {
+        asks++;
+        if (!up) throw new Error('offline');
+        return [NO_ADS];
+      },
+      price: async () => '$1.99',
+      buy: async () => true,
+    };
+    const n = new NoAds(p);
+    await n.load();
+    expect(n.state).toBe('none');
+    expect(asks).toBe(1);
+
+    // the way into the harbour asks again; sitting there does not
+    up = true;
+    n.frame('lobby');
+    n.frame('lobby');
+    expect(asks).toBe(2);
+    await vi.waitFor(() => expect(n.owned).toBe(true));
+
+    // and once it has answered, the walk into the harbour is quiet again
+    n.frame('play');
+    n.frame('lobby');
+    expect(asks).toBe(2);
+  });
+
+  it('gives up asking after a few tries rather than drumming on the host', async () => {
+    let asks = 0;
+    const p: Payments = {
+      owned: async () => {
+        asks++;
+        throw new Error('offline');
+      },
+      price: async () => '$1.99',
+      buy: async () => true,
+    };
+    const n = new NoAds(p);
+    await n.load();
+    for (let i = 0; i < 10; i++) {
+      n.frame('play');
+      n.frame('lobby');
+      await Promise.resolve();
+    }
+    expect(asks).toBe(3);
   });
 });

@@ -206,6 +206,7 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     ads.frame(events);
     telemetry.frame(tk.deltaMS, now && !document.hidden, events);
     board.frame(session);
+    noAds.frame(session.mode);
     const ms = performance.now();
     resume.frame(session, ms);
     sound.setPaused(session.mode === 'play' && session.paused);
