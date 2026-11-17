@@ -33,6 +33,7 @@ import { Scene, type SceneUi } from './view/scene/scene';
 import { fitDesign, sameFit, type Fit } from './view/viewport';
 import { waitForSize } from './view/waitForSize';
 import { watchSize } from './view/watchSize';
+import { PlayWindow } from './game/playWindow';
 
 /** The player's language pick, in the platform's storage. */
 export const LANG_KEY = 'tidehook.lang';
@@ -153,9 +154,13 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     },
   };
   bindKeys(window, session, (key) => key === 'm' && (sound.toggle(), true));
+  // the host's view of the round (game/playWindow.ts): closed from here as well as from the frame
+  // loop, because a tab on its way out stops the ticker before any frame can say the play is over
+  const play = new PlayWindow(platform, document);
   const pause = () => {
     session.pause();
     resume.save(session);
+    play.set(false);
   };
   // the page is going away for good, or into the back/forward cache: the last chance to write
   window.addEventListener('pagehide', () => resume.save(session));
@@ -204,7 +209,6 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     const { width: w, height: h } = app.screen;
     return { w, h, wide: fitDesign(w, h).wide };
   }, __TH_BUILD__, opts.lagMs);
-  let playing = false;
   app.ticker.add((tk) => {
     // playing before this frame's steps: the step that breaks the dock ends the play, yet buzzes
     const live = session.mode === 'play' && !session.paused && !session.hold;
@@ -223,11 +227,7 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     if (live || now) haptics.events(events, ms);
     sound.reel(session.world, now, ms);
     sound.music(session.mode === 'lobby' || session.mode === 'title', seaOf(session.world).id);
-    if (now !== playing) {
-      playing = now;
-      if (now) platform.gameplayStart();
-      else platform.gameplayStop();
-    }
+    play.set(now);
   });
 
   if (import.meta.env.DEV) Object.assign(window, { __th: { app, session, sound, settings, ads, noAds, build: __TH_BUILD__ } });
