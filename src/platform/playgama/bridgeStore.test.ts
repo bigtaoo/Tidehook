@@ -33,4 +33,18 @@ describe('BridgeStore', () => {
     s.flush();
     expect(saved).toHaveLength(2);
   });
+
+  it('sends what the game writes on its way out, hidden or not', async () => {
+    const { saved, queue, made } = store();
+    const s = await made;
+    s.leaving();
+    // the game's own pagehide listener runs after the platform's and writes the voyage then
+    s.setItem('mb.run', '{"wave":7}');
+    expect(saved).toEqual([[['mb.run', '{"wave":7}']]]);
+    expect(queue).toHaveLength(0);
+    // a page that came back from the back/forward cache waits for a tick again
+    s.back();
+    s.setItem('mb.lang', 'de');
+    expect([saved.length, queue.length]).toEqual([1, 1]);
+  });
 });

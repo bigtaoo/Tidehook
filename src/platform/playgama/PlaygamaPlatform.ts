@@ -60,9 +60,12 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
       this.soundOff = off;
       this.mute();
     });
-    const flush = () => saves?.flush();
-    doc.addEventListener('visibilitychange', () => doc.visibilityState === 'hidden' && flush());
-    win.addEventListener('pagehide', flush);
+    doc.addEventListener('visibilitychange', () => doc.visibilityState === 'hidden' && saves?.flush());
+    // the game writes its own save on pagehide too (src/app.ts), and this listener was made first,
+    // so it runs first: `leaving` is what makes that later write go to Bridge rather than wait for
+    // a tick the page will never get
+    win.addEventListener('pagehide', () => saves?.leaving());
+    win.addEventListener('pageshow', () => saves?.back());
   }
 
   /** `keys`: every key the game keeps, read from Bridge in one call. Without Bridge (blocked, or

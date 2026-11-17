@@ -204,6 +204,9 @@ Tidehook/
     Bridge 的存储是异步的，`BridgeStore` 只在开机时读这份清单里的 key，之后全从缓存答：
     漏掉一个，就是写得进、读不出来——网页版拿浏览器自己的存储，看不出任何毛病，只有门户上悄悄丢数据。
     `src/saveKeys.test.ts` 扫 src 下所有 `tidehook.*` 的 key 常量，漏一个就红。
+    写进去的也未必发得出去：Bridge 的写是攒一拍一起发的，而平台的 `pagehide` 监听器比游戏的先注册、
+    也就先跑，游戏随后写的那一份只排进了下一拍——页面已经走了，那一拍不会来。所以 `BridgeStore.leaving()`
+    （2026-11-17）把之后的每一次写都立刻发走；Safari 的 pagehide 不一定先把页面标成 hidden，靠 hidden 判断接不住。
     2026-11-17 查出来已经漏了两个：`tidehook.settings`（音乐/音效/震动/减动效，门户上每次回来都是默认值）
     和刚加的 `tidehook.voyage`（关页面续局，正好在唯一会发布的目标上完全不工作）。Bridge 没起来（被拦截、超时）时，存档只放在内存里，这次访问有效，
     **不再退回浏览器的 localStorage**（Playgama 要求 3.2.1：除了 Bridge 不许写任何存储）。2026-11-10 改。
