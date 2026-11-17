@@ -24,6 +24,11 @@
 // A tutorial step carries the game it was done in and its seconds into that game (the step clock
 // starts over with each game, game/guide/guide.ts), so "a step people take two or three games to
 // reach" and "a step that takes a long minute" read apart from each other.
+//
+// A sitting that opens inside a wave is a voyage picked up from storage (game/meta/resume.ts): the
+// wave was started in an earlier sitting, so its `progression_started` went with that one and this
+// sitting would send only the completion. The funnel counts those apart, and a wave completed more
+// often than it was started reads as nonsense, so the wave is started again here, for this sitting.
 
 import type { Platform } from '../platform/types';
 import type { SimEvent } from '../sim/events';
@@ -51,6 +56,8 @@ export class Telemetry {
   private cheered = -1;
   /** The harbour's levels and charts as last seen, to spot a purchase. */
   private owned: Record<string, number>;
+  /** This sitting opened inside a wave, whose start belongs to an earlier one (see the top). */
+  private resumed: boolean;
 
   constructor(
     private readonly platform: Platform,
@@ -63,6 +70,8 @@ export class Telemetry {
     this.steps = session.guide?.log.length ?? 0;
     this.tutorialDone = session.guide?.finished ?? true;
     this.owned = this.holdings();
+    const w = session.world;
+    this.resumed = session.mode === 'play' && w.phase === 'wave' && w.tick > 0;
   }
 
   private wasEnd = false;
@@ -73,6 +82,10 @@ export class Telemetry {
     const s = this.session;
     const game = this.game();
     const step = { step_id: 'wave', step_index: s.world.wave, sea: seaOf(s.world).id, game, mode: s.daily ? 'daily' : 'voyage' };
+    if (this.resumed) {
+      this.resumed = false;
+      this.send('progression_started', step);
+    }
     for (const ev of events) {
       if (ev.e === 'waveStart') this.send('progression_started', step);
       else if (ev.e === 'waveClear') this.send('progression_completed', step);

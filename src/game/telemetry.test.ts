@@ -47,6 +47,29 @@ describe('Telemetry', () => {
     expect(p.calls.filter((c) => c === 'celebrate')).toHaveLength(1);
   });
 
+  it('starts the wave again for a sitting that opens inside one', () => {
+    const p = new StubPlatform();
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+    s.start();
+    for (let i = 0; i < 20; i++) s.update(16);
+    s.drain();
+    // a new sitting: the voyage came back from storage mid-wave, so its start went with the last one
+    const tel = new Telemetry(p, s, 'b');
+    tel.frame(16, true, s.drain());
+    tel.frame(16, true, []);
+    expect(p.tracked.map(([e]) => e)).toEqual(['progression_started']);
+    expect(p.tracked[0][1]).toMatchObject({ step_id: 'wave', step_index: s.world.wave, mode: 'voyage' });
+  });
+
+  it('starts nothing of its own for a sitting that opens in the harbour', () => {
+    const p = new StubPlatform();
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
+    s.openLobby();
+    const tel = new Telemetry(p, s, 'b');
+    tel.frame(16, false, s.drain());
+    expect(p.tracked).toEqual([]);
+  });
+
   it("marks the daily voyage's waves apart from a plain voyage's", () => {
     const p = new StubPlatform();
     const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, new Harbour(new SafeStore(null)));
