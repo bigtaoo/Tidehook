@@ -74,11 +74,19 @@ export class BootTrack {
     });
   }
 
-  /** Boot gave up: one `boot_error`, and the loading page offers a retry. */
+  /** Boot gave up: one `boot_error`, and the loading page offers a retry.
+   *
+   *  The host is told the game is ready here too. `platform.loaded()` is the last line of boot
+   *  (src/app.ts), so a throw anywhere before it means `game_ready` never went out, and on a portal
+   *  the host's own loading cover stays over the page for good - over the retry button this very
+   *  method just put there. The player is left looking at the host's spinner with nothing to tap
+   *  and nothing said. Readiness here means only that the page is the player's to see; what it
+   *  shows is the failure. */
   failed(err: unknown): void {
     if (this.done()) return;
     this.screen.fail();
     this.platform.track('boot_error', { stage: this.at, kind: errorKind(err), error_name: errorName(err) });
+    this.platform.loaded();
   }
 
   /** The page went away before the game was ready.
