@@ -77,17 +77,21 @@ export class DailyBoard {
     const ask = ++this.asked;
     const day = this.today();
     this.readDay = day;
-    let got: DailyRow[] = [];
+    let top;
     try {
-      const top = await this.board.top();
-      got = top
-        .map((e) => ({ rank: e.rank, name: e.name, wave: boardWave(day, e.score) }))
-        .filter((r): r is DailyRow => r.wave !== null && r.wave > 0)
-        .sort((a, b) => a.rank - b.rank)
-        .slice(0, BOARD_ROWS);
+      top = await this.board.top();
     } catch {
-      got = [];
+      // an offline player, a host that said no. Nothing read is not the same as nobody there:
+      // leave the rows as they are - what was last read, or the waiting word if this was the first
+      // ask - rather than telling the player today's board is empty. The harbour asks again on the
+      // next way in.
+      return;
     }
+    const got = top
+      .map((e) => ({ rank: e.rank, name: e.name, wave: boardWave(day, e.score) }))
+      .filter((r): r is DailyRow => r.wave !== null && r.wave > 0)
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, BOARD_ROWS);
     if (ask !== this.asked) return;
     this.rows = got;
     this.version++;

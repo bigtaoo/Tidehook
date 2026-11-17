@@ -62,11 +62,24 @@ describe('the daily board', () => {
     await vi.waitFor(() => expect(b.rows).toHaveLength(3));
   });
 
-  it('shows no rows at all where the board cannot be read', async () => {
-    const b = new DailyBoard({ submit: async () => {}, top: () => Promise.reject(new Error('offline')) }, () => DAY);
+  it('keeps waiting rather than calling the board empty where it cannot be read', async () => {
+    let up = false;
+    const top = vi.fn(() => (up ? Promise.resolve(rows(3)) : Promise.reject(new Error('offline'))));
+    const b = new DailyBoard({ submit: async () => {}, top }, () => DAY);
     b.frame(lobby());
-    await vi.waitFor(() => expect(b.rows).toEqual([]));
-    expect(b.version).toBe(1);
+    await vi.waitFor(() => expect(top).toHaveBeenCalled());
+    // null is the harbour's waiting word; [] would say nobody has sailed today (hud/lobbyDaily.ts)
+    expect(b.rows).toBe(null);
+    expect(b.version).toBe(0);
+
+    // the next way into the harbour asks again, and the rows read then stay through a later failure
+    up = true;
+    b.frame(over(1));
+    b.frame(lobby());
+    await vi.waitFor(() => expect(b.rows).toHaveLength(3));
+    up = false;
+    await b.read();
+    expect(b.rows).toHaveLength(3);
   });
 
   it('scores a voyage under the day it was sailed, not the day it ended', async () => {
