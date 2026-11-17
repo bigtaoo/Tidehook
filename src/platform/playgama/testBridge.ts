@@ -26,7 +26,7 @@ export interface FakePay {
   pays?: boolean;
 }
 
-export function fakeBridge(opts: { id?: string; stored?: Record<string, unknown>; adblock?: boolean; audio?: boolean; rewarded?: boolean; interstitial?: boolean; language?: string; board?: { type?: string; entries?: unknown }; pay?: FakePay } = {}): FakeBridge {
+export function fakeBridge(opts: { id?: string; stored?: Record<string, unknown>; adblock?: boolean; audio?: boolean; rewarded?: boolean; interstitial?: boolean; language?: string; board?: { type?: string; entries?: unknown; refuses?: boolean }; pay?: FakePay } = {}): FakeBridge {
   const listeners = new Map<string, ((v: unknown) => void)[]>();
   const on = (event: string, cb: (v: unknown) => void) => void listeners.set(event, [...(listeners.get(event) ?? []), cb]);
   const fake: FakeBridge = {
@@ -58,7 +58,10 @@ export function fakeBridge(opts: { id?: string; stored?: Record<string, unknown>
     device: { type: 'desktop' },
     leaderboards: opts.board && {
       type: opts.board.type ?? 'in_game',
-      setScore: async (id: string, score: number) => void fake.scores.push([id, score]),
+      setScore: async (id: string, score: number) => {
+        if (opts.board?.refuses) throw new Error('board: no');
+        fake.scores.push([id, score]);
+      },
       getEntries: async () => opts.board?.entries,
     },
     analytics: { send: (e, d) => void fake.tracked.push([e, d]) },

@@ -166,6 +166,14 @@ describe('PlaygamaPlatform', () => {
     expect(await (await platform(fakeBridge({ board: { entries: 'nope' } }))).board()!.top()).toEqual([]);
   });
 
+  it("says so when the host refuses a score, so the day's board gets it next time", async () => {
+    // game/board.ts marks the run as sent before the call and gives the mark back when the submit
+    // rejects; a refusal answered as success left a record run off the day's board for the whole
+    // sitting, on the portal only and with nothing said anywhere
+    const board = (await platform(fakeBridge({ board: { entries: [], refuses: true } }))).board()!;
+    await expect(board.submit(5020)).rejects.toThrow();
+  });
+
   it('numbers a board that answers in order without ranks of its own', async () => {
     // a board behind Bridge is free to hand back an ordered list and leave the numbering to the
     // game; every row of one used to be thrown away, which looks like a board for ever loading

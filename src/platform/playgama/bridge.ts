@@ -227,9 +227,17 @@ export class PlaygamaBridge {
     return b?.type === 'in_game' && typeof b.setScore === 'function' && typeof b.getEntries === 'function';
   }
 
-  /** Resolves once Bridge has answered (or failed). */
+  /** Puts `score` on leaderboard `id`, and rejects where the host refused it.
+   *
+   *  Swallowing the refusal here took the daily board's one repair with it: game/board.ts marks
+   *  the run as sent before the call and gives the mark back when the submit rejects, so the next
+   *  way into the harbour sends it again. A submit that answered as though it had landed left that
+   *  rollback dead on the only portal there is, and a record run sailed on a dropped line was gone
+   *  from the day's board for the rest of the sitting with nothing said anywhere. */
   async setScore(id: string, score: number): Promise<void> {
-    if (this.boardReady()) await settle(() => this.sdk?.leaderboards?.setScore?.(id, score));
+    const b = this.sdk?.leaderboards;
+    if (!this.boardReady() || typeof b?.setScore !== 'function') return;
+    await b.setScore(id, score);
   }
 
   /** Leaderboard `id`'s entries, best first; empty on any trouble.
