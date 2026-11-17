@@ -34,6 +34,7 @@ import { fitDesign, sameFit, type Fit } from './view/viewport';
 import { waitForSize } from './view/waitForSize';
 import { watchSize } from './view/watchSize';
 import { PlayWindow } from './game/playWindow';
+import { lastCall } from './game/lastCall';
 
 /** The player's language pick, in the platform's storage. */
 export const LANG_KEY = 'tidehook.lang';
@@ -162,8 +163,9 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
     resume.save(session);
     play.set(false);
   };
-  // the page is going away for good, or into the back/forward cache: the last chance to write
-  window.addEventListener('pagehide', () => resume.save(session));
+  // the page is going away for good, or into the back/forward cache: the last chance to write,
+  // and to answer a revive offer nobody is left to tap (game/lastCall.ts)
+  lastCall(window, session, resume);
   platform.onHostPause?.(pause);
   // an ad holds the game already and steals the focus while it plays: pausing for that would hand
   // the player a pause cover every time one ends
