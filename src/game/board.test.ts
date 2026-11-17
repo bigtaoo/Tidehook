@@ -15,6 +15,16 @@ function lobby(): Session {
   return { mode: 'lobby', pending: false, games: 1, last: { wave: 0, daily: false, record: false } } as unknown as Session;
 }
 
+/** The harbour, with `best` as today's daily best, on the way in. */
+function home(best: number): Session {
+  return { mode: 'lobby', pending: false, games: 1, harbour: { dailyBest: (d: string) => (d === DAY ? best : 0) }, last: { wave: 0, daily: false, record: false } } as unknown as Session;
+}
+
+/** Out of the harbour again, on a plain voyage that puts nothing on the board. */
+function away(): Session {
+  return over(5, 1, null);
+}
+
 function rows(n: number): BoardEntry[] {
   return Array.from({ length: n }, (_, i) => ({ name: `p${i}`, score: boardScore(DAY, 20 - i), rank: i + 1 }));
 }
@@ -51,6 +61,31 @@ describe('the daily board', () => {
     expect(submit).toHaveBeenCalledWith(boardScore(DAY, 12));
     expect(b.rows).toHaveLength(BOARD_ROWS);
     expect(b.rows?.[0]).toEqual({ rank: 1, name: 'p0', wave: 20 });
+  });
+
+  it('puts a record run up on the next way into the harbour where its own sitting could not', async () => {
+    // the run was sailed, banked and never sent: the page went while the game-over card was still
+    // up, so no frame was left to send it. Without this it would be missing from the day's board
+    // for good, with the player's own best sitting at home in the harbour.
+    const submit = vi.fn(async () => {});
+    const b = new DailyBoard({ submit, top: async () => rows(3) }, () => DAY);
+    b.frame(home(17));
+    await vi.waitFor(() => expect(submit).toHaveBeenCalledWith(boardScore(DAY, 17)));
+    // and it is not sent again on every walk back in
+    b.frame(away());
+    b.frame(home(17));
+    expect(submit).toHaveBeenCalledTimes(1);
+  });
+
+  it('tries the day best again on the next way in where the send failed', async () => {
+    const submit = vi.fn(() => Promise.reject(new Error('offline')));
+    const b = new DailyBoard({ submit, top: async () => rows(3) }, () => DAY);
+    b.frame(home(17));
+    await vi.waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 0));
+    b.frame(away());
+    b.frame(home(17));
+    await vi.waitFor(() => expect(submit).toHaveBeenCalledTimes(2));
   });
 
   it('shrugs off a host that refuses the score, instead of leaving a rejection loose', async () => {

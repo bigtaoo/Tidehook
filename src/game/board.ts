@@ -32,7 +32,10 @@ export class DailyBoard {
   rows: DailyRow[] | null = null;
   /** Bumps whenever `rows` change, for the harbour to redraw. */
   version = 0;
-  private sent = -1;
+  /** The best day and wave this sitting has put on the board, so the same run is not sent twice
+   *  and a run that was never sent is. */
+  private sentDay = '';
+  private sentWave = 0;
   private wasLobby = false;
   private asked = 0;
   /** The day the rows on screen were read for, so the harbour notices midnight passing. */
@@ -55,31 +58,51 @@ export class DailyBoard {
   frame(s: Session): void {
     if (!this.board) return;
     const { last } = s;
-    if (s.mode === 'over' && !s.pending && last.daily && last.record && this.sent !== s.games) {
-      this.sent = s.games;
-      // the day it was sailed, not the day it ended: a voyage begun at 23:55 UTC and lost at 00:05
-      // is yesterday's seed and yesterday's best, and scoring it as today's would plant a wave from
-      // the wrong game at the head of today's board
-      const day = s.daily ?? this.today();
-      // a submit that fails (an offline player, a host that refuses) must not land as an unhandled
-      // rejection; there is nothing to retry, since the harbour reads the board again on the way in
-      void this.board
-        .submit(boardScore(day, last.wave))
-        .then(() => this.read())
-        .catch(() => {});
-    }
+    // the day it was sailed, not the day it ended: a voyage begun at 23:55 UTC and lost at 00:05
+    // is yesterday's seed and yesterday's best, and scoring it as today's would plant a wave from
+    // the wrong game at the head of today's board
+    if (s.mode === 'over' && !s.pending && last.daily && last.record) this.post(s.daily ?? this.today(), last.wave);
     const lobby = s.mode === 'lobby';
     // a player who sits in the harbour across midnight would otherwise keep yesterday's rows under
     // today's heading until they sail again
     if (lobby) {
       const day = this.today();
-      if (!this.wasLobby || day !== this.readDay) void this.read();
+      // The day's best as the harbour has it, which is the one place it survives the sitting it
+      // was sailed in. The send above rides on the frame loop, and some runs end with no frame
+      // left to carry it: the page goes while the game-over card is still up (game/lastCall.ts
+      // counts that run), or the submit itself failed on a player who was offline just then. Both
+      // left a record run banked at home and missing from the day's board for good, with nothing
+      // said anywhere. This is the repair, and it costs one send a sitting at most, for a player
+      // who has sailed today's voyage and whose best is not already up.
+      if (!this.wasLobby || day !== this.readDay) {
+        this.post(day, s.harbour?.dailyBest(day) ?? 0);
+        void this.read();
+      }
       if (this.rows && this.rowsDay !== day) {
         this.rows = null;
         this.version++;
       }
     }
     this.wasLobby = lobby;
+  }
+
+  /** Puts `wave` on `day`'s board, unless this sitting has already put that or better there. A
+   *  submit that fails gives the mark back, so the next way into the harbour tries again. */
+  private post(day: string, wave: number): void {
+    if (!this.board || wave <= 0 || (day === this.sentDay && wave <= this.sentWave)) return;
+    const wasDay = this.sentDay;
+    const wasWave = this.sentWave;
+    this.sentDay = day;
+    this.sentWave = wave;
+    // a submit that fails (an offline player, a host that refuses) must not land as an unhandled
+    // rejection either
+    void this.board
+      .submit(boardScore(day, wave))
+      .then(() => this.read())
+      .catch(() => {
+        this.sentDay = wasDay;
+        this.sentWave = wasWave;
+      });
   }
 
   /** Reads today's rows; a slower answer than a later ask is dropped. */
