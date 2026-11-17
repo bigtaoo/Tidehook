@@ -121,7 +121,11 @@ export class Ads {
         this.hold(true);
       }, placement),
     );
-    if (paid) this.rewardedLately = true;
+    // the ad itself is what the next break must not follow, not the reward: a player who closed a
+    // rewarded ad early, or a host that showed one and paid nothing, has still just watched an ad,
+    // and weighing `paid` alone let an interstitial land straight on top of it - the one thing the
+    // break rule promises never happens. Nothing errors; the player simply gets two ads in a row.
+    if (started || paid) this.rewardedLately = true;
     return { paid, started };
   }
 

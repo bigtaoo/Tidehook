@@ -160,4 +160,15 @@ describe('Ads', () => {
     clear(a, WAVES_PER_AD);
     expect(p.calls.filter((c) => c === 'midgame')).toHaveLength(1);
   });
+
+  it('shows no interstitial after a rewarded ad the player closed early either', async () => {
+    // the reward is not what the break rule is about: an ad was on screen, and an interstitial on
+    // the next break is two ads back to back
+    const { p, s, a } = setup('skip');
+    s.world.phase = 'shop';
+    expect(await a.reroll()).toBe(false);
+    expect(p.calls).toContain('rewarded');
+    for (let w = 1; w <= WAVES_PER_AD; w++) a.frame([{ e: 'waveClear', wave: w }]);
+    expect(p.calls).not.toContain('midgame');
+  });
 });
