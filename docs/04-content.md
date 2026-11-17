@@ -674,3 +674,42 @@ visibility 那条路去问可见性，`pagehide` 一来就记；兄弟文件 `le
 `platform/playgama/bridgeStore.ts` 的 `leaving()`/监听器注册顺序（确实早于游戏自己的 `pagehide`
 写入）、`game/leaveTrack.ts`、`game/telemetry.ts` 的漏斗字段、`game/ads.ts` 的 `hold`/`on` 复位，
 没有发现同类问题。
+
+### 5.13 第 25-29 轮：开机、存档、榜单、广告与漏斗（2026-11-17）
+
+**二十四、开机失败的那一页，在门户上玩家根本看不见。** `platform.loaded()` 是 `src/app.ts` 开机
+的最后一行，所以在它之前的任何一次抛出，都意味着 `game_ready` 从来没发出去。门户的加载遮罩于是
+永远盖在页面上——盖在 `BootTrack.failed()` 刚刚摆上去的那个「重试」按钮上。玩家盯着主机的转圈，
+没有东西可点，也没有一句话。现在 `failed()` 在发完 `boot_error` 之后也告诉主机「可以了」：这里
+的「可以了」只是说这一页归玩家看了，至于它显示的是失败，那是另一回事。
+（`src/game/bootTrack.ts`）
+
+**二十五、主机拒收的那次存盘，这辈子就只活在这次会话的缓存里。** Bridge 的 `save` 把
+`storage.set` 的拒绝咽了下去，一律当作写成功。于是存储被关掉、配额满了、或者只是那一下掉线的
+玩家，所有进度都只在内存缓存里——这次会话一切正常，下次开机回到几小时前，而且哪儿都不会说一声。
+现在 `save` 如实回答成败，`BridgeStore.flush()` 把没落地的那一批重新排进队列，下次写盘时一起送；
+期间游戏又写过的键不动它，因为缓存里的才是最新值。不设定时重试：存储被关掉的主机会被问到天荒地老。
+（`src/platform/playgama/bridge.ts`、`src/platform/playgama/bridgeStore.ts`）
+
+**二十六、主机拒收的成绩，把第二十三条那个补救也一起咽掉了。** `setScore` 走的是 `settle()`，
+吞掉一切抛出和拒绝，于是一次被拒的提交答得像是已经上榜。而 `game/board.ts` 的补救恰恰建立在
+「提交失败就把标记还回去」上——在唯一一个门户上，那段回滚是死的。一次纪录航程撞上掉线，当天
+剩下的时间里它就不在榜上，什么都不说。现在 `setScore` 如实拒绝。
+（`src/platform/playgama/bridge.ts`）
+
+**二十七、玩家提前关掉的激励广告，后面紧跟着插屏。** `Ads` 只在广告真的给了奖励时才记
+`rewardedLately`。可玩家看了一半关掉、或者主机放完却没给奖励，广告都实实在在在屏幕上放过了；
+这时下一个自然断点照样放插屏，两条广告背靠背——而这正是这个文件开头写明「绝不」的那一条。
+没有任何报错，玩家就是连着吃了两条。标记改为跟着「广告开始」走。（`src/game/ads.ts`）
+
+**二十八、港口最长的那条尾巴，漏斗里一笔都没有。** `Telemetry.holdings()` 只列升级和海图，十种
+油漆（3.11 节，给什么都买齐的船长准备的珍珠去处）一次 `harbour_purchase` 都没送过，漏斗看上去
+像是没人碰过那个货架。同一个缺口还让 `complete()` 只按升级和海图判断「没东西可买了」，于是
+`harbour_complete` 在最后一级升级上就发了出去，货架上还摆着十罐油漆——那个唯一用来回答「内容
+什么时候用完」的数字，早报了整整一条长尾。两处都不影响玩家看到的任何东西。
+（`src/game/telemetry.ts`）
+
+**顺带记一笔：** 这五轮里核对过 `game/meta/resume.ts`、`view/waitForSize.ts`、`view/watchSize.ts`、
+`audio/engine.ts`、`game/noAds.ts`、`game/switches.ts`、`view/hud/lobbyDaily.ts`、
+`game/guide/store.ts`，没有发现同类问题。`Harbour` 载入时不给 `paints` 去重（重复项会抬高
+`paintPrice`）留作备忘：游戏自己的 `buyPaint` 有 `hasPaint` 把关，只有外部篡改的存档才做得出来。
