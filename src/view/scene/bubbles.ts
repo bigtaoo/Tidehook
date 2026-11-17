@@ -29,7 +29,9 @@ const DRIFT = 14;
 const ALPHA = 0.3;
 /** The water starts past the dock's planks; bubbles keep clear of the lane's edges too. */
 const EDGE = 10;
-const NEAR = B.dock.edge / FP + EDGE;
+/** A bubble is born this far out and drifts DRIFT towards the dock over its life, so the whole
+ *  drift is paid for here: at the end of it one is still EDGE clear of the planks. */
+const NEAR = B.dock.edge / FP + EDGE + DRIFT;
 
 /** A bubble: a ring with a highlight inside it, at unit radius. */
 const ring = new GraphicsContext()

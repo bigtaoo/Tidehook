@@ -199,7 +199,13 @@ Tidehook/
 - **首发只做 Playgama**（2026-11 决定；CrazyGames 不做）。自有网页（`main.ts`）留作开发和试玩用。
   - 入口 `src/main.playgama.ts`，实现在 `src/platform/playgama/`，配置 `vite.playgama.config.js`：把 Bridge v2 的 CDN 脚本插到 `</title>` 后，作为 head 里第一个脚本，并输出 `playgama-bridge-config.json`（`minimumDelayBetweenInterstitial: 60`）。构建时如果 HTML 没被改写就直接报错。
   - 命令：`npm run dev:playgama`（端口 5191，`.claude/launch.json` 的 "playgama"，Bridge 跑 mock 平台）；`npm run build:playgama` 输出 `dist-playgama/` 并打成 `tidehook-playgama.zip`（`scripts/packPlaygama.mjs`，纯 Node，不再需要 Python）。`npm run check` 最后也会跑一遍。
-  - 存档只走 Bridge storage（语言、声音、教程、港口，加上打到一半的那一局共五个 key）。Bridge 没起来（被拦截、超时）时，存档只放在内存里，这次访问有效，
+  - 存档只走 Bridge storage。**要存的 key 全列在 `src/saveKeys.ts` 的 `SAVE_KEYS` 里**（语言、声音、
+    教程、设置、港口、打到一半的那一局，共六个），门户入口把这份清单交给 `PlaygamaPlatform.create()`。
+    Bridge 的存储是异步的，`BridgeStore` 只在开机时读这份清单里的 key，之后全从缓存答：
+    漏掉一个，就是写得进、读不出来——网页版拿浏览器自己的存储，看不出任何毛病，只有门户上悄悄丢数据。
+    `src/saveKeys.test.ts` 扫 src 下所有 `tidehook.*` 的 key 常量，漏一个就红。
+    2026-11-17 查出来已经漏了两个：`tidehook.settings`（音乐/音效/震动/减动效，门户上每次回来都是默认值）
+    和刚加的 `tidehook.voyage`（关页面续局，正好在唯一会发布的目标上完全不工作）。Bridge 没起来（被拦截、超时）时，存档只放在内存里，这次访问有效，
     **不再退回浏览器的 localStorage**（Playgama 要求 3.2.1：除了 Bridge 不许写任何存储）。2026-11-10 改。
     等 Bridge 的时间 2026-11-16 从 5 秒放到 **10 秒**：早放弃一次，回头的玩家就丢一次存档，而慢的是网，不是人。
     `PlaygamaPlatform.create()` 也不再可能 reject——Bridge 初始化或读存档炸了都在里面接住，退成内存存档、名字退回 `web`，
