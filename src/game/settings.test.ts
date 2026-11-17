@@ -35,6 +35,18 @@ describe('the settings', () => {
     expect(new Settings(p.storage, true).get('calm')).toBe(false);
     expect(new Settings(p.storage, false).get('calm')).toBe(false);
   });
+
+  it("does not write down the system's motion reading as the player's answer", () => {
+    const p = new StubPlatform();
+    // the player asks their system for less motion and flips something else entirely
+    new Settings(p.storage, true).toggle('music');
+    // their system stops asking: the game moves again, because they never chose the calm one
+    expect(new Settings(p.storage, false).get('calm')).toBe(false);
+    // and the other way round, which is the one that matters
+    const q = new StubPlatform();
+    new Settings(q.storage, false).toggle('music');
+    expect(new Settings(q.storage, true).get('calm')).toBe(true);
+  });
 });
 
 describe('wantsCalm', () => {

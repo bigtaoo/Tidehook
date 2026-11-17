@@ -26,6 +26,8 @@ export function wantsCalm(win: Partial<Pick<Window, 'matchMedia'>> | undefined):
 
 export class Settings {
   private readonly on: Record<SettingId, boolean> = { ...DEFAULTS };
+  /** The ids the player has answered for themselves: the only ones written down (see the top). */
+  private readonly chosen = new Set<SettingId>();
   /** Called after every change, with the setting changed. */
   onChange: (id: SettingId) => void = () => {};
 
@@ -37,7 +39,11 @@ export class Settings {
     this.on.calm = calm;
     try {
       const v = JSON.parse(store?.getItem(SETTINGS_KEY) ?? '{}') as Partial<Record<SettingId, unknown>>;
-      for (const id of SETTING_IDS) if (typeof v[id] === 'boolean') this.on[id] = v[id] as boolean;
+      for (const id of SETTING_IDS) {
+        if (typeof v[id] !== 'boolean') continue;
+        this.on[id] = v[id] as boolean;
+        this.chosen.add(id);
+      }
     } catch {
       /* bad data: the defaults */
     }
@@ -50,7 +56,10 @@ export class Settings {
   /** Flips `id` and remembers it; returns the new state. */
   toggle(id: SettingId): boolean {
     this.on[id] = !this.on[id];
-    this.store?.setItem(SETTINGS_KEY, JSON.stringify(this.on));
+    this.chosen.add(id);
+    const save: Partial<Record<SettingId, boolean>> = {};
+    for (const k of SETTING_IDS) if (this.chosen.has(k)) save[k] = this.on[k];
+    this.store?.setItem(SETTINGS_KEY, JSON.stringify(save));
     this.onChange(id);
     return this.on[id];
   }
