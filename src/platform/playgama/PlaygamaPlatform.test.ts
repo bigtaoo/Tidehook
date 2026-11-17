@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { PlaygamaBridge } from './bridge';
 import { BOARD_ID, PlaygamaPlatform } from './PlaygamaPlatform';
-import { fakeBridge, type FakeBridge } from './testBridge';
+import { fakeBridge, type FakeBridge, type FakePay } from './testBridge';
+import { NO_ADS, NoAds } from '../../game/noAds';
 
 beforeAll(() => {
   (globalThis as { location?: unknown }).location ??= { search: '' };
@@ -202,10 +203,28 @@ describe('PlaygamaPlatform payments', () => {
     expect(f.bought).toEqual(['remove_ads']);
   });
 
-  it('answers false when the player backs out, and empty on a broken answer', async () => {
+  it('answers false when the player backs out, and says nothing when the host does not answer', async () => {
     const pay = (await platform(fakeBridge({ pay: { pays: false, owned: 'junk', catalog: { id: 'remove_ads' } } }))).payments()!;
     expect(await pay.buy('remove_ads')).toBe(false);
-    expect(await pay.owned()).toEqual([]);
-    expect(await pay.price('remove_ads')).toBe('');
+    // a host that sends no list has not said the player owns nothing; it has said nothing at all
+    await expect(pay.owned()).rejects.toThrow();
+    await expect(pay.price('remove_ads')).rejects.toThrow();
+    // an empty list is an answer: the player owns none of it and the product is not on sale here
+    const bare = (await platform(fakeBridge({ pay: { owned: [], catalog: [] } }))).payments()!;
+    expect([await bare.owned(), await bare.price(NO_ADS)]).toEqual([[], '']);
+  });
+
+  it('lets the game ask again after a read the host never answered', async () => {
+    // the asking again (game/noAds.ts) waits on a read that failed, and a Bridge read used to fail
+    // into an empty list: a paying player kept the interstitials and the card stayed on the shelf
+    const sold: FakePay = { owned: 'nothing of the sort', catalog: 'nor this' };
+    const noAds = new NoAds((await platform(fakeBridge({ pay: sold }))).payments()!);
+    await noAds.load();
+    expect([noAds.state, noAds.owned]).toEqual(['none', false]);
+    sold.owned = [{ id: NO_ADS }];
+    sold.catalog = [{ id: NO_ADS, price: '1,99 €' }];
+    noAds.frame('lobby');
+    await new Promise((r) => setTimeout(r, 0));
+    expect([noAds.state, noAds.owned]).toEqual(['owned', true]);
   });
 });

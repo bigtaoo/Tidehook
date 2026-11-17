@@ -83,6 +83,15 @@ function ids(got: unknown): string[] {
   });
 }
 
+/** The list the host answered with; throws where it answered with no list at all - it failed, it
+ *  was never there, or it sent something no list can be made of. Only what the player has paid for
+ *  is read this way (see `purchases`). */
+async function answered(fn: () => unknown): Promise<unknown[]> {
+  const got = await settle(fn);
+  if (!Array.isArray(got)) throw new Error('bridge: no answer');
+  return got;
+}
+
 async function settle(fn: () => unknown): Promise<unknown> {
   try {
     return await fn();
@@ -243,19 +252,29 @@ export class PlaygamaBridge {
     return p?.isSupported === true && typeof p.purchase === 'function' && typeof p.getPurchases === 'function' && typeof p.getCatalog === 'function';
   }
 
-  /** The ids of the products the player owns; empty on any trouble. Read on every launch: a
-   *  permanent product is never consumed, so it stays on this list. */
+  /** The ids of the products the player owns, read on every launch: a permanent product is never
+   *  consumed, so it stays on this list. Rejects where the host did not answer.
+   *
+   *  Everything else here swallows its trouble and hands back nothing, which is the right answer
+   *  for a board or an ad: nothing to show. For what the player has paid for it is the wrong one.
+   *  A list of no products is also the honest answer for a player who owns none, so the game had
+   *  no way to tell the two apart and settled on the second - and a paying player whose host was
+   *  slow or sore for a moment was quietly handed a game with the interstitials still in it and
+   *  the card they had already bought back on the shelf, priced. The asking again that game/noAds.ts
+   *  is built around waits on a read that failed, so until now it could never once fire on the
+   *  portal. A read with no answer in it is no longer dressed up as an answer. */
   async purchases(): Promise<string[]> {
     if (!this.paymentsReady()) return [];
-    return ids(await settle(() => this.sdk?.payments?.getPurchases?.()));
+    return ids(await answered(() => this.sdk?.payments?.getPurchases?.()));
   }
 
   /** Product `id`'s price as the platform words it, in the player's currency; '' when the
-   *  catalog has no such product (it is described in the developer console, not in the config). */
+   *  catalog has no such product (it is described in the developer console, not in the config).
+   *  Rejects where the host did not answer, for the reason above: a catalog nobody sent is not a
+   *  catalog the product is missing from. */
   async price(id: string): Promise<string> {
     if (!this.paymentsReady()) return '';
-    const got = await settle(() => this.sdk?.payments?.getCatalog?.());
-    if (!Array.isArray(got)) return '';
+    const got = await answered(() => this.sdk?.payments?.getCatalog?.());
     const item = got.find((e: unknown) => (e as Record<string, unknown> | null)?.id === id) as Record<string, unknown> | undefined;
     return typeof item?.price === 'string' ? item.price.slice(0, 24) : '';
   }
