@@ -585,3 +585,33 @@ reduced-motion；而 `toggle()` 原先把四个开关整体写进存档——于
 **顺带记一笔：** 第 13 轮把 `game/ads.ts` 整个走了一遍（`play()` 的 `finally` 一定放开 `hold`、
 `on` 在 await 之前就同步置位、`breaks` 与 `rewardedLately` 都与文档一致），没有问题；
 `saveKeys.ts` 那张清单和它的源码扫描测试也还严。
+
+### 5.10 第 16-18 轮：榜单、画布与一局的起止（2026-11-17）
+
+还是同一类：不报错，只是悄悄做错，而且基本只在门户上看得见。
+
+**十五、名次不是每块榜单都给的。** `bridge.ts` 的 `entries()` 原先要求每一行都有一个合法的
+`rank`，否则整行丢掉。可 `rank` 只出现在 wiki 的 Plain JS 例子里，SaaS 榜单那页根本没写条目的
+形状——它完全可以把已经排好序的一列交回来，把编号留给游戏。于是整块榜单被逐行扔空，玩家看到的是
+一个永远在加载的「今日航程」，控制台里什么都没有。现在一行只凭分数站住，没有自己名次的就按它在
+列表里的位置编号；而且要么整列按位置编，要么一个都不编——不然一块从 0 开始数的榜单会被填出两个
+第一名。（`src/platform/playgama/bridge.ts`）
+
+**十六、等一个 resize，和等不到之后。** 第 14 轮让开机在八秒后无论如何先开，当时那条注释写的是
+「真实尺寸一到渲染器自己会跟上」。可 Pixi 的 ResizePlugin 只在 window 发 `resize` 时才去量
+`resizeTo`——正是第 14 轮刚说过「并不保证会发」的那个事件。于是在 0x0 上开起来的那一局，渲染器会
+抱着一块空画布过完整个会话：黑屏，音乐在放，没有异常，一帧也没有。现在尺寸自己被盯着看
+（`view/watchSize.ts`，每 500 ms），一动就告诉渲染器。顺手把 `waitForSize.ts` 里那句已经不成立的
+注释改了。（`src/view/watchSize.ts`、`src/app.ts`）
+
+**十七、切后台的那一局，主机以为还在打。** `gameplay_started` / `gameplay_stopped` 是主机判断
+玩家是否在局中的依据，原先两边都从 ticker 里发。可隐藏的标签页会直接把 ticker 停掉（`game/away.ts`
+早就写过这件事）——于是那个「停」要等到玩家回来的那一帧才发得出去，玩家不回来就永远不发。主机那边，
+一个已经走了的人一直算在局中。现在这对信号自己有个地方住（`game/playWindow.ts`），标签页一走就
+关窗，赶在 ticker 停之前；暂停也顺手关它。（`src/game/playWindow.ts`、`src/app.ts`）
+
+**顺带记一笔：** 第 16 轮先把 `game/guide/` 整个走了一遍（hold 与 `calm`、跨重载的逛店预算、
+只讲一次的结算课、跳过的解锁、`BOUGHT` 标记、`resume()` 的 hold 处理），没有问题；`hud/pointer.ts`
+的指示箭头本来就按 `live` 收着。第 18 轮翻过 `audio/engine.ts` 的解锁与静音链路、`i18n` 的
+`detectLocale`（`zh-CN`、`pt_BR` 这种只取主标签）、`bridge.ts` 里 `language()`/`price()`/
+`purchases()` 这几处对主机数据的校验，也都是严的。
