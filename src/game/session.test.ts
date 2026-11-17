@@ -6,6 +6,7 @@ import { pearlsFor } from '../sim/meta';
 import { gameOver } from '../sim/monsters';
 import { Guide } from './guide/guide';
 import { saveGuide } from './guide/store';
+import { handleKey } from './input';
 import { Harbour } from './meta/harbour';
 import { OVER_LOCK_MS, Session } from './session';
 
@@ -141,6 +142,24 @@ describe('Session', () => {
     expect(s.world.maxHp).toBe(B.dock.hp + 2);
     expect(s.buyMeta('hull')).toBe(false);
     expect(s.sail()).toBe(false);
+  });
+
+  it('lands no command from behind an ad', () => {
+    const harbour = new Harbour(new SafeStore(null));
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, harbour);
+    s.mode = 'lobby';
+    // the harbour's own break: the ad covers the buttons, the keyboard still reaches the game
+    s.hold = true;
+    expect(handleKey(s, 'Enter')).toBe(true);
+    expect(s.mode).toBe('lobby');
+    expect(s.sailDaily('2026-11-17')).toBe(false);
+    expect(s.pickSea(0)).toBe(false);
+    s.hold = false;
+    expect(s.sail()).toBe(true);
+    // and in play, where P would otherwise leave a pause behind the ad
+    s.hold = true;
+    handleKey(s, 'p');
+    expect(s.paused).toBe(false);
   });
 
   it('opens the harbour on boot only with one, and never mid-game', () => {

@@ -122,7 +122,10 @@ export class Session {
   /** The last game's wave, the pearls it brought home (the captain's log's included) and the log
    *  entries it met, for the game over and the harbour. */
   last: LastGame = { wave: 0, pearls: 0, won: 0, log: [], sea: 0, record: false, daily: false, home: false, chest: 0, codex: 0, streak: null, putIn: false };
-  /** An ad is on screen (game/ads.ts): nothing runs and taps do nothing, with no pause cover. */
+  /** An ad is on screen (game/ads.ts): nothing runs and no command lands, with no pause cover.
+   *  The ad covers the buttons but not the keyboard (game/input.ts), and the harbour's own break
+   *  plays an ad with the player standing in it: Enter behind that ad used to sail, so the player
+   *  came back from it already out on the water with their pearls unspent. */
   hold = false;
   /** Whether a fallen dock may be revived (a rewarded ad is there to watch); set by game/ads.ts. */
   canRevive: () => boolean = () => false;
@@ -380,7 +383,7 @@ export class Session {
 
   /** Leaves the harbour for a new game; false when not in it. */
   sail(): boolean {
-    if (this.mode !== 'lobby') return false;
+    if (this.mode !== 'lobby' || this.hold) return false;
     this.daily = null;
     this.start();
     return true;
@@ -388,7 +391,7 @@ export class Session {
 
   /** Leaves the harbour for `day`'s daily voyage (meta/daily.ts); false when not in it. */
   sailDaily(day: string): boolean {
-    if (this.mode !== 'lobby') return false;
+    if (this.mode !== 'lobby' || this.hold) return false;
     this.daily = day;
     this.start();
     return true;
@@ -396,25 +399,25 @@ export class Session {
 
   /** Buys a level of a harbour upgrade; false when not in the harbour, too dear or maxed. */
   buyMeta(id: string): boolean {
-    return this.mode === 'lobby' && !!this.harbour?.buy(id);
+    return this.mode === 'lobby' && !this.hold && !!this.harbour?.buy(id);
   }
 
   /** Buys sea `i`'s chart (sim/seas.ts); false when not in the harbour, too dear or not on sale. */
   buyChart(i: number): boolean {
-    return this.mode === 'lobby' && !!this.harbour?.buyChart(i);
+    return this.mode === 'lobby' && !this.hold && !!this.harbour?.buyChart(i);
   }
 
   /** Picks sea `i` for the next game; false when not in the harbour or not owned. */
   pickSea(i: number): boolean {
-    return this.mode === 'lobby' && !!this.harbour?.pick(i);
+    return this.mode === 'lobby' && !this.hold && !!this.harbour?.pick(i);
   }
 
   togglePause(): void {
-    if (this.mode === 'play') this.paused = !this.paused;
+    if (this.mode === 'play' && !this.hold) this.paused = !this.paused;
   }
 
   pause(): void {
-    if (this.mode === 'play') this.paused = true;
+    if (this.mode === 'play' && !this.hold) this.paused = true;
   }
 
   /** Shop commands; false when not possible (not in the shop, too dear, sold out). */
