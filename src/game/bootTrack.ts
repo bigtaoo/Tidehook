@@ -39,6 +39,8 @@ export class BootTrack {
   private at: BootStage = 'sdk';
   private over = false;
   private readonly leave = () => this.left();
+  // a tab merely coming back to the front is not a player leaving
+  private readonly hid = () => this.doc.visibilityState === 'hidden' && this.left();
 
   constructor(
     private readonly platform: Platform,
@@ -48,7 +50,7 @@ export class BootTrack {
     private readonly doc: Pick<Document, 'addEventListener' | 'removeEventListener' | 'visibilityState'>,
   ) {
     win.addEventListener('pagehide', this.leave, true);
-    doc.addEventListener('visibilitychange', this.leave, true);
+    doc.addEventListener('visibilitychange', this.hid, true);
   }
 
   /** Where boot has got to; the next event carries it. */
@@ -79,9 +81,15 @@ export class BootTrack {
     this.platform.track('boot_error', { stage: this.at, kind: errorKind(err), error_name: errorName(err) });
   }
 
-  /** The page went away before the game was ready. */
+  /** The page went away before the game was ready.
+   *
+   *  `pagehide` is the one event a page going for good is promised, and it fires while the page is
+   *  still visible: unloading a document hides it afterwards (and on iOS a page is often frozen
+   *  with no visibilitychange at all). Weighing the visibility here threw that event away and left
+   *  the player who gave up on the loading page - the very thing this file exists to count, and
+   *  the one the host's own numbers cannot see - unreported, on the way out, where nothing is
+   *  left to notice it. Only the visibility event asks about visibility now. */
   private left(): void {
-    if (this.doc.visibilityState === 'visible') return;
     if (this.done()) return;
     this.platform.track('boot_left', {
       stage: this.at,
@@ -97,7 +105,7 @@ export class BootTrack {
     if (this.over) return true;
     this.over = true;
     this.win.removeEventListener('pagehide', this.leave, true);
-    this.doc.removeEventListener('visibilitychange', this.leave, true);
+    this.doc.removeEventListener('visibilitychange', this.hid, true);
     return false;
   }
 }

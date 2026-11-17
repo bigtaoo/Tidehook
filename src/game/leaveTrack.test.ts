@@ -121,6 +121,34 @@ describe('BootTrack', () => {
     expect(p.tracked[0][1]).toMatchObject({ stage: 'art', percent: 42 });
   });
 
+  it('reports a page going away while it is still on the screen', () => {
+    // pagehide is the one event a page going for good is promised, and unloading fires it before
+    // the page is hidden; weighing the visibility here lost the player who gave up on the loading
+    // page, which is the whole of what this event is for
+    const p = new StubPlatform();
+    const win = fakePage();
+    const doc = fakePage();
+    const track = new BootTrack(p, screen(0.3), 'b7', win, doc);
+    track.stage('gpu');
+    win.fire('pagehide');
+    expect(p.tracked.map(([e]) => e)).toEqual(['boot_left']);
+    expect(p.tracked[0][1]).toMatchObject({ stage: 'gpu', percent: 30 });
+    // and the hidden event that may follow it adds nothing
+    doc.visibilityState = 'hidden';
+    doc.fire('visibilitychange');
+    expect(p.tracked).toHaveLength(1);
+  });
+
+  it('does not call a tab coming back to the front a page left', () => {
+    const p = new StubPlatform();
+    const doc = fakePage();
+    const track = new BootTrack(p, screen(), 'b7', fakePage(), doc);
+    doc.fire('visibilitychange');
+    expect(p.tracked).toHaveLength(0);
+    track.loaded();
+    expect(p.tracked.map(([e]) => e)).toEqual(['load']);
+  });
+
   it('reports a failure by stage and kind, never by message', () => {
     const p = new StubPlatform();
     let failed = false;
