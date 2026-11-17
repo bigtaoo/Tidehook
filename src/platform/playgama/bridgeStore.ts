@@ -6,6 +6,9 @@ import type { PlaygamaBridge } from './bridge';
 // together on the next tick, one call per batch, as Playgama asks. A hidden page may get no next
 // tick, so while it is hidden every write goes at once, and `flush` sends what waits.
 //
+// A write the host refuses is kept and sent again with the next batch, rather than dropped into
+// this visit's cache alone, where it would read back fine and be gone at the next boot.
+//
 // `leaving` is the last word: a page that is going away (or being frozen into the back/forward
 // cache) is not always marked hidden first - Safari fires pagehide on its own - and the tick that
 // would send the batch never comes. From then on every write goes at once, so that whatever the
@@ -58,11 +61,20 @@ export class BridgeStore implements KeyValueStore {
     this.gone = false;
   }
 
+  /** Sends what waits. A batch the host refused is put back, key by key, so the next write - or
+   *  the next flush - carries it again: dropping it would lose a save the player made with nothing
+   *  said anywhere, and it would only be missed on the next boot. A key the game has written since
+   *  is left alone - the cache holds the newest value, so a batch that comes back late cannot put
+   *  an older one back on its way to Bridge. Nothing is retried on a timer, because a host whose
+   *  storage is off would then be asked for ever. */
   flush(): void {
     this.queued = false;
     if (this.pending.size === 0) return;
     const batch = this.pending;
     this.pending = new Map();
-    this.bridge.save(batch);
+    void Promise.resolve(this.bridge.save(batch)).then((ok) => {
+      if (ok) return;
+      for (const [key, value] of batch) if (this.cache.get(key) === value) this.pending.set(key, value);
+    });
   }
 }

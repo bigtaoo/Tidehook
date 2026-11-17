@@ -204,8 +204,20 @@ export class PlaygamaBridge {
     return out;
   }
 
-  save(entries: Map<string, string>): void {
-    void settle(() => this.sdk?.storage?.set?.([...entries.keys()], [...entries.values()]));
+  /** Writes `entries` in one call, and answers whether the write landed. A host's storage can
+   *  refuse (it is off, the player is offline, the quota is full), and swallowing that left the
+   *  value in this visit's cache alone: the game read back what it had written and nothing was
+   *  wrong until the next boot read Bridge again and the voyage, the pearls or the language were
+   *  simply not there. The caller keeps what did not land (platform/playgama/bridgeStore.ts). */
+  async save(entries: Map<string, string>): Promise<boolean> {
+    const store = this.sdk?.storage;
+    if (typeof store?.set !== 'function') return false;
+    try {
+      await store.set([...entries.keys()], [...entries.values()]);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Whether leaderboard `id` can be both written and read here: Bridge's type in_game (on Playgama

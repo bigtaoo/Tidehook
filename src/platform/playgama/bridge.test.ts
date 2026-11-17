@@ -187,7 +187,7 @@ describe('PlaygamaBridge', () => {
     await b.init();
     b.send('game_ready');
     b.track('x', { a: 1 });
-    b.save(new Map([['k', 'v']]));
+    expect(await b.save(new Map([['k', 'v']]))).toBe(false);
     expect((await b.load(['k'])).size).toBe(0);
     b.onPause(() => boom());
     b.onMute(() => boom());
