@@ -165,7 +165,7 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
   };
   // the page is going away for good, or into the back/forward cache: the last chance to write,
   // and to answer a revive offer nobody is left to tap (game/lastCall.ts)
-  lastCall(window, session, resume);
+  lastCall(window, session, resume, play);
   platform.onHostPause?.(pause);
   // an ad holds the game already and steals the focus while it plays: pausing for that would hand
   // the player a pause cover every time one ends
