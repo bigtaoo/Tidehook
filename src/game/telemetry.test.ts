@@ -7,6 +7,7 @@ import { B } from '../sim/balance';
 import { TICK_RATE } from '../sim/math/fixed';
 import { BF } from '../sim/balanceFun';
 import { Harbour, HARBOUR_KEY } from './meta/harbour';
+import { PAINTS, freePaint } from './meta/paint';
 import { PerfSampler, SAMPLE_MS } from './perf';
 import { Session } from './session';
 import { MINUTES_CAP, Telemetry } from './telemetry';
@@ -155,7 +156,8 @@ describe('Telemetry', () => {
     const store = new SafeStore(null);
     const lv = Object.fromEntries(B.meta.upgrades.map((u) => [u.id, u.max]));
     lv.hull -= 1;
-    store.setItem(HARBOUR_KEY, JSON.stringify({ pearls: 10_000, lv, charts: B.seas.slice(1).map((sea) => sea.id) }));
+    const paints = PAINTS.filter((paint) => !freePaint(paint.id)).map((paint) => paint.id);
+    store.setItem(HARBOUR_KEY, JSON.stringify({ pearls: 10_000, lv, charts: B.seas.slice(1).map((sea) => sea.id), paints }));
     const harbour = new Harbour(store);
     const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, harbour);
     const tel = new Telemetry(p, s, 'b');
@@ -170,5 +172,30 @@ describe('Telemetry', () => {
     tel.frame(16, false, []);
     tel.frame(16, false, []);
     expect(p.tracked.filter(([e]) => e === 'harbour_complete').map(([, d]) => d)).toEqual([{ game: 1 }]);
+  });
+
+  it('counts the paint, the harbour’s longest tail, as a purchase and waits for it to call the harbour done', () => {
+    const p = new StubPlatform();
+    const store = new SafeStore(null);
+    const lv = Object.fromEntries(B.meta.upgrades.map((u) => [u.id, u.max]));
+    lv.hull -= 1;
+    // one upgrade level and one paint left: nothing else is on any shelf
+    const paints = PAINTS.filter((paint) => !freePaint(paint.id) && paint.id !== 'midnight').map((paint) => paint.id);
+    store.setItem(HARBOUR_KEY, JSON.stringify({ pearls: 100_000, lv, charts: B.seas.slice(1).map((sea) => sea.id), paints }));
+    const harbour = new Harbour(store);
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, null, harbour);
+    const tel = new Telemetry(p, s, 'b');
+    s.openLobby();
+    expect(s.buyMeta('hull')).toBe(true);
+    tel.frame(16, false, []);
+    // the last upgrade is not the last thing to buy: ten paints are a shelf of their own
+    expect(p.tracked.map(([e]) => e)).not.toContain('harbour_complete');
+    expect(harbour.buyPaint('midnight')).toBe(true);
+    tel.frame(16, false, []);
+    expect(p.tracked.filter(([e]) => e === 'harbour_purchase').map(([, d]) => d)).toEqual([
+      { item_id: 'hull', level: B.meta.upgrades.find((u) => u.id === 'hull')!.max, game: 1 },
+      { item_id: 'paint_midnight', level: 1, game: 1 },
+    ]);
+    expect(p.tracked.filter(([e]) => e === 'harbour_complete')).toHaveLength(1);
   });
 });

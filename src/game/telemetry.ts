@@ -18,8 +18,9 @@
 //   4.3). A game the captain takes home never fails, so without it here the only games we would
 //   time are the ones somebody lost, and wave 30 is reached by the strong players whose length is
 //   the open question;
-// - harbour_complete: once, the purchase that leaves nothing in the harbour to buy, with the game
-//   number, which says when the long-tail content runs out.
+// - harbour_complete: once, the purchase that leaves nothing in the harbour to buy - the last
+//   upgrade level, the last chart or the last paint, whichever the captain comes to last - with
+//   the game number, which says when the long-tail content runs out.
 //
 // A tutorial step carries the game it was done in and its seconds into that game (the step clock
 // starts over with each game, game/guide/guide.ts), so "a step people take two or three games to
@@ -36,6 +37,7 @@ import { seaOf } from '../sim/seas';
 import { STEP_IDS } from './guide/guide';
 import { B } from '../sim/balance';
 import { LeaveTrack } from './leaveTrack';
+import { PAINTS, freePaint } from './meta/paint';
 import { PerfSampler } from './perf';
 import type { Session } from './session';
 import { TICK_RATE } from '../sim/math/fixed';
@@ -54,7 +56,7 @@ export class Telemetry {
   private tutorialDone: boolean;
   /** The game whose end was cheered (a new best or a log entry), so it is cheered once. */
   private cheered = -1;
-  /** The harbour's levels and charts as last seen, to spot a purchase. */
+  /** The harbour's levels, charts and paints as last seen, to spot a purchase. */
   private owned: Record<string, number>;
   /** This sitting opened inside a wave, whose start belongs to an earlier one (see the top). */
   private resumed: boolean;
@@ -131,7 +133,16 @@ export class Telemetry {
     return Math.min(GAME_CAP, Math.max(1, n));
   }
 
-  /** What the harbour holds: each upgrade's level and each chart, by id. */
+  /** What the harbour holds: each upgrade's level, each chart and each paint, by id.
+   *
+   *  Paint (meta/paint.ts) was left out of here, and so was missing from both numbers this file
+   *  draws from it. The ten paints are the harbour's longest tail - the pearl sink for a captain
+   *  with everything else bought - and not one of their purchases was sent, so the funnel showed
+   *  the sink that ends the game as having no takers at all. Worse, `complete` read "nothing left
+   *  to buy" off the upgrades and the charts alone, so harbour_complete went out on the last
+   *  upgrade with ten paints still on the shelf, and the one number that says when the content
+   *  runs out said it early, by as long as the whole tail takes. Neither miscount broke anything
+   *  the player could see. */
   private holdings(): Record<string, number> {
     const h = this.session.harbour;
     if (!h) return {};
@@ -140,6 +151,9 @@ export class Telemetry {
     B.seas.forEach((sea, i) => {
       if (i > 0) out[`chart_${sea.id}`] = h.owns(i) ? 1 : 0;
     });
+    for (const paint of PAINTS) {
+      if (!freePaint(paint.id)) out[`paint_${paint.id}`] = h.hasPaint(paint.id) ? 1 : 0;
+    }
     return out;
   }
 
@@ -157,10 +171,10 @@ export class Telemetry {
     if (bought && this.complete()) this.send('harbour_complete', { game });
   }
 
-  /** Nothing left to buy: every upgrade at its top level and every chart owned. */
+  /** Nothing left to buy: every upgrade at its top level, every chart owned, every paint bought. */
   private complete(): boolean {
     const h = this.session.harbour;
-    return !!h && B.meta.upgrades.every((u) => h.price(u.id) === null) && B.seas.every((_, i) => h.owns(i));
+    return !!h && B.meta.upgrades.every((u) => h.price(u.id) === null) && B.seas.every((_, i) => h.owns(i)) && PAINTS.every((p) => h.hasPaint(p.id));
   }
 
   private tutorial(): void {
