@@ -32,6 +32,7 @@ import { ART_COUNT, loadArt } from './view/art';
 import { Scene, type SceneUi } from './view/scene/scene';
 import { fitDesign, sameFit, type Fit } from './view/viewport';
 import { waitForSize } from './view/waitForSize';
+import { watchSize } from './view/watchSize';
 
 /** The player's language pick, in the platform's storage. */
 export const LANG_KEY = 'tidehook.lang';
@@ -190,6 +191,14 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
   };
   layout();
   app.renderer.on('resize', layout);
+  // Pixi measures its `resizeTo` only when the window fires a resize, and a host is free to lay
+  // its frame out without one - the very thing boot already waits on a clock for. So the size is
+  // watched as well, or a game that booted on nothing holds a canvas of nothing for ever.
+  const mount = platform.mount ?? null;
+  watchSize(
+    () => (mount ? { w: mount.clientWidth, h: mount.clientHeight } : { w: window.innerWidth, h: window.innerHeight }),
+    () => app.resize(),
+  );
 
   const record = startRecording(params, session, () => {
     const { width: w, height: h } = app.screen;

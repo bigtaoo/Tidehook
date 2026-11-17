@@ -15,8 +15,9 @@ function sized(win: SizeWindow): boolean {
  *  from `display: none`, or sized before its own window ever hears of it - and boot waits here
  *  with the loading bar part full and nothing wrong to report, which is the worst shape a failure
  *  can take. So the size is looked at on a clock as well, and after SIZE_WAIT_MS the game boots on
- *  whatever the page says: the renderer resizes itself later anyway (src/app.ts), and a game that
- *  draws small for a moment beats one that never draws at all. */
+ *  whatever the page says: the size is watched from then on and the renderer told when it moves
+ *  (view/watchSize.ts), and a game that draws small for a moment beats one that never draws at
+ *  all. */
 export function waitForSize(win: SizeWindow, timers: Timers = globalThis): Promise<void> {
   if (sized(win)) return Promise.resolve();
   return new Promise((resolve) => {
