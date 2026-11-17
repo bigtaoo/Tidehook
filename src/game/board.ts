@@ -37,6 +37,10 @@ export class DailyBoard {
   private asked = 0;
   /** The day the rows on screen were read for, so the harbour notices midnight passing. */
   private readDay = '';
+  /** The day `rows` were actually read for: a read that never answered leaves the rows it did not
+   *  replace on screen, and once midnight has passed those are yesterday's ranks under today's
+   *  heading. Better the waiting word than another day's board read as this one's. */
+  private rowsDay = '';
 
   constructor(
     private readonly board: Board | null,
@@ -67,7 +71,14 @@ export class DailyBoard {
     const lobby = s.mode === 'lobby';
     // a player who sits in the harbour across midnight would otherwise keep yesterday's rows under
     // today's heading until they sail again
-    if (lobby && (!this.wasLobby || this.today() !== this.readDay)) void this.read();
+    if (lobby) {
+      const day = this.today();
+      if (!this.wasLobby || day !== this.readDay) void this.read();
+      if (this.rows && this.rowsDay !== day) {
+        this.rows = null;
+        this.version++;
+      }
+    }
     this.wasLobby = lobby;
   }
 
@@ -93,6 +104,7 @@ export class DailyBoard {
       .sort((a, b) => a.rank - b.rank)
       .slice(0, BOARD_ROWS);
     if (ask !== this.asked) return;
+    this.rowsDay = day;
     this.rows = got;
     this.version++;
   }

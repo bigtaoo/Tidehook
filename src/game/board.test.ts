@@ -106,6 +106,25 @@ describe('the daily board', () => {
     expect(b.rows).toEqual([]);
   });
 
+  it('shows no board at all rather than yesterday’s when the new day cannot be read', async () => {
+    let up = true;
+    let day = DAY;
+    const top = vi.fn(async () => {
+      if (!up) throw new Error('offline');
+      return rows(2);
+    });
+    const b = new DailyBoard({ submit: async () => {}, top }, () => day);
+    b.frame(lobby());
+    await vi.waitFor(() => expect(b.rows).toHaveLength(2));
+    // the line goes down, and the player is still in the harbour when the day turns over
+    up = false;
+    day = '2026-11-12';
+    b.frame(lobby());
+    await vi.waitFor(() => expect(top).toHaveBeenCalledTimes(2));
+    b.frame(lobby());
+    expect(b.rows).toBeNull();
+  });
+
   it('drops rows from another day and keeps the best first', async () => {
     const mixed: BoardEntry[] = [
       { name: 'old', score: boardScore('2026-11-01', 40), rank: 1 },
