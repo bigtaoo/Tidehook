@@ -103,4 +103,14 @@ describe('resume', () => {
     new Resume(store).save(s);
     expect(new Resume(store, () => '2026-11-15').restore(new Session(OPTS))).toBe(true);
   });
+  it('drops a save it cannot read instead of leaving it there', () => {
+    const store = new SafeStore(null);
+    store.setItem(RUN_KEY, '{"v":99}');
+    expect(new Resume(store).restore(new Session(OPTS))).toBe(false);
+    expect(store.getItem(RUN_KEY)).toBe('');
+    // an empty store is left alone: there is nothing to drop
+    const quiet = new SafeStore(null);
+    expect(new Resume(quiet).restore(new Session(OPTS))).toBe(false);
+    expect(quiet.getItem(RUN_KEY)).toBe(null);
+  });
 });

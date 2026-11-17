@@ -101,8 +101,17 @@ export class Resume {
    *  a bot's run, or last night's daily voyage), and the caller opens the harbour as usual. */
   restore(s: Session): boolean {
     if (!this.store || s.opts.autoplay) return false;
-    const save = read(this.store.getItem(RUN_KEY));
-    if (!save) return false;
+    const raw = this.store.getItem(RUN_KEY);
+    const save = read(raw);
+    if (!save) {
+      // something is written there that no game can be made of: an older shape, or a value that
+      // has been got at. Drop it, or it is read and thrown away afresh on every boot from here on.
+      if (raw) {
+        this.held = true;
+        this.clear();
+      }
+      return false;
+    }
     // a daily voyage belongs to its day: yesterday's cannot be sailed on today (meta/daily.ts)
     if (save.daily && save.daily !== this.day()) {
       this.held = true;

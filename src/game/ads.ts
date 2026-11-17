@@ -25,7 +25,9 @@ export class Ads {
   /** A rewarded ad played since the last wave began: the next break shows no interstitial. */
   private rewardedLately = false;
   /** Shop breaks passed since the last interstitial. A break that showed none - a rewarded ad just
-   *  before it, the first game - does not spend one, so the ad lands at the next real break. */
+   *  before it, the first game - does not spend one, so the ad lands at the next real break. The
+   *  count starts over on a voyage picked up again from storage (meta/resume.ts), which is the way
+   *  round to be wrong: a player coming back to the game is not met by an ad. */
   private breaks = 0;
   private mode: Mode;
   /** The player owns the remove-ads product: no interstitials (the app points it at NoAds). */
