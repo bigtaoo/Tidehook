@@ -77,10 +77,14 @@ Tap to cast the swinging hook. Fish and chests become coins when they reach the 
 > 你守着老码头尽头的绞盘。点一下甩钩：把鱼和宝箱拉上来换钱，甩得越远越值钱。可是海醒了，螃蟹、海鳗、海龟和贪吃的鲨鱼一波接一波往码头爬。
 > 钩住海怪砸在码头上，或者捞根木头、一只锚甩回去砸它们。每波之间用金币买更紧的抓力、更快的绞盘、水雷和串钩。码头撑不住时，攒下的珍珠能在港口买永久升级，还能去新的海：雾湾里看不见远处来的是什么，风暴海的风会把每一钩吹偏。
 
-## 4. 已发布的沙盒（2026-11-16）
+## 4. 已发布的沙盒（2026-11-17）
 
-- 游戏 id `cmwj0uz1l2q3plk0hdnr1ppb9`，线上的包 `tidehook-1f6fdbb`（`cmwjbz95r01uvn00hpvq8w11v`，Bridge 2.4.2，build check PASSED），
-  2026-11-16 14:04 发布，带上了「关页面不丢这一局」和「买空商店后余币折珍珠」。
+- 游戏 id `cmwj0uz1l2q3plk0hdnr1ppb9`，线上的包 `tidehook-9d10c36`（`cmwkm3rqm09nsh30hrk9hlmgj`，Bridge 2.4.3，build check PASSED），
+  2026-11-17 11:33 发布。这一版才真的让续局在门户上生效（`tidehook.voyage` 和 `tidehook.settings`
+  原先不在 Bridge 的 key 清单里，写得进读不回，docs/04 第 5.7 节），另外告别时的那次写入会立即发出，
+  读不到排行榜不再显示「今天还没有人」（第 5.8 节）。
+- 上一版 `tidehook-1f6fdbb`（`cmwjbz95r01uvn00hpvq8w11v`，2026-11-16 14:04）：带了「关页面不丢这一局」
+  和「买空商店后余币折珍珠」，但前者在门户上是哑的。
 - 沙盒链接：<https://playgama.ai/play/l4lyg34afht6w2>（任何拿到链接的人都能玩，没过审核）。
 - 表单填的：category `arcade`（核心玩法是一键的时机判断，不是摆塔；`get_game_categories` 的规则是"玩家大部分时间在干什么"），
   engine `js`，8 种语言（EN ZH DE ES FR PT_BR RU TR），三种设备，横竖屏都支持，leaderboards 开，multiplayer/social 关。
