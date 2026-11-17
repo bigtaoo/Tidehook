@@ -53,7 +53,7 @@ describe('PlaygamaBridge', () => {
     expect(muted).toEqual([true, false]);
   });
 
-  it('pays a rewarded ad only once it rewarded and closed', async () => {
+  it('pays a rewarded ad only once it said it rewarded', async () => {
     const f = fakeBridge();
     const b = new PlaygamaBridge(f.global, never);
     await b.init();
@@ -74,12 +74,17 @@ describe('PlaygamaBridge', () => {
     const unopened = b.rewarded();
     t.run(AD_START_MS);
     expect(await unopened).toBe(false);
+    const opened = b.rewarded();
+    f.emit('rewarded_state_changed', 'opened');
+    t.run(AD_START_MS);
+    t.run(AD_PLAY_MS);
+    expect(await opened).toBe(false);
+    // the host said it rewarded and then went quiet: the player sat through the ad, so it pays
     const stuck = b.rewarded();
     f.emit('rewarded_state_changed', 'opened');
     f.emit('rewarded_state_changed', 'rewarded');
-    t.run(AD_START_MS);
     t.run(AD_PLAY_MS);
-    expect(await stuck).toBe(false);
+    expect(await stuck).toBe(true);
   });
 
   it('plays no interstitial where the platform has none, and ends on a failure', async () => {
@@ -217,7 +222,7 @@ describe('PlaygamaBridge', () => {
     expect(f.shown).toEqual([]);
   });
 
-  it('gives up an earlier ad still waiting when the next one is asked for', async () => {
+  it('gives up an earlier ad still waiting when the next one is asked for, reward and all', async () => {
     const f = fakeBridge();
     const b = new PlaygamaBridge(f.global, never);
     await b.init();
@@ -225,7 +230,8 @@ describe('PlaygamaBridge', () => {
     f.emit('rewarded_state_changed', 'opened');
     f.emit('rewarded_state_changed', 'rewarded');
     const second = b.rewarded();
-    expect(await first).toBe(false);
+    // the first one had already rewarded, so giving it up does not take that back
+    expect(await first).toBe(true);
     // an interstitial's states never reach a rewarded ad
     f.emit('interstitial_state_changed', 'closed');
     for (const s of ['opened', 'rewarded', 'closed']) f.emit('rewarded_state_changed', s);

@@ -268,7 +268,11 @@ export class PlaygamaBridge {
     return this.sdk?.advertisement?.isRewardedSupported === true;
   }
 
-  /** One rewarded ad: true only once Bridge said 'rewarded' and the ad then closed. */
+  /** One rewarded ad: true once Bridge said 'rewarded'. The game waits for the ad to close before
+   *  it goes on, but a reward the host has already granted is the player's however the ad then
+   *  ends - a close that never comes, a failure after the fact, a later ad taking this one's
+   *  place. The one failure that costs the player something is the one where the game watches
+   *  them sit through a whole ad and then hands them nothing. */
   rewarded(started?: () => void, placement?: string): Promise<boolean> {
     if (!this.rewardedSupported()) return Promise.resolve(false);
     return this.show('rewarded_state_changed', (ad) => ad.showRewarded?.(placement), started);
@@ -283,7 +287,8 @@ export class PlaygamaBridge {
   private show(event: AdEvent, call: (ad: NonNullable<BridgeShape['advertisement']>) => unknown, started?: () => void): Promise<boolean> {
     const ad = this.sdk?.advertisement;
     if (!ad || typeof ad.on !== 'function') return Promise.resolve(false);
-    // one ad at a time: an earlier one still waiting for its end is given up as unpaid
+    // one ad at a time: an earlier one still waiting for its end is given up, with whatever it
+    // had already been granted (see rewarded() above)
     this.inFlight?.listen('failed');
     return new Promise<boolean>((resolve) => {
       let paid = false;
@@ -301,7 +306,7 @@ export class PlaygamaBridge {
         else if (state === 'closed' || state === 'failed') {
           this.timers.clear(timer);
           this.inFlight = null;
-          resolve(paid && state === 'closed');
+          resolve(paid);
         }
       };
       this.inFlight = { event, listen };
