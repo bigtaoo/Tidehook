@@ -7,7 +7,9 @@
 //   counted);
 // - `quit`, once, as the page goes: the place the player left from, the wave, the game number and
 //   how long they had been quiet. It goes out in the capture phase, before the host's own handlers
-//   flush their queue on the way out.
+//   flush their queue on the way out. A page hidden under an ad the game itself asked for is not a
+//   player leaving (game/ads.ts holds the session while one plays), and since `quit` goes once a
+//   sitting, counting that would spend it on the ad and leave the real stop unreported.
 // Every field is bounded: the places are the words in PLACES, and the numbers are capped.
 
 import type { Platform, TrackData } from '../platform/types';
@@ -53,7 +55,7 @@ export class LeaveTrack {
     win.addEventListener('pointerdown', () => this.tapped(), { capture: true, passive: true });
     win.addEventListener('keydown', () => this.tapped(), { capture: true, passive: true });
     win.addEventListener('pagehide', () => this.quit(), true);
-    doc.addEventListener('visibilitychange', () => doc.visibilityState === 'hidden' && this.quit(), true);
+    doc.addEventListener('visibilitychange', () => doc.visibilityState === 'hidden' && !session.hold && this.quit(), true);
   }
 
   /** The game is up and the player can play: the clock for `first_tap` starts here. */

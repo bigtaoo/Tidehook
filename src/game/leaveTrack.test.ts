@@ -49,6 +49,24 @@ describe('LeaveTrack', () => {
     expect(p.tracked[0][1]).toMatchObject({ at: 'lobby', game: 0, mode: 'voyage' });
   });
 
+  it('does not spend the quit of a sitting on a page hidden under an ad', () => {
+    const p = new StubPlatform();
+    const doc = fakePage();
+    const s = session();
+    const leave = new LeaveTrack(p, s, Date.now(), fakePage(), doc);
+    leave.started();
+    s.start();
+    s.hold = true;
+    doc.visibilityState = 'hidden';
+    doc.fire('visibilitychange');
+    expect(p.tracked).toHaveLength(0);
+    // the ad is over and the player really does leave: that is the stop worth reporting
+    s.hold = false;
+    doc.fire('visibilitychange');
+    expect(p.tracked.map(([e]) => e)).toEqual(['quit']);
+    expect(p.tracked[0][1]).toMatchObject({ at: 'play' });
+  });
+
   it('counts a quiet stretch of live play as idle, no more than IDLE_CAP times', () => {
     const p = new StubPlatform();
     const s = session();
