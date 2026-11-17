@@ -65,18 +65,39 @@ export class NoAds {
     return this.state === 'owned';
   }
 
-  /** Buys it, from the player's press on the harbour's card; true once bought. */
+  /** Buys it, from the player's press on the harbour's card; true once bought.
+   *
+   *  A buy that does not come back as bought is not word that nothing was bought. The host answers
+   *  the same way for a player who backed out and for a payment whose answer was lost on the way
+   *  home - the popup closed on itself, the call timed out, the frame was reloaded - and in the
+   *  second case the money is gone. So the host is asked what the player owns before the game
+   *  settles on nothing: a cancel costs one quick read, and a lost answer would otherwise leave a
+   *  paying player with the interstitials still running and the card still on the shelf, priced,
+   *  for them to buy a second time. */
   async buy(): Promise<boolean> {
     if (this.state !== 'offer' || this.busy || !this.pay) return false;
     this.busy = true;
     try {
-      if (!(await this.pay.buy(NO_ADS))) return false;
-      this.state = 'owned';
-      return true;
-    } catch {
-      return false;
+      let bought = false;
+      try {
+        bought = await this.pay.buy(NO_ADS);
+      } catch {
+        /* lost, which is not the same as refused: the read below decides */
+      }
+      if (!bought) bought = await this.owns(this.pay);
+      if (bought) this.state = 'owned';
+      return bought;
     } finally {
       this.busy = false;
+    }
+  }
+
+  /** Whether the host says the player owns it; false when it will not say. */
+  private async owns(pay: Payments): Promise<boolean> {
+    try {
+      return (await pay.owned()).includes(NO_ADS);
+    } catch {
+      return false;
     }
   }
 }

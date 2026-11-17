@@ -57,6 +57,31 @@ describe('NoAds', () => {
     expect(broken.state).toBe('none');
   });
 
+  it('asks the host before calling a lost payment a refusal', async () => {
+    // the host answers a player who backed out and a payment whose answer was lost the same way;
+    // in the second case the money is gone, so the game asks what they own before settling
+    let charged = false;
+    const paid = new NoAds({
+      owned: async () => (charged ? [NO_ADS] : []),
+      price: async () => '$1.99',
+      buy: () => {
+        charged = true;
+        return Promise.reject(new Error('the popup closed on itself'));
+      },
+    });
+    await paid.load();
+    expect([await paid.buy(), paid.state, paid.busy]).toEqual([true, 'owned', false]);
+    // a host that says it never happened is taken at its word, and the card stays on the shelf
+    const refused = new NoAds(pay([], '$1.99', false));
+    await refused.load();
+    expect([await refused.buy(), refused.state]).toEqual([false, 'offer']);
+    // and a host that will not answer that either leaves the player where they were
+    const mute = new NoAds({ owned: () => Promise.reject(new Error('x')), price: async () => '$1.99', buy: async () => false });
+    mute.state = 'offer';
+    mute.price = '$1.99';
+    expect([await mute.buy(), mute.state]).toEqual([false, 'offer']);
+  });
+
   it('turns the interstitials off once owned and leaves the rewarded ads', async () => {
     const store = new SafeStore(null);
     saveGuide(store, { done: [], games: 5, shops: 0 });
