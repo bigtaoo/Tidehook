@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { SafeStore } from '../../platform/types';
 import { hashWorld } from '../../sim/hash';
 import { step } from '../../sim/step';
+import { Guide } from '../guide/guide';
+import { Harbour } from './harbour';
 import { Session, type SessionOptions } from '../session';
 import { Resume, RUN_KEY } from './resume';
 
@@ -20,6 +22,27 @@ function afloat(): Session {
 }
 
 describe('resume', () => {
+  it("does not hold a daily voyage's lane when it is picked up again", () => {
+    const store = new SafeStore(null);
+    const day = () => '2026-11-17';
+    const sail = (daily: boolean) => {
+      const s = new Session(OPTS, new Guide(new SafeStore(null)), new Harbour(new SafeStore(null)));
+      s.openLobby();
+      if (daily) s.sailDaily(day());
+      else s.start();
+      for (let i = 0; i < 60; i++) s.update(16);
+      new Resume(store, day).save(s);
+      const back = new Session(OPTS, new Guide(new SafeStore(null)), new Harbour(new SafeStore(null)));
+      expect(new Resume(store, day).restore(back)).toBe(true);
+      back.update(16);
+      return back.world.calm;
+    };
+    // the same world for everyone on the board: no hold, however the player got back to it
+    expect(sail(true)).toBe(0);
+    // a plain voyage's first steps are still held, as they are in the sitting that began it
+    expect(sail(false)).toBeGreaterThan(0);
+  });
+
   it('brings a voyage back tick for tick', () => {
     const store = new SafeStore(null);
     const a = afloat();

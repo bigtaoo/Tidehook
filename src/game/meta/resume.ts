@@ -129,6 +129,8 @@ export class Resume {
     s.mode = 'play';
     s.paused = true;
     s.pending = s.doubled = false;
+    // this game began in an earlier sitting, so the tutorial never saw it begin (guide.ts)
+    s.guide?.resume(!s.daily);
     s.snapshot();
     this.held = true;
     return true;

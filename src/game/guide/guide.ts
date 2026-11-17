@@ -165,6 +165,16 @@ export class Guide {
     this.save();
   }
 
+  /** A sitting that opens inside a game already in progress (game/meta/resume.ts). begin() ran in
+   *  an earlier sitting, so what it settled for this game - above all whether its lane may be held
+   *  - is gone, and a daily voyage picked up from storage would otherwise be held like any other:
+   *  the same world for everyone on the board, made easier for the one who reloaded. The step
+   *  clock starts over as it does for any game, so a player coming back to a first game still
+   *  meets the gentle start. */
+  resume(hold: boolean): void {
+    this.holds = hold;
+  }
+
   /** The player tapped the lane (a cast or a throw): the hand rests a while. */
   tap(): void {
     this.tapped = true;
