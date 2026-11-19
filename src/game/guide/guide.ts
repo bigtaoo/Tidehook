@@ -49,13 +49,15 @@ export interface StepLog {
   /** Seconds into that game when the step first showed and when it was done (-1: skipped). */
   shownS: number;
   doneS: number;
-  /** The cast step only: how the first catch came about. 'tap': tapped while the freeze held the
-   *  lane on a fish; 'released': the freeze came, but the hold let it go first; 'none': cast
-   *  before any freeze (or in a game that never holds). */
+  /** The cast step only: how the first catch came about (see CastFreeze). */
   freeze?: CastFreeze;
 }
 
-export type CastFreeze = 'tap' | 'released' | 'none';
+/** How a game's first catch came about. 'tap': tapped while the freeze held the lane on a fish;
+ *  'released': the freeze came, but the hold let it go first; 'none': caught before any freeze
+ *  came; 'off': a game the freeze never comes to (the daily voyage, a bot at the helm), kept apart
+ *  so it does not read as a player who knew to tap. */
+export type CastFreeze = 'tap' | 'released' | 'none' | 'off';
 
 /** A step's hand shows this long after the step begins, ms: as soon as it can be acted on. */
 export const FIRST_MS = 600;
@@ -92,9 +94,10 @@ export class Guide {
   private stepMs = 0;
   private restMs = 0;
   private tapped = false;
-  /** This game's cast step: whether the freeze came on, and whether a tap ended it. */
-  private froze = false;
-  private frozeTap = false;
+  /** Whether this game's lane may freeze on the first cast (see begin()). */
+  private freezes = true;
+  /** This game's first catch so far, as the cast step's log will carry it. */
+  private castFreeze: CastFreeze = 'none';
   private skipAt = -Infinity;
   /** Shops left while the shop step waited, this save's running total (see store.ts). */
   private visits: number;
@@ -162,11 +165,12 @@ export class Guide {
   }
 
   /** A game started. `hold` says whether its lane may be held for a step: never the daily
-   *  voyage's, which is the same world for everyone on the board.
+   *  voyage's, which is the same world for everyone on the board. `freezes` says whether it may
+   *  freeze on the first cast: never under a bot (Session's autoplay), which no freeze waits for.
    *
    *  The step clock starts over, so a player who fumbled one game meets the same gentle start in
    *  the next, instead of that turning on whether they happened to reload the page. */
-  begin(hold = true): void {
+  begin(hold = true, freezes = true): void {
     this.games++;
     this.bruteLeaks = 0;
     this.lv0 = -1;
@@ -175,8 +179,7 @@ export class Guide {
     this.playMs = 0;
     this.current = null;
     this.freeze = false;
-    this.froze = false;
-    this.frozeTap = false;
+    this.settle(hold, freezes);
     this.shownAt.clear();
     this.save();
   }
@@ -187,15 +190,21 @@ export class Guide {
    *  the same world for everyone on the board, made easier for the one who reloaded. The step
    *  clock starts over as it does for any game, so a player coming back to a first game still
    *  meets the gentle start. */
-  resume(hold: boolean): void {
+  resume(hold: boolean, freezes = true): void {
+    this.settle(hold, freezes);
+  }
+
+  private settle(hold: boolean, freezes: boolean): void {
     this.holds = hold;
+    this.freezes = freezes;
+    this.castFreeze = hold && freezes ? 'none' : 'off';
   }
 
   /** The player tapped the lane (a cast or a throw): the hand rests a while. */
   tap(): void {
     this.tapped = true;
     this.restMs = 0;
-    if (this.freeze) this.frozeTap = true;
+    if (this.freeze) this.castFreeze = 'tap';
     this.freeze = false;
   }
 
@@ -260,8 +269,8 @@ export class Guide {
     this.stepMs += frameMs;
     this.restMs += frameMs;
     this.cue = step ? this.cueFor(step, w) : null;
-    this.freeze = step === 'cast' && this.calm() === 1 && this.stepMs >= FIRST_MS && aimFinds(w, 'fish');
-    if (this.freeze) this.froze = true;
+    this.freeze = this.freezes && step === 'cast' && this.calm() === 1 && this.stepMs >= FIRST_MS && aimFinds(w, 'fish');
+    if (this.freeze && this.castFreeze === 'none') this.castFreeze = 'released';
   }
 
   /** The hold for the steps still to do: no monsters before the first catch, then one at a time;
@@ -313,7 +322,7 @@ export class Guide {
     if (this.done.has(step)) return;
     this.done.add(step);
     const log: StepLog = { step, game: this.games, shownS: this.secs(this.shownAt.get(step)), doneS: this.secs(this.playMs) };
-    if (step === 'cast') log.freeze = this.frozeTap ? 'tap' : this.froze ? 'released' : 'none';
+    if (step === 'cast') log.freeze = this.castFreeze;
     this.log.push(log);
     this.save();
   }

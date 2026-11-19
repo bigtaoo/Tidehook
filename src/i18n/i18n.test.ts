@@ -93,4 +93,14 @@ describe('desk wording', () => {
     setDesk(false);
     expect(t('guide.cast')).toBe(en.guide.cast);
   });
+
+  it("keeps the desktop shop line's key hints whole", () => {
+    // Pixi wraps at a plain space and after a plain hyphen, which broke "keys 1-3" and "(Enter)"
+    // over two lines; a no-break space and a non-breaking hyphen (U+2011) hold them together
+    for (const [lang, table] of Object.entries({ en, ...OTHERS })) {
+      const line = table.desk.shop.teach;
+      expect(line, lang).toContain('1\u20113');
+      expect(line, lang).not.toMatch(/1-3| \(Ent|1\u20113 /);
+    }
+  });
 });

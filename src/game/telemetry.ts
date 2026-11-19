@@ -25,7 +25,7 @@
 // A tutorial step carries the game it was done in and its seconds into that game (the step clock
 // starts over with each game, game/guide/guide.ts), so "a step people take two or three games to
 // reach" and "a step that takes a long minute" read apart from each other. The cast step also
-// carries `freeze` (tap, released or none; see StepLog), which says whether the first cast's
+// carries `freeze` (tap, released, none or off; see CastFreeze), which says whether the first cast's
 // freeze is what got the first catch or whether people watched it run out.
 //
 // A sitting that opens inside a wave is a voyage picked up from storage (game/meta/resume.ts): the

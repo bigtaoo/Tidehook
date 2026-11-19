@@ -9,9 +9,9 @@ import { aimFinds, Guide, HOLD_MS } from './guide';
 
 const FRAME = 1000 / 60;
 
-function fresh(daily = false): { s: Session; guide: Guide } {
+function fresh(daily = false, autoplay: string | null = null): { s: Session; guide: Guide } {
   const guide = new Guide(new SafeStore(null));
-  const s = new Session({ seed: 1, speed: 1, autoplay: null, firstSeed: FIRST_SEED }, guide);
+  const s = new Session({ seed: 1, speed: 1, autoplay, firstSeed: FIRST_SEED }, guide);
   s.start();
   if (daily) guide.begin(false);
   return { s, guide };
@@ -24,6 +24,16 @@ function untilFrozen(s: Session, capMs = 10_000): number {
     if (s.frozen) return ms;
   }
   return -1;
+}
+
+/** Plays on, casting whenever the aim finds a fish and the lane is not frozen, until the cast step
+ *  is done; returns its log's freeze, or undefined within `capMs`. */
+function castWhenAimed(s: Session, guide: Guide, capMs = 60_000): string | undefined {
+  for (let ms = 0; ms < capMs && !guide.done.has('cast'); ms += FRAME) {
+    if (!s.frozen && aimFinds(s.world, 'fish')) s.tap();
+    s.update(FRAME);
+  }
+  return guide.log.find((l) => l.step === 'cast')?.freeze;
 }
 
 describe('the first cast freeze', () => {
@@ -72,8 +82,26 @@ describe('the first cast freeze', () => {
     expect(guide.log.find((l) => l.step === 'cast')?.freeze).toBe('released');
   });
 
-  it('never freezes the daily voyage', () => {
-    const { s } = fresh(true);
+  it("logs a catch made before any freeze as 'none'", () => {
+    const { s, guide } = fresh();
+    // a player who casts the moment the aim finds a fish, from the first frame on, is quicker
+    // than the freeze, which waits for the step to have shown FIRST_MS
+    expect(castWhenAimed(s, guide)).toBe('none');
+    expect(s.frozen).toBe(false);
+  });
+
+  it("never freezes the daily voyage, and logs its catch as 'off'", () => {
+    const { s, guide } = fresh(true);
     expect(untilFrozen(s)).toBe(-1);
+    expect(castWhenAimed(s, guide)).toBe('off');
+  });
+
+  it("never freezes under the bot, and logs its catch as 'off'", () => {
+    const { s, guide } = fresh(false, 'good');
+    for (let ms = 0; ms < 60_000 && !guide.done.has('cast'); ms += FRAME) {
+      s.update(FRAME);
+      expect(guide.freeze).toBe(false);
+    }
+    expect(guide.log.find((l) => l.step === 'cast')?.freeze).toBe('off');
   });
 });
