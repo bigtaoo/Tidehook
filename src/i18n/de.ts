@@ -261,7 +261,7 @@ export const de: Table = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: 'Klicke oder drücke die Leertaste für deinen ersten Wurf' },
-    shop: { teach: 'Fische bringen Münzen, Münzen kaufen Karten. Wähle eine (Tasten 1-3), dann die nächste Welle (Enter)' },
+    shop: { teach: 'Fische bringen Münzen, Münzen kaufen Karten. Wähle eine (Tasten\u00a01\u20113), dann die nächste Welle\u00a0(Enter)' },
     monsters: { moray: { tip: 'Am Haken zieht sie das Seil wieder hinaus. Klicke schnell, um sie einzuholen. Sie trägt Münzen.' } },
     hints: { held: 'Schrott in der Hand. Klicke oder drücke die Leertaste, um ihn die Leine entlang zu werfen.' },
     guide: {

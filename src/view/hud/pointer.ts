@@ -9,6 +9,7 @@ import type { Session } from '../../game/session';
 import { t } from '../../i18n';
 import { B } from '../../sim/balance';
 import { FP } from '../../sim/math/fixed';
+import { BRAD_FULL } from '../../sim/math/trig';
 import { bubble } from '../kit/bubble';
 import { Button } from '../kit/button';
 import { P } from '../kit/palette';
@@ -82,16 +83,23 @@ export class Pointer extends Container {
     }
     const spot = this.laneSpot(s, cue);
     if (spot) this.pointAt(spot.x, spot.y, spot.r);
-    if (spot && s.frozen) this.dimAround(spot.x, spot.y, spot.r);
+    if (spot && s.frozen) this.dimAround(s, spot.x, spot.y, spot.r);
   }
 
   /** Darkens all but the frozen line and the fish on it, so they are the one thing to look at: the
    *  hole is a single outline, a strip from the winch that rounds off past the fish. */
-  private dimAround(x: number, y: number, r: number): void {
+  private dimAround(s: Session, fx: number, fy: number, r: number): void {
     const { fit, field } = this.fr;
     const hub = toDesign(field, B.crane.d / FP, B.crane.w / FP);
-    const dir = Math.atan2(y - hub.y, x - hub.x);
-    const R = r * 1.3;
+    // along the aim itself (the line may cross the fish off its middle): the round end sits on the
+    // line where it passes the fish, wide enough to take the whole fish in
+    const ang = (s.world.hook.ang / BRAD_FULL) * Math.PI * 2;
+    const far = toDesign(field, B.crane.d / FP + Math.cos(ang), B.crane.w / FP + Math.sin(ang));
+    const dir = Math.atan2(far.y - hub.y, far.x - hub.x);
+    const along = (fx - hub.x) * Math.cos(dir) + (fy - hub.y) * Math.sin(dir);
+    const x = hub.x + Math.cos(dir) * along;
+    const y = hub.y + Math.sin(dir) * along;
+    const R = r * 1.3 + Math.hypot(fx - x, fy - y);
     const hw = Math.min(R * 0.6, 26 * field.scale);
     const nx = -Math.sin(dir) * hw;
     const ny = Math.cos(dir) * hw;

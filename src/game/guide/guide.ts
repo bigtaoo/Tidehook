@@ -49,7 +49,13 @@ export interface StepLog {
   /** Seconds into that game when the step first showed and when it was done (-1: skipped). */
   shownS: number;
   doneS: number;
+  /** The cast step only: how the first catch came about. 'tap': tapped while the freeze held the
+   *  lane on a fish; 'released': the freeze came, but the hold let it go first; 'none': cast
+   *  before any freeze (or in a game that never holds). */
+  freeze?: CastFreeze;
 }
+
+export type CastFreeze = 'tap' | 'released' | 'none';
 
 /** A step's hand shows this long after the step begins, ms: as soon as it can be acted on. */
 export const FIRST_MS = 600;
@@ -86,6 +92,9 @@ export class Guide {
   private stepMs = 0;
   private restMs = 0;
   private tapped = false;
+  /** This game's cast step: whether the freeze came on, and whether a tap ended it. */
+  private froze = false;
+  private frozeTap = false;
   private skipAt = -Infinity;
   /** Shops left while the shop step waited, this save's running total (see store.ts). */
   private visits: number;
@@ -166,6 +175,8 @@ export class Guide {
     this.playMs = 0;
     this.current = null;
     this.freeze = false;
+    this.froze = false;
+    this.frozeTap = false;
     this.shownAt.clear();
     this.save();
   }
@@ -184,6 +195,7 @@ export class Guide {
   tap(): void {
     this.tapped = true;
     this.restMs = 0;
+    if (this.freeze) this.frozeTap = true;
     this.freeze = false;
   }
 
@@ -249,6 +261,7 @@ export class Guide {
     this.restMs += frameMs;
     this.cue = step ? this.cueFor(step, w) : null;
     this.freeze = step === 'cast' && this.calm() === 1 && this.stepMs >= FIRST_MS && aimFinds(w, 'fish');
+    if (this.freeze) this.froze = true;
   }
 
   /** The hold for the steps still to do: no monsters before the first catch, then one at a time;
@@ -299,7 +312,9 @@ export class Guide {
   private finish(step: StepId): void {
     if (this.done.has(step)) return;
     this.done.add(step);
-    this.log.push({ step, game: this.games, shownS: this.secs(this.shownAt.get(step)), doneS: this.secs(this.playMs) });
+    const log: StepLog = { step, game: this.games, shownS: this.secs(this.shownAt.get(step)), doneS: this.secs(this.playMs) };
+    if (step === 'cast') log.freeze = this.frozeTap ? 'tap' : this.froze ? 'released' : 'none';
+    this.log.push(log);
     this.save();
   }
 

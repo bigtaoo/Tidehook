@@ -262,7 +262,7 @@ export const tr: Table = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: 'İlk atışın için tıkla ya da Boşluk tuşuna bas' },
-    shop: { teach: 'Balıklar para getirir, parayla kart alınır. Birini seç (1-3 tuşları), sonra sıradaki dalga (Enter)' },
+    shop: { teach: 'Balıklar para getirir, parayla kart alınır. Birini seç (1\u20113\u00a0tuşları), sonra sıradaki dalga\u00a0(Enter)' },
     monsters: { moray: { tip: 'Kancaya takılınca ipi geri çeker. Çekmek için hızlı tıkla. Para taşır.' } },
     hints: { held: 'Elde hurda. Hattın aşağısına fırlatmak için tıkla ya da Boşluk tuşuna bas.' },
     guide: {

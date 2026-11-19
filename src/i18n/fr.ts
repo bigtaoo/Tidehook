@@ -261,7 +261,7 @@ export const fr: Table = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: 'Clique ou appuie sur Espace pour lancer ton premier crochet' },
-    shop: { teach: 'Les poissons rapportent des pièces, les pièces achètent des cartes. Choisis-en une (touches 1-3), puis la vague suivante (Entrée)' },
+    shop: { teach: 'Les poissons rapportent des pièces, les pièces achètent des cartes. Choisis-en une (touches\u00a01\u20113), puis la vague suivante\u00a0(Entrée)' },
     monsters: { moray: { tip: 'Une fois accrochée, elle déroule la corde. Clique vite pour la ramener. Elle porte des pièces.' } },
     hints: { held: 'Débris en main. Clique ou appuie sur Espace pour le lancer le long de la ligne.' },
     guide: {

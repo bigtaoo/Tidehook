@@ -24,7 +24,9 @@
 //
 // A tutorial step carries the game it was done in and its seconds into that game (the step clock
 // starts over with each game, game/guide/guide.ts), so "a step people take two or three games to
-// reach" and "a step that takes a long minute" read apart from each other.
+// reach" and "a step that takes a long minute" read apart from each other. The cast step also
+// carries `freeze` (tap, released or none; see StepLog), which says whether the first cast's
+// freeze is what got the first catch or whether people watched it run out.
 //
 // A sitting that opens inside a wave is a voyage picked up from storage (game/meta/resume.ts): the
 // wave was started in an earlier sitting, so its `progression_started` went with that one and this
@@ -182,7 +184,9 @@ export class Telemetry {
     if (!g) return;
     for (; this.steps < g.log.length; this.steps++) {
       const l = g.log[this.steps];
-      this.send('tutorial_step', { step_id: l.step, step_index: STEP_IDS.indexOf(l.step as (typeof STEP_IDS)[number]) + 1, game: this.capped(l.game), seconds: l.doneS, skipped: l.doneS < 0 });
+      const data: Record<string, string | number | boolean> = { step_id: l.step, step_index: STEP_IDS.indexOf(l.step as (typeof STEP_IDS)[number]) + 1, game: this.capped(l.game), seconds: l.doneS, skipped: l.doneS < 0 };
+      if (l.freeze) data.freeze = l.freeze;
+      this.send('tutorial_step', data);
     }
     if (!this.tutorialDone && g.finished) {
       this.tutorialDone = true;

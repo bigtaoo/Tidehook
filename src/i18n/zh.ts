@@ -261,7 +261,7 @@ export const zh: Table = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: '点击或按空格，甩出第一钩' },
-    shop: { teach: '鱼换金币，金币买卡。选一张（按键 1-3），然后迎接下一波（Enter）' },
+    shop: { teach: '鱼换金币，金币买卡。选一张（按键\u00a01\u20113），然后迎接下一波（Enter）' },
     monsters: { moray: { tip: '钩住后会把绳子拽回去，快速点击把它拉进来，身上带着金币' } },
     hints: { held: '破烂在手，再点击或按空格就顺着瞄准线扔出去' },
     guide: {

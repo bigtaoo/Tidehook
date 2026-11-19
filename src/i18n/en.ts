@@ -261,7 +261,7 @@ export const en = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: 'Click or press Space for your first cast' },
-    shop: { teach: 'Fish bring coins, coins buy cards. Pick one (keys 1-3), then bring on the next wave (Enter)' },
+    shop: { teach: 'Fish bring coins, coins buy cards. Pick one (keys\u00a01\u20113), then bring on the next wave\u00a0(Enter)' },
     monsters: { moray: { tip: 'Hooked, it pulls the rope back out. Click fast to yank it in. It carries coins.' } },
     hints: { held: 'Junk in hand. Click or press Space to throw it down the line.' },
     guide: {

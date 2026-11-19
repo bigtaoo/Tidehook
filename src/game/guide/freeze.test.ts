@@ -45,6 +45,7 @@ describe('the first cast freeze', () => {
     expect(s.frozen).toBe(false);
     for (let ms = 0; ms < 8000 && !guide.done.has('cast'); ms += FRAME) s.update(FRAME);
     expect(guide.done.has('cast')).toBe(true);
+    expect(guide.log.find((l) => l.step === 'cast')?.freeze).toBe('tap');
     const tick = s.world.tick;
     for (let i = 0; i < 60; i++) s.update(FRAME);
     expect(s.world.tick).toBeGreaterThan(tick);
@@ -56,6 +57,19 @@ describe('the first cast freeze', () => {
     untilFrozen(s);
     for (let ms = 0; ms < HOLD_MS + 1000; ms += FRAME) s.update(FRAME);
     expect(s.frozen).toBe(false);
+  });
+
+  it("logs a catch made after the hold let go as 'released'", () => {
+    const { s, guide } = fresh();
+    untilFrozen(s);
+    for (let ms = 0; ms < HOLD_MS + 1000; ms += FRAME) s.update(FRAME);
+    // tap now and then until a cast catches; the freeze never comes back to help
+    for (let ms = 0; ms < 60_000 && !guide.done.has('cast'); ms += FRAME) {
+      if (Math.round(ms / FRAME) % 45 === 0) s.tap();
+      s.update(FRAME);
+      expect(s.frozen).toBe(false);
+    }
+    expect(guide.log.find((l) => l.step === 'cast')?.freeze).toBe('released');
   });
 
   it('never freezes the daily voyage', () => {

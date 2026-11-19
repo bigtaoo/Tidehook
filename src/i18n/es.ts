@@ -261,7 +261,7 @@ export const es: Table = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: 'Haz clic o pulsa Espacio para lanzar tu primer gancho' },
-    shop: { teach: 'Los peces dan monedas y las monedas compran cartas. Elige una (teclas 1-3) y luego la siguiente oleada (Enter)' },
+    shop: { teach: 'Los peces dan monedas y las monedas compran cartas. Elige una (teclas\u00a01\u20113) y luego la siguiente oleada\u00a0(Enter)' },
     monsters: { moray: { tip: 'Si la enganchas, devuelve la cuerda. Haz clic rápido para tirar de ella. Lleva monedas.' } },
     hints: { held: 'Chatarra en mano. Haz clic o pulsa Espacio para lanzarla por la línea.' },
     guide: {

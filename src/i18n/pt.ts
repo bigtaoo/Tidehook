@@ -262,7 +262,7 @@ export const pt: Table = {
   // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
   desk: {
     boot: { tapToStart: 'Clique ou aperte Espaço para lançar seu primeiro gancho' },
-    shop: { teach: 'Peixes dão moedas, moedas compram cartas. Escolha uma (teclas 1-3) e depois a próxima onda (Enter)' },
+    shop: { teach: 'Peixes dão moedas, moedas compram cartas. Escolha uma (teclas\u00a01\u20113) e depois a próxima onda\u00a0(Enter)' },
     monsters: { moray: { tip: 'Fisgada, ela puxa a corda de volta. Clique rápido para trazê-la. Carrega moedas.' } },
     hints: { held: 'Sucata na mão. Clique ou aperte Espaço para jogá-la pela linha.' },
     guide: {

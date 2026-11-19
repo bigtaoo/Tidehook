@@ -97,6 +97,18 @@ describe('Telemetry', () => {
     expect(p.tracked[0][1]).toMatchObject({ step_index: 1, skipped: true, game: 2 });
   });
 
+  it("says how the first cast's catch came about", () => {
+    const p = new StubPlatform();
+    const g = new Guide(new SafeStore(null));
+    const s = new Session({ seed: 3, speed: 1, autoplay: null }, g);
+    const tel = new Telemetry(p, s, 'b');
+    g.log.push({ step: 'cast', game: 1, shownS: 0, doneS: 4, freeze: 'tap' }, { step: 'crab', game: 1, shownS: 5, doneS: 9 });
+    tel.frame(16, false, []);
+    const steps = p.tracked.filter(([e]) => e === 'tutorial_step').map(([, d]) => d);
+    expect(steps[0]).toMatchObject({ step_id: 'cast', freeze: 'tap' });
+    expect(steps[1]).not.toHaveProperty('freeze');
+  });
+
   it("marks a failure with the revive's state and the first lesson, and sends each purchase", () => {
     const p = new StubPlatform();
     const store = new SafeStore(null);
