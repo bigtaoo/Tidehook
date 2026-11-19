@@ -111,6 +111,10 @@ export class PlaygamaPlatform extends WebPlatform implements Platform {
     };
   }
 
+  device(): string | null {
+    return this.bridge.deviceType();
+  }
+
   /** What the host is, for the `load` event (game/bootTrack.ts). */
   override info(): TrackData {
     return {

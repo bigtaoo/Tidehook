@@ -258,4 +258,22 @@ export const de: Table = {
     stall: { name: 'Breiterer Stand', desc: 'Der Laden zwischen den Wellen zeigt 4 Karten statt 3' },
     grip: { name: 'Seemannsarme', desc: 'Griff +1 von Anfang an, für schwerere Monster' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: 'Klicke oder drücke die Leertaste für deinen ersten Wurf' },
+    shop: { teach: 'Fische bringen Münzen, Münzen kaufen Karten. Wähle eine (Tasten 1-3), dann die nächste Welle (Enter)' },
+    monsters: { moray: { tip: 'Am Haken zieht sie das Seil wieder hinaus. Klicke schnell, um sie einzuholen. Sie trägt Münzen.' } },
+    hints: { held: 'Schrott in der Hand. Klicke oder drücke die Leertaste, um ihn die Leine entlang zu werfen.' },
+    guide: {
+      cast: 'Klicke oder drücke die Leertaste, wenn die Leine leuchtet',
+      throw: 'Klicke oder drücke die Leertaste, um den Schrott zu werfen',
+      skipSure: 'Nochmal klicken',
+    },
+    fx: { tug: 'Schnell klicken zum Ziehen!' },
+    overlay: {
+      resume: 'Klicke oder drücke die Leertaste zum Weiterspielen',
+      again: 'Klicke oder drücke die Leertaste für eine neue Runde',
+      harbour: 'Klicke, um im Hafen anzulegen',
+    },
+  },
 };

@@ -3,7 +3,7 @@ import { en } from './en';
 import { de } from './de';
 import { es } from './es';
 import { fr } from './fr';
-import { detectLocale, getLocale, LOCALE_NAMES, LOCALES, loadLocale, pluralCategory, setLocale, t } from './index';
+import { detectLocale, getLocale, LOCALE_NAMES, LOCALES, loadLocale, pluralCategory, setDesk, setLocale, t } from './index';
 import { pt } from './pt';
 import { ru } from './ru';
 import { tr } from './tr';
@@ -81,5 +81,16 @@ describe('i18n', () => {
       expect(tab.cards.barnacle.desc).toMatch(n(balance.barnacle.every));
       expect(tab.cards.golden.desc).toMatch(n(balance.gold.goldenMult));
     }
+  });
+});
+
+describe('desk wording', () => {
+  it('takes the desk prompt at a mouse and keyboard, the touch one elsewhere', () => {
+    setLocale('en');
+    setDesk(true);
+    expect(t('guide.cast')).toBe(en.desk.guide.cast);
+    expect(t('guide.crab')).toBe(en.guide.crab);
+    setDesk(false);
+    expect(t('guide.cast')).toBe(en.guide.cast);
   });
 });

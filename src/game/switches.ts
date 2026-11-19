@@ -1,4 +1,4 @@
-// The URL switches (CLAUDE.md): ?lang, ?ads=fake, ?seed, ?speed, ?autoplay, ?lag, ?ease, ?rec and
+// The URL switches (CLAUDE.md): ?lang, ?ads=fake, ?seed, ?speed, ?autoplay, ?lag, ?ease, ?rec, ?desk and
 // ?board=fake (a made-up daily board, platform/fakeBoard.ts), ?pay=fake (the remove-ads product on
 // sale in memory, platform/fakePayments.ts). A release build reads only ?lang, which
 // changes nothing but the words: the others would let anyone on the live page farm pearls at ?speed,

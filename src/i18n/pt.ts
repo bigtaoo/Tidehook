@@ -259,4 +259,22 @@ export const pt: Table = {
     stall: { name: 'Banca maior', desc: 'A loja entre ondas mostra 4 cartas, não 3' },
     grip: { name: 'Braços de marujo', desc: 'Pegada +1 de saída: ergue monstros pesados' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: 'Clique ou aperte Espaço para lançar seu primeiro gancho' },
+    shop: { teach: 'Peixes dão moedas, moedas compram cartas. Escolha uma (teclas 1-3) e depois a próxima onda (Enter)' },
+    monsters: { moray: { tip: 'Fisgada, ela puxa a corda de volta. Clique rápido para trazê-la. Carrega moedas.' } },
+    hints: { held: 'Sucata na mão. Clique ou aperte Espaço para jogá-la pela linha.' },
+    guide: {
+      cast: 'Clique ou aperte Espaço quando a linha brilhar',
+      throw: 'Clique ou aperte Espaço para jogar a sucata',
+      skipSure: 'Clique de novo para pular',
+    },
+    fx: { tug: 'Clique rápido para puxar!' },
+    overlay: {
+      resume: 'Clique ou aperte Espaço para continuar',
+      again: 'Clique ou aperte Espaço para jogar de novo',
+      harbour: 'Clique para atracar no porto',
+    },
+  },
 };

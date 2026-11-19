@@ -70,6 +70,10 @@ export class Guide {
   readonly done: Set<string>;
   games: number;
   cue: Cue | null = null;
+  /** The first cast's freeze: the aim has found a fish, and the lane stands still on it until the
+   *  player taps (Session.run), so the very first tap of a first game is sure to catch. Only while
+   *  the cast step holds the lane (calm), so a player who just watches is let go after HOLD_MS. */
+  freeze = false;
   /** The first game over's one lesson, while that card is up. */
   lesson: TextKey | null = null;
   readonly log: StepLog[] = [];
@@ -161,6 +165,7 @@ export class Guide {
     this.holds = hold;
     this.playMs = 0;
     this.current = null;
+    this.freeze = false;
     this.shownAt.clear();
     this.save();
   }
@@ -179,6 +184,7 @@ export class Guide {
   tap(): void {
     this.tapped = true;
     this.restMs = 0;
+    this.freeze = false;
   }
 
   /** Skip: the first press arms, a second within SKIP_MS skips every step. True when skipped. */
@@ -190,6 +196,7 @@ export class Guide {
     for (const s of STEP_IDS) if (!this.done.has(s)) this.log.push({ step: s, game: this.games, shownS: this.secs(this.shownAt.get(s)), doneS: -1 });
     for (const s of STEP_IDS) this.done.add(s);
     this.cue = null;
+    this.freeze = false;
     this.current = null;
     this.save();
     return true;
@@ -241,6 +248,7 @@ export class Guide {
     this.stepMs += frameMs;
     this.restMs += frameMs;
     this.cue = step ? this.cueFor(step, w) : null;
+    this.freeze = step === 'cast' && this.calm() === 1 && this.stepMs >= FIRST_MS && aimFinds(w, 'fish');
   }
 
   /** The hold for the steps still to do: no monsters before the first catch, then one at a time;
@@ -269,7 +277,8 @@ export class Guide {
     const wait = this.tapped ? REST_MS : FIRST_MS;
     const hand = swinging && this.stepMs >= FIRST_MS && this.restMs >= wait;
     if (step === 'cast') {
-      const id = nearestInSwing(w, 'fish');
+      // on the line already (the freeze stops it there): that catch, not the nearest in the swing
+      const id = aimedFish(w) || nearestInSwing(w, 'fish');
       return { step, text: 'guide.cast', target: id ? { t: 'item', id } : null, hand: hand && !!id, want: 'fish' };
     }
     if (step === 'junk') {
@@ -320,6 +329,13 @@ export function aimFinds(w: World, want: Want | null): boolean {
   if (!r) return false;
   if (want === 'mon') return r.o.t === 'mon';
   return r.o.t === 'item' && r.o.item.kind === want;
+}
+
+/** The fish a cast along the aim now would catch, by id, or 0. */
+function aimedFish(w: World): number {
+  if (!aimFinds(w, 'fish')) return 0;
+  const r = rayFirst(w, w.hook.ang, false, B.hook.tip);
+  return r?.o.t === 'item' ? r.o.item.id : 0;
 }
 
 /** The closest item of `kind` the hook's swing can reach, by id, or 0. */

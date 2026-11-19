@@ -7,6 +7,7 @@ import { Container, Graphics } from 'pixi.js';
 import type { Cue } from '../../game/guide/guide';
 import type { Session } from '../../game/session';
 import { t } from '../../i18n';
+import { B } from '../../sim/balance';
 import { FP } from '../../sim/math/fixed';
 import { bubble } from '../kit/bubble';
 import { Button } from '../kit/button';
@@ -26,11 +27,16 @@ const SHOP_SHRINK = 0.5;
 const BOB_MS = 900;
 /** The ring around a lane target never shrinks below this, design units. */
 const RING_MIN = 46;
+/** How dark the first cast's freeze makes the rest of the screen. */
+const DIM = 0.5;
 /** The skip button's share of the bubble's width. */
 const SKIP_SHARE = 0.3;
 
 export class Pointer extends Container {
   private readonly hand = new Graphics();
+  /** The first cast's freeze (Session.frozen): the screen dimmed but for a hole round the fish. */
+  private readonly dim = new Graphics();
+  private dimmed = false;
   private readonly redraw = new Redraw();
   private readonly bubble = new Container();
   private bubbleKey = '';
@@ -46,7 +52,8 @@ export class Pointer extends Container {
   ) {
     super();
     this.hand.eventMode = 'none';
-    this.addChild(this.bubble, this.hand);
+    this.dim.eventMode = 'none';
+    this.addChild(this.dim, this.bubble, this.hand);
   }
 
   /** Whether the step's words are up (the hint banner waits behind them). */
@@ -63,6 +70,10 @@ export class Pointer extends Container {
     // first this layer stands empty, and clearing an empty one still costs (kit/redraw.ts)
     if (this.redraw.needed(!!(cue?.hand && cue.target))) this.hand.clear();
     this.tip = null;
+    if (this.dimmed) {
+      this.dim.clear();
+      this.dimmed = false;
+    }
     if (!cue?.hand || !cue.target) return;
     if (cue.target.t === 'shop') {
       const r = this.shop.spot(cue.target.pick);
@@ -71,6 +82,31 @@ export class Pointer extends Container {
     }
     const spot = this.laneSpot(s, cue);
     if (spot) this.pointAt(spot.x, spot.y, spot.r);
+    if (spot && s.frozen) this.dimAround(spot.x, spot.y, spot.r);
+  }
+
+  /** Darkens all but the frozen line and the fish on it, so they are the one thing to look at: the
+   *  hole is a single outline, a strip from the winch that rounds off past the fish. */
+  private dimAround(x: number, y: number, r: number): void {
+    const { fit, field } = this.fr;
+    const hub = toDesign(field, B.crane.d / FP, B.crane.w / FP);
+    const dir = Math.atan2(y - hub.y, x - hub.x);
+    const R = r * 1.3;
+    const hw = Math.min(R * 0.6, 26 * field.scale);
+    const nx = -Math.sin(dir) * hw;
+    const ny = Math.cos(dir) * hw;
+    const pts = [hub.x - nx, hub.y - ny];
+    // round the far side of the fish, from the strip's one edge to the other
+    const edge = Math.asin(hw / R);
+    const from = dir + Math.PI + edge;
+    const span = Math.PI * 2 - 2 * edge;
+    for (let i = 0; i <= 24; i++) {
+      const a = from + (span * i) / 24;
+      pts.push(x + Math.cos(a) * R, y + Math.sin(a) * R);
+    }
+    pts.push(hub.x + nx, hub.y + ny);
+    this.dim.rect(0, 0, fit.w, fit.h).fill({ color: P.line, alpha: DIM }).poly(pts).cut();
+    this.dimmed = true;
   }
 
   /** The cue's lane target, drawn where the actors draw it (between last tick and now). */

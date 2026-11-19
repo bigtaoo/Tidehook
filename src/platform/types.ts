@@ -67,6 +67,9 @@ export interface Platform {
   /** What the host is, for the `load` event (game/bootTrack.ts): bounded words only, and nothing
    *  about the player. Absent: the host has nothing to add. */
   info?(): TrackData;
+  /** The host's word for the device ('desktop', 'mobile', 'tablet', 'tv'); absent or null: the
+   *  game asks the browser (game/pointer.ts). */
+  device?(): string | null;
   /** Called with the host's mute state now and whenever it changes. */
   onHostMute(listener: (muted: boolean) => void): void;
   /** Called whenever the host pauses the game; absent: never. */

@@ -74,6 +74,20 @@ export function getLocale(): Locale {
   return current;
 }
 
+let desk = false;
+
+/** Whether the player sits at a mouse and keyboard (game/pointer.ts): t() then takes a prompt's
+ *  wording from the table's `desk` section, where it has one ("Click or press Space"). */
+export function setDesk(on: boolean): void {
+  desk = on;
+}
+
+function lookup(from: unknown, key: string): unknown {
+  let v = from;
+  for (const part of key.split('.')) v = v === undefined || v === null ? undefined : (v as Record<string, unknown>)[part];
+  return v;
+}
+
 type Paths<T> = { [K in keyof T & string]: T[K] extends string ? K : `${K}.${Paths<T[K]>}` }[keyof T & string];
 export type TextKey = Paths<Table>;
 
@@ -82,8 +96,8 @@ export type TextKey = Paths<Table>;
  * picks the word for the count `n` by the language's plural rules (a missing form reads `other`).
  */
 export function t(key: TextKey, params: Record<string, string | number> = {}): string {
-  let v: unknown = table;
-  for (const part of key.split('.')) v = (v as Record<string, unknown>)[part];
+  const onDesk = desk ? lookup(table.desk, key) : undefined;
+  const v = typeof onDesk === 'string' ? onDesk : lookup(table, key);
   return String(v)
     .replace(/\{(\w+)\|([^{}]+)\}/g, (whole, name: string, forms: string) => (name in params ? pluralForm(forms, Number(params[name]), current) : whole))
     .replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`));

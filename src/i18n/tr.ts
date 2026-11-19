@@ -259,4 +259,22 @@ export const tr: Table = {
     stall: { name: 'Geniş tezgâh', desc: 'Dalgalar arasındaki dükkân 3 değil 4 kart serer' },
     grip: { name: 'Denizci kolları', desc: 'Baştan kavrayış +1: daha ağır canavarlar kalkar' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: 'İlk atışın için tıkla ya da Boşluk tuşuna bas' },
+    shop: { teach: 'Balıklar para getirir, parayla kart alınır. Birini seç (1-3 tuşları), sonra sıradaki dalga (Enter)' },
+    monsters: { moray: { tip: 'Kancaya takılınca ipi geri çeker. Çekmek için hızlı tıkla. Para taşır.' } },
+    hints: { held: 'Elde hurda. Hattın aşağısına fırlatmak için tıkla ya da Boşluk tuşuna bas.' },
+    guide: {
+      cast: 'Misina parlayınca tıkla ya da Boşluk tuşuna bas',
+      throw: 'Hurdayı atmak için tıkla ya da Boşluk tuşuna bas',
+      skipSure: 'Geçmek için tekrar tıkla',
+    },
+    fx: { tug: 'Çekmek için hızlı tıkla!' },
+    overlay: {
+      resume: 'Devam etmek için tıkla ya da Boşluk tuşuna bas',
+      again: 'Tekrar oynamak için tıkla ya da Boşluk tuşuna bas',
+      harbour: 'Limana yanaşmak için tıkla',
+    },
+  },
 };

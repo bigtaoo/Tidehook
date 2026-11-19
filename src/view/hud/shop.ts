@@ -98,8 +98,15 @@ export class ShopPanel extends Container {
     title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
     this.addChild(title);
 
+    const cost = { repair: repairCost(w), mine: mineCost(w), reroll: rerollCost(w) };
+    const mendable = w.hp < w.maxHp && w.coins >= cost.repair;
+    // a new player's first shop (docs/02-onboarding.md section 2) is the cards and the next wave
+    // alone: mines and fresh stock are words to read before the player knows what a card is. The
+    // repair stays when it can be bought, as the tutorial may point at it (guide/shopPick.ts)
+    const lean = teach && mine;
+    const rowed = !lean || mendable;
     const cardsY = r.y + PAD + HEAD + 16;
-    const cardH = r.h - PAD * 2 - HEAD - 16 - ROW * 2 - GAP * 2;
+    const cardH = r.h - PAD * 2 - HEAD - 16 - ROW * (rowed ? 2 : 1) - GAP * (rowed ? 2 : 1);
     const n = Math.max(3, w.cards.length);
     const cardW = (inner - GAP * (n - 1)) / n;
     // a captain who has bought every card there is gets an empty deal: say so where the cards
@@ -125,14 +132,14 @@ export class ShopPanel extends Container {
     });
 
     const rowY = cardsY + cardH + GAP;
-    const cost = { repair: repairCost(w), mine: mineCost(w), reroll: rerollCost(w) };
-    const small = [
-      { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: w.hp < w.maxHp && w.coins >= cost.repair, onPress: () => this.act.repair() },
+    const all = [
+      { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: mendable, onPress: () => this.act.repair() },
       { text: t('shop.mine', { n: w.mines, max: B.mine.max }), price: cost.mine, ok: w.mines < B.mine.max && w.coins >= cost.mine, onPress: () => this.act.mine() },
       free && !dry
         ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go, icon: 'play' as const }
         : { text: t('shop.reroll'), price: cost.reroll, ok: !dry && w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
+    const small = !rowed ? [] : lean ? all.slice(0, 1) : all;
     // one size for the three: the reroll can carry a play mark, which leaves its words less room
     const items: RowItem[] = small.map((s) => ({
       w: cardW,
@@ -151,9 +158,10 @@ export class ShopPanel extends Container {
       if (i === 0) this.spots.set('repair', { x: b.x, y: rowY, w: cardW, h: ROW });
     });
     const next = new Button({ w: inner, h: ROW, text: t('shop.next'), size: TYPE.title * k, color: P.go, enabled: mine, onPress: () => this.act.next() });
-    next.position.set(r.x + PAD, rowY + ROW + GAP);
+    const nextY = rowed ? rowY + ROW + GAP : rowY;
+    next.position.set(r.x + PAD, nextY);
     this.addChild(next);
-    this.spots.set('next', { x: next.x, y: next.y, w: inner, h: ROW });
+    this.spots.set('next', { x: next.x, y: nextY, w: inner, h: ROW });
   }
 
   /** A ribbon saying `text` (Top pick, Rare), centred on a card's top edge. */

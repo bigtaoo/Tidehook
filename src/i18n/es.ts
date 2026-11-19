@@ -258,4 +258,22 @@ export const es: Table = {
     stall: { name: 'Puesto más ancho', desc: 'La tienda entre oleadas muestra 4 cartas, no 3' },
     grip: { name: 'Brazos de marinero', desc: 'Agarre +1 de entrada: alza monstruos pesados' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: 'Haz clic o pulsa Espacio para lanzar tu primer gancho' },
+    shop: { teach: 'Los peces dan monedas y las monedas compran cartas. Elige una (teclas 1-3) y luego la siguiente oleada (Enter)' },
+    monsters: { moray: { tip: 'Si la enganchas, devuelve la cuerda. Haz clic rápido para tirar de ella. Lleva monedas.' } },
+    hints: { held: 'Chatarra en mano. Haz clic o pulsa Espacio para lanzarla por la línea.' },
+    guide: {
+      cast: 'Haz clic o pulsa Espacio cuando brille el sedal',
+      throw: 'Haz clic o pulsa Espacio para lanzar la chatarra',
+      skipSure: 'Haz clic otra vez para saltar',
+    },
+    fx: { tug: '¡Haz clic rápido para tirar!' },
+    overlay: {
+      resume: 'Haz clic o pulsa Espacio para seguir',
+      again: 'Haz clic o pulsa Espacio para jugar otra vez',
+      harbour: 'Haz clic para atracar en el puerto',
+    },
+  },
 };

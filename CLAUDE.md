@@ -35,6 +35,6 @@ careers; findings in docs/04-content.md section 4. Dev server: `npm run dev` (po
 
 URL switches (dev builds only, `src/game/switches.ts`): `?lang`, `?ads=fake`, `?seed`, `?speed`,
 `?autoplay`, `?lag` (ms a tap looks back, default 0; see docs/01-tech-plan.md section 5),
-`?ease=N` (N waves of slow tide per game instead of 30, sim/tide.ts; 0 a bare game), `?board=fake` (a made-up daily
+`?ease=N` (N waves of slow tide per game instead of 30, sim/tide.ts; 0 a bare game), `?desk=1|0` (forces the mouse-and-keyboard wording on or off, game/pointer.ts), `?board=fake` (a made-up daily
 leaderboard, platform/fakeBoard.ts), `?pay=fake` (the remove-ads purchase on sale, platform/fakePayments.ts), `?rec=0` (turns off the tap recorder, on by default in dev: it writes recordings/*.ndjson, read with
 `node scripts/rec/analyze.mjs`).

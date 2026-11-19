@@ -21,7 +21,8 @@ import { SEEN_MS, Session, type SessionOptions } from './game/session';
 import { Settings, wantsCalm } from './game/settings';
 import { urlSwitches } from './game/switches';
 import { Telemetry } from './game/telemetry';
-import { detectLocale, getLocale, loadLocale, setLocale, type Locale } from './i18n';
+import { detectLocale, getLocale, loadLocale, setDesk, setLocale, type Locale } from './i18n';
+import { onDesk } from './game/pointer';
 import { fakeBoard } from './platform/fakeBoard';
 import { fakePayments } from './platform/fakePayments';
 import { NoAds } from './game/noAds';
@@ -61,6 +62,9 @@ export async function boot(platform: Platform, screen: BootScreen = bootScreen(n
   const params = urlSwitches(location.search);
   const want = detectLocale([params.get('lang'), platform.storage.getItem(LANG_KEY), ...platform.languages()]);
   const table = loadLocale(want);
+  // "Click or press Space" at a desk, "Tap" on a phone; ?desk=1 or 0 forces it in a dev build
+  const deskSwitch = params.get('desk');
+  setDesk(deskSwitch === '1' || (deskSwitch !== '0' && onDesk(platform, (q) => window.matchMedia(q))));
   // both are plain fetches and want no renderer, so they run while the page is still finding its
   // size (a portal's iframe can sit at 0x0 for a while) and while the WebGL context comes up
   const art = loadArt(undefined, (n) => screen.set(artAt(n, ART_COUNT)));

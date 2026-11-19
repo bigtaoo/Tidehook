@@ -258,4 +258,22 @@ export const zh: Table = {
     stall: { name: '大摊位', desc: '每波之间商店摆 4 张卡，不是 3 张' },
     grip: { name: '水手的胳膊', desc: '握力开局就 +1，吊得起更重的怪' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: '点击或按空格，甩出第一钩' },
+    shop: { teach: '鱼换金币，金币买卡。选一张（按键 1-3），然后迎接下一波（Enter）' },
+    monsters: { moray: { tip: '钩住后会把绳子拽回去，快速点击把它拉进来，身上带着金币' } },
+    hints: { held: '破烂在手，再点击或按空格就顺着瞄准线扔出去' },
+    guide: {
+      cast: '瞄准线发光时点击或按空格',
+      throw: '点击或按空格扔出破烂',
+      skipSure: '再点一次跳过',
+    },
+    fx: { tug: '快速点击拉上来！' },
+    overlay: {
+      resume: '点击或按空格继续',
+      again: '点击或按空格再来一局',
+      harbour: '点击回港整修',
+    },
+  },
 };

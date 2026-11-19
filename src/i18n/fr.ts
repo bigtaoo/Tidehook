@@ -258,4 +258,22 @@ export const fr: Table = {
     stall: { name: 'Étal plus large', desc: 'La boutique entre les vagues présente 4 cartes, pas 3' },
     grip: { name: 'Bras de marin', desc: 'Poigne +1 d’entrée : soulève les plus lourds' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: 'Clique ou appuie sur Espace pour lancer ton premier crochet' },
+    shop: { teach: 'Les poissons rapportent des pièces, les pièces achètent des cartes. Choisis-en une (touches 1-3), puis la vague suivante (Entrée)' },
+    monsters: { moray: { tip: 'Une fois accrochée, elle déroule la corde. Clique vite pour la ramener. Elle porte des pièces.' } },
+    hints: { held: 'Débris en main. Clique ou appuie sur Espace pour le lancer le long de la ligne.' },
+    guide: {
+      cast: 'Clique ou appuie sur Espace quand la ligne brille',
+      throw: 'Clique ou appuie sur Espace pour lancer le débris',
+      skipSure: 'Clique encore pour passer',
+    },
+    fx: { tug: 'Clique vite pour tirer !' },
+    overlay: {
+      resume: 'Clique ou appuie sur Espace pour reprendre',
+      again: 'Clique ou appuie sur Espace pour rejouer',
+      harbour: 'Clique pour rentrer au port',
+    },
+  },
 };

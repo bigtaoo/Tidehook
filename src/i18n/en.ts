@@ -258,6 +258,24 @@ export const en = {
     stall: { name: 'Wider stall', desc: 'The shop between waves lays out 4 cards, not 3' },
     grip: { name: "Sailor's arms", desc: 'Grip +1 from the start, to lift heavier monsters' },
   },
+  // the same prompts for a mouse and keyboard (game/pointer.ts): t() takes these first on a desk
+  desk: {
+    boot: { tapToStart: 'Click or press Space for your first cast' },
+    shop: { teach: 'Fish bring coins, coins buy cards. Pick one (keys 1-3), then bring on the next wave (Enter)' },
+    monsters: { moray: { tip: 'Hooked, it pulls the rope back out. Click fast to yank it in. It carries coins.' } },
+    hints: { held: 'Junk in hand. Click or press Space to throw it down the line.' },
+    guide: {
+      cast: 'Click or press Space when the line glows',
+      throw: 'Click or press Space to throw the junk',
+      skipSure: 'Click again to skip',
+    },
+    fx: { tug: 'Click fast to yank!' },
+    overlay: {
+      resume: 'Click or press Space to resume',
+      again: 'Click or press Space to play again',
+      harbour: 'Click to put in at the harbour',
+    },
+  },
 };
 
 type Widen<T> = { [K in keyof T]: T[K] extends string ? string : Widen<T[K]> };

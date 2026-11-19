@@ -163,7 +163,12 @@ export class Session {
 
   /** How far into the next tick to draw, 0 to 1. */
   get alpha(): number {
-    return this.mode === 'play' && !this.paused ? this.fixed.alpha : 1;
+    return this.mode === 'play' && !this.paused && !this.frozen ? this.fixed.alpha : 1;
+  }
+
+  /** The first cast's freeze (Guide.freeze): the lane stands still, drawn as the sim has it. */
+  get frozen(): boolean {
+    return this.mode === 'play' && !this.pilot && !!this.guide?.freeze;
   }
 
   /** A new game (built again, so upgrades bought since the title count). */
@@ -192,7 +197,7 @@ export class Session {
 
   private run(frameMs: number): number {
     if (this.mode === 'over') this.overMs += frameMs;
-    if (this.mode !== 'play' || this.paused || this.hold) return 0;
+    if (this.mode !== 'play' || this.paused || this.hold || this.frozen) return 0;
     const n = this.fixed.advance(frameMs, this.opts.speed);
     for (let i = 0; i < n; i++) {
       const w = this.world;
@@ -369,7 +374,7 @@ export class Session {
    *  view drew behind the sim (it draws `alpha` of the way from the last tick), plus the lag. */
   private lookBack(ageMs: number): number {
     const lag = this.opts.lagMs;
-    if (lag === undefined) return 0;
+    if (lag === undefined || this.frozen) return 0;
     const ticks = 1 - this.alpha + ((lag + ageMs) * TICK_RATE * this.opts.speed) / 1000;
     // at the swing's rate now: it slows while a throw would hit (sim/hook.ts)
     return Math.round(ticks * this.world.hook.rate);
