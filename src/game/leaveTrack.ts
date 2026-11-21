@@ -10,6 +10,12 @@
 //   flush their queue on the way out. A page hidden under an ad the game itself asked for is not a
 //   player leaving (game/ads.ts holds the session while one plays), and since `quit` goes once a
 //   sitting, counting that would spend it on the ad and leave the real stop unreported.
+// Every event says where the player is (`at`) and, apart from it, whether the game is `paused`: the
+// game pauses itself when the window loses focus, so most stops happen paused, and a bare 'paused'
+// would hide whether the player left from the shop or from a wave (2026-11-21).
+// Each also carries `screen_s`, the seconds of live play on the current screen (this wave, or this
+// shop), and `buys`, the cards bought in this shop (0 elsewhere): whether a player who left from the
+// shop had looked at it for a moment or sat there long, and whether they bought before they went.
 // Every field is bounded: the places are the words in PLACES, and the numbers are capped.
 
 import type { Platform, TrackData } from '../platform/types';
@@ -24,7 +30,7 @@ const SECONDS_CAP = 7200;
 const WAVE_CAP = 99;
 
 /** Where in the game the player was, as a fixed word. */
-export const PLACES = ['boot', 'ad', 'paused', 'play', 'shop', 'over', 'lobby', 'title'] as const;
+export const PLACES = ['boot', 'ad', 'play', 'shop', 'over', 'lobby', 'title'] as const;
 export type Place = (typeof PLACES)[number];
 
 type Win = Pick<Window, 'addEventListener'>;
@@ -42,6 +48,10 @@ export class LeaveTrack {
   private quietMs = 0;
   private gone = false;
   private ready = false;
+  /** The screen the last frame was on, live time on it, and the card levels when it opened. */
+  private screen = '';
+  private screenMs = 0;
+  private levelsAt = 0;
 
   constructor(
     private readonly platform: Platform,
@@ -65,6 +75,7 @@ export class LeaveTrack {
 
   /** One frame of `ms`, with whether the game was in live, visible play. */
   frame(ms: number, active: boolean): void {
+    this.onScreen(active ? ms : 0);
     if (!active) {
       this.quietMs = 0;
       return;
@@ -82,6 +93,18 @@ export class LeaveTrack {
     // a tap on the loading page is not a tap on the game
     if (!this.ready || this.taps++ > 0) return;
     this.platform.track('first_tap', { ...this.where(), seconds: this.since(this.t0) });
+  }
+
+  /** A new wave, shop or game starts the screen clock afresh. */
+  private onScreen(ms: number): void {
+    const s = this.session;
+    const key = `${s.mode}:${s.games}:${s.world.wave}:${s.world.phase}`;
+    if (key !== this.screen) {
+      this.screen = key;
+      this.screenMs = 0;
+      this.levelsAt = levels(s);
+    }
+    this.screenMs += ms;
   }
 
   private quit(): void {
@@ -103,6 +126,9 @@ export class LeaveTrack {
       wave: Math.min(WAVE_CAP, s.world.wave),
       game: Math.min(WAVE_CAP, Math.max(0, s.guide?.games ?? s.games)),
       mode: s.daily ? 'daily' : 'voyage',
+      paused: this.ready && !s.hold && s.mode === 'play' && s.paused,
+      screen_s: Math.min(SECONDS_CAP, Math.round(this.screenMs / 1000)),
+      buys: s.world.phase === 'shop' ? Math.min(WAVE_CAP, Math.max(0, levels(s) - this.levelsAt)) : 0,
     };
   }
 
@@ -110,11 +136,18 @@ export class LeaveTrack {
     const s = this.session;
     if (!this.ready) return 'boot';
     if (s.hold) return 'ad';
-    if (s.mode === 'play') return s.paused ? 'paused' : s.shopping() ? 'shop' : 'play';
+    if (s.mode === 'play') return s.world.phase === 'shop' ? 'shop' : 'play'; // not shopping(): that is false while paused
     return s.mode;
   }
 
   private since(from: number): number {
     return Math.min(SECONDS_CAP, Math.max(0, Math.round((Date.now() - from) / 1000)));
   }
+}
+
+/** Every card level the run holds: it goes up by one for each card bought (sim/shop.ts). */
+function levels(s: Session): number {
+  let n = 0;
+  for (const k in s.world.lv) n += s.world.lv[k];
+  return n;
 }

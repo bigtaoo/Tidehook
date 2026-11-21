@@ -64,7 +64,48 @@ describe('LeaveTrack', () => {
     s.hold = false;
     doc.fire('visibilitychange');
     expect(p.tracked.map(([e]) => e)).toEqual(['quit']);
-    expect(p.tracked[0][1]).toMatchObject({ at: 'play' });
+    expect(p.tracked[0][1]).toMatchObject({ at: 'play', paused: false });
+  });
+
+  it('says which screen a paused game left from, the shop or a wave', () => {
+    const quitFrom = (shop: boolean) => {
+      const p = new StubPlatform();
+      const doc = fakePage();
+      const s = session();
+      new LeaveTrack(p, s, Date.now(), fakePage(), doc).started();
+      s.start();
+      if (shop) s.world.phase = 'shop';
+      // losing focus pauses the game before the page hides, so most stops are paused ones
+      s.pause();
+      doc.visibilityState = 'hidden';
+      doc.fire('visibilitychange');
+      return p.tracked[0][1];
+    };
+    expect(quitFrom(false)).toMatchObject({ at: 'play', paused: true });
+    expect(quitFrom(true)).toMatchObject({ at: 'shop', paused: true });
+  });
+
+  it('says how long the player was live on this screen and what they bought in this shop', () => {
+    const p = new StubPlatform();
+    const doc = fakePage();
+    const s = session();
+    const leave = new LeaveTrack(p, s, Date.now(), fakePage(), doc);
+    leave.started();
+    s.start();
+    for (let i = 0; i < 20; i++) leave.frame(1000, true);
+    // time away from the game is not time on the screen
+    for (let i = 0; i < 20; i++) leave.frame(1000, false);
+    leave.frame(0, true);
+    s.world.phase = 'shop';
+    s.world.coins = 1e9;
+    s.world.cards = [{ id: 'grip', bought: false }, { id: 'heft', bought: false }] as typeof s.world.cards;
+    leave.frame(3000, true);
+    expect(s.buy(0) && s.buy(1)).toBe(true);
+    leave.frame(4000, true);
+    s.pause();
+    doc.visibilityState = 'hidden';
+    doc.fire('visibilitychange');
+    expect(p.tracked.at(-1)).toEqual(['quit', expect.objectContaining({ at: 'shop', screen_s: 7, buys: 2 })]);
   });
 
   it('counts a quiet stretch of live play as idle, no more than IDLE_CAP times', () => {

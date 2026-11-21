@@ -254,9 +254,9 @@ Tidehook/
   - 每 30 秒有效游玩发一次 `performance_sample`（`src/game/perf.ts`）；
   - 出现新纪录或完成船长日志目标时调用 `celebrate()`（`player_got_achievement`）。
   - **离开遥测**（`src/game/leaveTrack.ts`，2026-11-16 加）：`first_tap`（游戏能玩了到第一次点之间的秒数，一次会话只发一次，
-    加载页上的点不算）、`idle`（连着 25 秒没动，最多发 3 次，带当时在哪：boot / ad / paused / play / shop / over / lobby / title）、
+    加载页上的点不算）、`idle`（连着 25 秒没动，最多发 3 次，带当时在哪：boot / ad / play / shop / over / lobby / title，另带 `paused` 真假：失焦时游戏自己暂停，2026-11-21 前 `at` 记成 paused，看不出是在商店还是在打波次），以及 `screen_s`（在当前这一波或这次商店里实际在玩的秒数，暂停和切走不算）和 `buys`（这次商店买了几张卡，不在商店时为 0），2026-11-21 加，用来看第一次商店离开的人是看一眼就走还是坐了很久、买没买、
     `quit`（这次会话结束，页面藏起来或卸载都只发一次，带秒数、停在哪、第几局、第几波、daily 还是 voyage）。
-    没有自己的 session id，也不发心跳：会话长度由 `load` 和 `quit` 的秒数给出，平台自己也统计（指南禁止重复发）。
+    线上版约一半会话收不到 `quit`（游戏同步调用 SDK，丢在平台那边），判断停在哪一步以最后一个进度事件为准，`quit` 只作补充。没有自己的 session id，也不发心跳：会话长度由 `load` 和 `quit` 的秒数给出，平台自己也统计（指南禁止重复发）。
   - 不发任何玩家个人信息。
   - 2026-11-10 修掉一个 bug：每个模拟事件都被交出去两次（`Session.run` 用了 take 而不是 collect），
     遥测的波次事件翻倍、复活后又补发一次失败，音效、粒子和教程观察也都是双份。`session.test.ts` 钉住“每个事件只交一次”。
