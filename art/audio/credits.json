@@ -30,6 +30,13 @@
    "license": "CC0-1.0",
    "license_text": "licenses/music-jingles-LICENSE.txt"
   },
+  "oga": {
+   "name": "OpenGameArt.org",
+   "author": "wipics",
+   "url": "https://opengameart.org/node/101396",
+   "license": "CC0-1.0",
+   "license_text": "licenses/oga-LICENSE.txt"
+  },
   "sci-fi-sounds": {
    "name": "Sci-fi Sounds 1.0",
    "author": "Kenney",
@@ -436,16 +443,16 @@
   {
    "track": "bay",
    "file": "audio/music_bay.mp3",
-   "title": "Busybody",
-   "author": "Bryan Teoh",
-   "source": "freepd/busybody.mp3",
-   "upstream": "archive.org/details/freepd comedy/Busybody.mp3",
-   "why": "the home bay: happily frantic, the game's own tune since the first build",
+   "title": "menu_1",
+   "author": "wipics",
+   "source": "oga/menu_1.mp3",
+   "upstream": "https://opengameart.org/node/101396",
+   "why": "the home bay: an unhurried ~89 BPM loop (2026-11-21: Busybody at ~136 BPM was too frantic to hear all game)",
    "start_s": 0,
    "length_s": null,
    "rate": 1.0,
-   "duration_ms": 85908.8,
-   "bytes": 688286
+   "duration_ms": 22342.6,
+   "bytes": 179483
   },
   {
    "track": "fog",
@@ -464,16 +471,16 @@
   {
    "track": "storm",
    "file": "audio/music_bay.mp3",
-   "title": "Busybody (x1.12)",
-   "author": "Bryan Teoh",
-   "source": "freepd/busybody.mp3",
-   "upstream": "archive.org/details/freepd comedy/Busybody.mp3",
+   "title": "menu_1 (x1.12)",
+   "author": "wipics",
+   "source": "oga/menu_1.mp3",
+   "upstream": "https://opengameart.org/node/101396",
    "why": "the Storm Reach: the bay's tune played 12% faster and two semitones up, the same harbour in a gale",
    "start_s": 0,
    "length_s": null,
    "rate": 1.12,
-   "duration_ms": 76704.3,
-   "bytes": 688286
+   "duration_ms": 19948.7,
+   "bytes": 179483
   }
  ]
 }

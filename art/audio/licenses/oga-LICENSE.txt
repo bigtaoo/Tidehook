@@ -1,0 +1,10 @@
+OpenGameArt.org -- licence record for art/audio/sources/oga/menu_1.mp3
+
+Track: menu_1.mp3 by wipics
+Page: https://opengameart.org/node/101396
+Licence: Creative Commons Zero, CC0 1.0 Universal Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Taken from the CC0 picks of a sibling project (D:/standing/art/audio/SOURCES.md, which lists
+oga/menu_1.mp3 from that page under CC0). The page itself refused automated reads (HTTP 403)
+on 2026-11-21, so it was not re-checked then; re-check it by hand before a store submission.

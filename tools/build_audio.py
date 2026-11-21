@@ -34,6 +34,7 @@ SRC_ROOTS = {
     "sci-fi-sounds": KENNEY / "kenney_sci-fi-sounds/Audio",
     "music-jingles": KENNEY / "kenney_music-jingles/Audio",
     "freepd": FREEPD / "sources/freepd",
+    "oga": Path("D:/standing/art/audio/source/oga"),
 }
 PACKS = {
     "impact-sounds": ("Impact Sounds 1.0", "Kenney", "https://kenney.nl/assets/impact-sounds", KENNEY / "kenney_impact-sounds/License.txt"),
@@ -41,6 +42,7 @@ PACKS = {
     "sci-fi-sounds": ("Sci-fi Sounds 1.0", "Kenney", "https://kenney.nl/assets/sci-fi-sounds", KENNEY / "kenney_sci-fi-sounds/License.txt"),
     "music-jingles": ("Music Jingles", "Kenney", "https://kenney.nl/assets/music-jingles", KENNEY / "kenney_music-jingles/License.txt"),
     "freepd": ("FreePD (archive.org item 'freepd')", "Bryan Teoh", "https://archive.org/details/freepd", FREEPD / "licenses/freepd-LICENSE.txt"),
+    "oga": ("OpenGameArt.org", "wipics", "https://opengameart.org/node/101396", SOURCES / "oga/LICENSE.txt"),
 }
 
 # cue: (peak dBFS, longest ms, [pack/file, ...], why)
@@ -73,11 +75,11 @@ CUES = {
 MUSIC = {
     "harbour": ("freepd/hopeful.mp3", "Hopeful", "Rafael Krux", "comedy/Hopeful.mp3", 0, None, 1.0,
                 "the harbour between games: warm and unhurried, a breather before the next voyage"),
-    "bay": ("freepd/busybody.mp3", "Busybody", "Bryan Teoh", "comedy/Busybody.mp3", 0, None, 1.0,
-            "the home bay: happily frantic, the game's own tune since the first build"),
+    "bay": ("oga/menu_1.mp3", "menu_1", "wipics", "https://opengameart.org/node/101396", 0, None, 1.0,
+            "the home bay: an unhurried ~89 BPM loop (2026-11-21: Busybody at ~136 BPM was too frantic to hear all game)"),
     "fog": ("freepd/managing-mischief.mp3", "Managing Mischief", "Bryan Teoh", "comedy/Managing Mischief.mp3", 52.5, 74.0, 1.0,
             "the Fog Bank: frisky yet cautious, creeping, for a sea where you cannot see what is coming"),
-    "storm": ("freepd/busybody.mp3", "Busybody (x1.12)", "Bryan Teoh", "comedy/Busybody.mp3", 0, None, 1.12,
+    "storm": ("oga/menu_1.mp3", "menu_1 (x1.12)", "wipics", "https://opengameart.org/node/101396", 0, None, 1.12,
               "the Storm Reach: the bay's tune played 12% faster and two semitones up, the same harbour in a gale"),
 }
 MUSIC_FADE = 0.35
@@ -163,7 +165,7 @@ def main() -> None:
             chain.append("loudnorm=I=-20:TP=-3:LRA=11")
             run("-i", str(source(rel)), "-af", ",".join(chain), "-ar", "44100", "-c:a", "libmp3lame", "-b:a", "64k", str(dst))
         credits["music"].append({"track": track, "file": f"audio/{dst.name}", "title": title, "author": author, "source": rel,
-                                 "upstream": f"archive.org/details/freepd {upstream}", "why": why, "start_s": at, "length_s": length,
+                                 "upstream": upstream if upstream.startswith("http") else f"archive.org/details/freepd {upstream}", "why": why, "start_s": at, "length_s": length,
                                  "rate": rate, "duration_ms": round(duration_ms(dst) / rate, 1), "bytes": dst.stat().st_size})
         used.add(rel.split("/")[0])
     for pack in sorted(used):
