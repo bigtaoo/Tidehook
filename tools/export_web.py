@@ -20,7 +20,8 @@ OUT.mkdir(exist_ok=True)
 fit = {}
 for f in sorted(SRC.glob("*.png")):
     im = Image.open(f).convert("RGBA")
-    side = LONG.get(f.stem, 192)
+    # a card's picture (icon_*) is drawn at most ~110 design units tall, ~45 css px
+    side = LONG.get(f.stem, 160 if f.stem.startswith("icon_") else 192)
     k = side / max(im.size)
     if k < 1:
         im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)

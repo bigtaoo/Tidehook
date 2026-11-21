@@ -10,13 +10,25 @@ import { nextId, type Item, type Monster, type World } from './world';
 
 const C = B.catch;
 
+/** What the catch is worth on wave `wave`, permille of wave 1's: a little more each wave. The
+ *  shop says so for the wave it opens onto (view/hud/shop.ts), as players did not see it grow. */
+export function catchScale(wave: number): number {
+  return 1000 + C.valuePerWave * Math.max(0, wave - 1);
+}
+
+/** What a catch pays on `wave` against wave 1, permille: the wave's scale and the grounds bonus.
+ *  The shop's worth line shows this (fishValue multiplies the same two, rounding once). */
+export function catchWorth(w: World, wave: number): number {
+  return roundDiv(catchScale(wave) * (1000 + B.grounds.valueBonus * w.up.grounds), 1000);
+}
+
 /** Coins a fish (or chest) at distance `d` is worth this wave. */
 export function fishValue(w: World, chest: boolean, d: number): number {
   const near = B.dock.edge + C.nearMargin;
   const span = LANE_LEN_FP - B.dock.edge - C.valueSpan;
   const far = clamp(muldiv(d - near, 1000, span), 0, 1000);
   const base = chest ? C.chestValue * 1000 + C.chestValueFar * far : C.fishValue * 1000 + C.fishValueFar * far;
-  const byWave = 1000 + C.valuePerWave * Math.max(0, w.wave - 1);
+  const byWave = catchScale(w.wave);
   const byGrounds = 1000 + B.grounds.valueBonus * w.up.grounds;
   return roundDiv(base * byWave * byGrounds, 1_000_000_000);
 }

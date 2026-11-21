@@ -22,6 +22,7 @@ PICK[enemy_hermit]=p2       # p1: red claws recoloured teal, shell cooled to blu
 PICK[enemy_hermit_side]=p2  # p1: eye whites filled (dot eyes only), shell cooled to blue-grey
 PICK[enemy_kraken]=p2       # p1 with its pink suckers recoloured lavender
 PICK[enemy_kraken_side]=p2  # p1 with its smile painted out, eye whites filled, suckers lavender
+PICK[icon_bait]=p2         # p1 read as a pink "6", not a worm
 PICK[enemy_ray_side]=p2     # p1 with a floating eye stalk painted out
 PICK[chest]=p2              # p1 with its lemon-yellow bands toned to brass
 PICK[junk_anchor]=p2        # p1: photographic rust flattened to iron and lightened, stray dot eyes removed, ring hole filled
@@ -41,6 +42,12 @@ for n in enemy_grunt enemy_darter enemy_brute enemy_glutton \
   src="../art/raw/${n}_$(pick "$n").png"
   # until every paper raw is made, a missing one keeps the old cut-out in art/cut
   if [ -f "$src" ]; then python paper.py "$src" "$OUT/$n.png" "$H"; else echo "kept old $n (or none yet)"; fi
+done
+# the shop cards' pictures (view/kit/card.ts), one per card the lane has no sprite for already,
+# and the repair button's (docs/04-content.md section 2)
+for c in grip heft cast pierce blast bait swing planks multi magnet grounds tar salvage scatter keg shanty barnacle repair; do
+  src="../art/raw/icon_${c}_$(pick "icon_$c").png"
+  if [ -f "$src" ]; then python paper.py "$src" "$OUT/icon_$c.png" "$H"; else echo "no icon_$c yet"; fi
 done
 echo "built $(ls "$OUT" | wc -l) sprites in art/cut"
 cd ..

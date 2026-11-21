@@ -2,7 +2,7 @@
 // is under 200 kB, so the game fetches it once before the first frame; a file that fails keeps its
 // grey-box shape, and so does everything in tests, where nothing is loaded.
 
-import { Assets, Sprite, type Texture } from 'pixi.js';
+import { Assets, Sprite, Texture, TextureSource } from 'pixi.js';
 import FIT from './artFit.json';
 
 export type ArtName = keyof typeof FIT;
@@ -57,6 +57,12 @@ export function seaTex(): Texture | undefined {
 
 export function harbourTex(): Texture | undefined {
   return backdrops.get('harbour');
+}
+
+/** Blank textures the size of every picture, for tests in node where nothing loads: the layout
+ *  sweep (layout/layout.test.ts) then lays the pictures out and counts the room they take. */
+export function standInArt(): void {
+  for (const n of ART_NAMES) if (!textures.has(n)) textures.set(n, new Texture({ source: new TextureSource({ width: FIT[n].w, height: FIT[n].h }) }));
 }
 
 export function tex(n: ArtName): Texture | undefined {

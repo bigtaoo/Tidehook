@@ -1,4 +1,4 @@
-// The shop between waves: three upgrade cards (at least one core card: grip, heft or barb),
+// The shop between waves: three upgrade cards, four late on (at least one core card: grip, heft or barb),
 // plus the fixed repair and mine slots, and a reroll that costs more each time (prototype
 // rollShop, buy, buyFix, reroll and their prices).
 
@@ -20,8 +20,11 @@ export function level(w: World, id: string): number {
   return w.lv[id] ?? 0;
 }
 
-/** The price of an upgrade's next level with `owned` levels: the base, times the growth for each. */
+/** The price of an upgrade's next level with `owned` levels: the base, times the growth for each;
+ *  an endless card's (balance.ts step) rises by the same few coins a level instead, so it keeps
+ *  pace with the catch, which is worth a little more each wave (items.ts), and never runs away. */
 export function priceAt(u: UpgradeSpec, owned: number): number {
+  if (u.step) return u.base + u.step * owned;
   let p = u.base * 1000;
   for (let i = owned; i > 0; i--) p = times(p, u.growth);
   return roundDiv(p, 1000);
@@ -55,12 +58,25 @@ export function offered(w: World, u: UpgradeSpec): boolean {
   return !u.locked || w.plans.includes(u.id);
 }
 
-/** The cards the shop could still deal: everything not rare, not at its max, and unlocked. A deep
- *  game buys the lot somewhere past wave twenty and this falls empty - the deal is then blank, and
- *  rerolling it would only take coins for nothing. The coins are not wasted: what is left in the
- *  purse comes home as pearls (meta.ts pearlsFromCoins). */
+/** The cards the shop could still deal: everything not rare, not at its max, and unlocked. The
+ *  endless cards (grip, heft, barb, planks) never reach a max, so a deep game always has a deal:
+ *  before them, a captain bought the lot somewhere past wave twenty and the shop fell empty, and
+ *  players watched (2026-11-21) said that is where the endless game turned dull. */
 export function dealable(w: World): UpgradeSpec[] {
   return B.upgrades.filter((u) => !u.rare && level(w, u.id) < u.max && offered(w, u));
+}
+
+/** Whether a capped card is still to be had. Once none is, the coins left in the purse come home
+ *  as pearls (meta.ts pearlsFromCoins), as they did when the shop could be bought out. */
+export function cappedLeft(w: World): boolean {
+  return dealable(w).some((u) => !u.step);
+}
+
+/** How many cards the deal lays out: the usual three, and a fourth from wave `S.moreFrom` so a
+ *  long game has more to choose between - or from the first wave with the harbour's stall. Never
+ *  five: a portrait phone cannot lay out five cards a player can read. */
+export function dealSize(w: World): number {
+  return Math.min(S.cards + 1, S.cards + (w.wave >= S.moreFrom ? 1 : 0) + w.stall);
 }
 
 export function rollShop(w: World): void {
@@ -73,7 +89,7 @@ export function rollShop(w: World): void {
     w.cards.push({ id: u.id, bought: false });
     pool.splice(pool.indexOf(u), 1);
   }
-  while (w.cards.length < S.cards + w.stall && pool.length) {
+  while (w.cards.length < dealSize(w) && pool.length) {
     const u = pool.splice(rng.int(pool.length), 1)[0];
     w.cards.push({ id: u.id, bought: false });
   }
@@ -89,7 +105,11 @@ function rareCard(w: World): void {
   const all = B.upgrades.filter((u) => u.rare);
   if (all.filter((u) => level(w, u.id) > 0).length >= BF.rare.max) return;
   const rares = all.filter((u) => level(w, u.id) < u.max);
-  if (rares.length) w.cards.push({ id: rares[luck.int(rares.length)].id, bought: false });
+  if (!rares.length) return;
+  const card = { id: rares[luck.int(rares.length)].id, bought: false };
+  // a fourth card already out: the rare takes the last place rather than make a fifth (dealSize)
+  if (w.cards.length >= S.cards + 1) w.cards[w.cards.length - 1] = card;
+  else w.cards.push(card);
 }
 
 /** An owned card that `id` works well with, or null. */

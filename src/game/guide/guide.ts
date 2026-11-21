@@ -13,7 +13,8 @@ import { BRAD_FULL } from '../../sim/math/trig';
 import { throwFirst } from '../../sim/lead';
 import { rayFirst } from '../../sim/ray';
 import { B } from '../../sim/balance';
-import type { Calm, World } from '../../sim/world';
+import { liftable } from '../../sim/monsters';
+import type { Calm, Monster, World } from '../../sim/world';
 import { loadGuide, saveGuide } from './store';
 import { shopPick, type ShopPick } from './shopPick';
 
@@ -26,6 +27,8 @@ const SHOP_SEEN = 'shopSeen';
 /** Saved once a card has been bought, ever: until then the shop keeps tagging its Top pick
  *  (tagOn), the way the harbour keeps pointing while nothing has been bought (meta/tip.ts). */
 const BOUGHT = 'bought';
+/** Saved when the player skips the tutorial: they asked to be left alone, so no nudge either. */
+const SKIPPED = 'skipped';
 
 /** What the aim line glows on. */
 export type Want = 'fish' | 'mon' | 'junk';
@@ -33,7 +36,8 @@ export type Want = 'fish' | 'mon' | 'junk';
 export type CueTarget = { t: 'item'; id: number } | { t: 'mon'; id: number } | { t: 'shop'; pick: ShopPick };
 
 export interface Cue {
-  step: StepId;
+  /** A step, or 'nudge': no step, the idle reminder of what the game is about (NUDGE_MS). */
+  step: StepId | 'nudge';
   /** The line of words over the lane, or null (the shop points without words). */
   text: TextKey | null;
   target: CueTarget | null;
@@ -71,6 +75,13 @@ export const HOLD_MS = 30_000;
 /** The shop's hand shows on this many visits; the Top pick tag for this many games. */
 const SHOP_VISITS = 3;
 const TAG_GAMES = 3;
+/** Players watched on 2026-11-21 often stood still once the steps were done, not knowing what to
+ *  do next. In their first NUDGE_GAMES games, a wave whose hook swings NUDGE_MS without a cast
+ *  while a monster it could lift walks in points at the nearest such one, with the goal in words.
+ *  Not a step: nothing is saved, a tap puts it away, and a player who skipped the tutorial never
+ *  sees it. */
+export const NUDGE_MS = 5000;
+const NUDGE_GAMES = 5;
 /** "Fish eaten" past which the game over lesson is about fish. */
 const EATEN_LESSON = 3;
 
@@ -94,6 +105,8 @@ export class Guide {
   private stepMs = 0;
   private restMs = 0;
   private tapped = false;
+  /** Live wave time since the last tap, ms (the nudge). */
+  private idleMs = 0;
   /** Whether this game's lane may freeze on the first cast (see begin()). */
   private freezes = true;
   /** This game's first catch so far, as the cast step's log will carry it. */
@@ -177,6 +190,7 @@ export class Guide {
     this.lesson = null;
     this.holds = hold;
     this.playMs = 0;
+    this.idleMs = 0;
     this.current = null;
     this.freeze = false;
     this.settle(hold, freezes);
@@ -204,6 +218,7 @@ export class Guide {
   tap(): void {
     this.tapped = true;
     this.restMs = 0;
+    this.idleMs = 0;
     if (this.freeze) this.castFreeze = 'tap';
     this.freeze = false;
   }
@@ -216,6 +231,7 @@ export class Guide {
     }
     for (const s of STEP_IDS) if (!this.done.has(s)) this.log.push({ step: s, game: this.games, shownS: this.secs(this.shownAt.get(s)), doneS: -1 });
     for (const s of STEP_IDS) this.done.add(s);
+    this.done.add(SKIPPED);
     this.cue = null;
     this.freeze = false;
     this.current = null;
@@ -268,7 +284,9 @@ export class Guide {
     }
     this.stepMs += frameMs;
     this.restMs += frameMs;
-    this.cue = step ? this.cueFor(step, w) : null;
+    // idle only while the hook swings waiting for a cast: a long reel or a held catch is play
+    this.idleMs = w.phase === 'wave' && w.hook.st === 'swing' ? this.idleMs + frameMs : 0;
+    this.cue = step ? this.cueFor(step, w) : this.nudge(w);
     this.freeze = this.freezes && step === 'cast' && this.calm() === 1 && this.stepMs >= FIRST_MS && aimFinds(w, 'fish');
     if (this.freeze && this.castFreeze === 'none') this.castFreeze = 'released';
   }
@@ -316,6 +334,15 @@ export class Guide {
       hand: hand && !!m,
       want: m ? 'mon' : null,
     };
+  }
+
+  /** The idle reminder (NUDGE_MS), or null. */
+  private nudge(w: World): Cue | null {
+    if (this.games > NUDGE_GAMES || this.done.has(SKIPPED) || !this.done.has('crab') || w.phase !== 'wave' || this.idleMs < NUDGE_MS) return null;
+    // only one the hook can lift: pointing a new player at a boss or a shelled one teaches a miss
+    const m = nearestMonster(w, (mon) => liftable(w, mon));
+    if (!m) return null;
+    return { step: 'nudge', text: 'guide.nudge', target: { t: 'mon', id: m }, hand: w.hook.st === 'swing', want: 'mon' };
   }
 
   private finish(step: StepId): void {
@@ -381,11 +408,11 @@ function nearestInSwing(w: World, kind: 'fish' | 'junk'): number {
 }
 
 /** The monster closest to the dock, by id, or 0. */
-function nearestMonster(w: World): number {
+function nearestMonster(w: World, ok: (m: Monster) => boolean = () => true): number {
   let best = 0;
   let bd = Infinity;
   for (const m of w.mons) {
-    if (m.grab) continue;
+    if (m.grab || !ok(m)) continue;
     const dist = Math.hypot(m.d - B.crane.d, m.w - B.crane.w);
     if (dist < bd) {
       bd = dist;

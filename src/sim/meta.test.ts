@@ -57,7 +57,7 @@ describe("the harbour's upgrades", () => {
     expect(pearlsFor(w)).toBe(13 * B.meta.perWave);
   });
 
-  it('pays for the coins never spent, but only once the shop is bought out', () => {
+  it('pays for the coins never spent, but only once every capped card is bought', () => {
     const w = startGame(2);
     w.wave = 14;
     gameOver(w);
@@ -67,7 +67,8 @@ describe("the harbour's upgrades", () => {
     w.coins = B.meta.perCoin * 3 + B.meta.perCoin - 1;
     expect(pearlsFromCoins(w)).toBe(0);
     expect(pearlsFor(w)).toBe(won);
-    for (const u of B.upgrades) if (!u.rare) w.lv[u.id] = u.max;
+    // the endless cards are always for sale, and do not hold the purse back
+    for (const u of B.upgrades) if (!u.rare && !u.step) w.lv[u.id] = u.max;
     expect(pearlsFromCoins(w)).toBe(3);
     expect(pearlsFor(w)).toBe(won + 3);
   });

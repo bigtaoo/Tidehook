@@ -25,6 +25,10 @@ import { Button } from '../kit/button';
 import { fitDesign } from '../viewport';
 import { overflows } from './check';
 import { unknownChars } from './measure';
+import { artSprite, standInArt } from '../art';
+
+// the pictures on cards and buttons take room from the words: lay them out as in the browser
+standInArt();
 
 /** The screens the sweep covers: phones both ways, a tablet, a desktop tab, a small embed. */
 const SIZES: [number, number][] = [
@@ -203,6 +207,7 @@ function screens(fr: Frame): Screen[] {
     ...MONSTER_KINDS.map((k) => t('hints.debut', { name: t(`monsters.${k}.name` as TextKey), tip: t(`monsters.${k}.tip` as TextKey) })),
     t('hints.held'),
     t('hints.eat'),
+    t('hints.mine'),
     t('hints.event'),
   ];
   for (const [i, text] of hints.entries()) {
@@ -292,6 +297,10 @@ describe('every language fits its boxes', () => {
       expect([...new Set(drift)]).toEqual([]);
     }, SWEEP_MS);
   }
+
+  it('lays the pictures out too', () => {
+    expect(artSprite('icon_repair', 40)?.height).toBeCloseTo(40);
+  });
 
   it('measures every glyph it met', () => {
     expect(unknownChars()).toEqual([]);

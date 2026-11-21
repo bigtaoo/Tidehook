@@ -8,6 +8,7 @@
 // `wordBox` and `priceBox` give here, so the two never drift apart.
 
 import { Container, Graphics, type FederatedPointerEvent } from 'pixi.js';
+import { artSprite, aspect, type ArtName } from '../art';
 import { drawCoin, drawPearl } from './counter';
 import { P, TEXT_STROKE } from './palette';
 import { RADIUS, STROKE } from './tokens';
@@ -23,9 +24,9 @@ export interface ButtonOpts {
   /** The price is in pearls (the harbour's, between games): a pearl instead of the coin. */
   pearl?: boolean;
   color?: number;
-  /** A mark drawn before the words: 'play' for a button that shows an ad. Drawn, not a ▶ glyph,
-   *  which some systems turn into a colour emoji. */
-  icon?: 'play';
+  /** A mark drawn before the words: 'play' for a button that shows an ad (drawn, not a ▶ glyph,
+   *  which some systems turn into a colour emoji), or a picture of what the button buys. */
+  icon?: 'play' | ArtName;
   enabled?: boolean;
   onPress: () => void;
   /** A press while disabled (the shop's "can't afford" sound). */
@@ -44,6 +45,9 @@ export interface WordBox {
 /** Everything about a plate that decides how much room its words get. */
 export type Plate = Pick<ButtonOpts, 'w' | 'h' | 'text' | 'price' | 'icon'>;
 
+/** A picture before the words is this many times their size, tall and wide. */
+const PICTURE = 1.8;
+
 /** The room a plate this wide keeps inside its edges. */
 function padOf(w: number): number {
   return Math.min(24, w / 10);
@@ -56,7 +60,7 @@ function stacked(o: Plate): boolean {
 
 /** The box the words get. */
 export function wordBox(o: Plate): WordBox {
-  return { w: o.w - padOf(o.w) * 2, h: stacked(o) ? o.h * 0.5 : o.h - 12, room: o.icon ? 1 : 0 };
+  return { w: o.w - padOf(o.w) * 2, h: stacked(o) ? o.h * 0.5 : o.h - 12, room: o.icon === 'play' ? 1 : o.icon ? PICTURE + 0.2 : 0 };
 }
 
 /** How much smaller the price line is drawn than the words above it. */
@@ -95,7 +99,17 @@ export class Button extends Container {
       main.anchor.set(0.5);
       main.position.set(left + room * k + main.width / 2, y);
       this.addChild(main);
-      if (o.icon) this.addChild(playMark(left, y, icon * k));
+      if (o.icon === 'play') this.addChild(playMark(left, y, icon * k));
+      else if (o.icon) {
+        // a wide picture is held to the square it was given room for, and to the plate: on a
+        // stacked button it stays above the price line, on a flat one inside the rim
+        const tall = Math.min(o.size * PICTURE * k, twoLines ? o.h * 0.5 : o.h * 0.8);
+        const pic = artSprite(o.icon, tall / Math.max(1, aspect(o.icon)), 0, 0.5);
+        if (pic) {
+          pic.position.set(left, y);
+          this.addChild(pic);
+        }
+      }
     }
     if (o.price !== undefined) this.price(String(o.price), o, twoLines ? o.h * 0.72 : o.h / 2);
     this.eventMode = 'static';

@@ -74,6 +74,15 @@ export function getLocale(): Locale {
   return current;
 }
 
+/** `x` with one decimal, written the language's way (1.4 in English, 1,4 in German). */
+export function decimal1(x: number): string {
+  try {
+    return new Intl.NumberFormat(current, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(x);
+  } catch {
+    return x.toFixed(1);
+  }
+}
+
 let desk = false;
 
 /** Whether the player sits at a mouse and keyboard (game/pointer.ts): t() then takes a prompt's

@@ -6,6 +6,7 @@
 // its card is made of and what its button does.
 
 import { Container } from 'pixi.js';
+import { artSprite, aspect, type ArtName } from '../art';
 import { Button, type ButtonOpts } from './button';
 import { P } from './palette';
 import { plate } from './panel';
@@ -74,6 +75,9 @@ export interface CardOpts {
   /** The small line says something good (it pairs with a card already owned): chart teal, heavy. */
   subMark?: boolean;
   desc: string;
+  /** A picture of what the card does, above its words: players watched on 2026-11-21 read the
+   *  name and the price and little else, so the picture has to carry the idea. */
+  icon?: ArtName;
   /** A line above the button, in red: what the captain must do first. */
   note?: string;
   /** The button along the bottom. It takes the card's width and the card's size: words at one
@@ -98,10 +102,24 @@ export function card(o: CardOpts): Container {
     sub.position.set(o.w / 2, b.subY);
     box.addChild(sub);
   }
+  let descTop = b.descTop;
+  let descH = b.descH;
+  if (o.icon) {
+    // the picture takes the top of the words' room, no wider than the card and never more than
+    // half the room, so a short landscape card still has its words
+    const h = Math.min(descH * 0.5, b.inner * 0.6 / aspect(o.icon));
+    const pic = artSprite(o.icon, h, 0.5, 0);
+    if (pic) {
+      pic.position.set(o.w / 2, descTop);
+      box.addChild(pic);
+      descTop += h + 6;
+      descH -= h + 6;
+    }
+  }
   const desc = label(o.desc, TYPE.small * o.k, { fill: P.ink, stroke: false, weight: '600', wrap: b.inner });
-  fitWrap(desc, b.inner, b.descH);
+  fitWrap(desc, b.inner, descH);
   desc.anchor.set(0.5, 0);
-  desc.position.set(o.w / 2, b.descTop);
+  desc.position.set(o.w / 2, descTop);
   box.addChild(desc);
   if (o.note !== undefined) {
     const note = label(o.note, TYPE.meta * o.k, { fill: P.red, stroke: false, wrap: b.inner });

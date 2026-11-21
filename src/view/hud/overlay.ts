@@ -96,6 +96,8 @@ export class Overlay extends Container {
       if (ev.e === 'debut') this.hint(`debut.${ev.kind}`, t('hints.debut', { name: t(`monsters.${ev.kind}.name` as TextKey), tip: t(`monsters.${ev.kind}.tip` as TextKey) }));
       else if (ev.e === 'held') this.hint('held', t('hints.held'));
       else if (ev.e === 'eatStart') this.hint('eat', t('hints.eat'));
+      // a mine is never thrown: it goes off on its own, and players bought them not knowing how
+      else if (ev.e === 'mine') this.hint('mine', t('hints.mine'));
       // not a hint: the tide turns in every long game, so it is said every time (sim/tide.ts)
       else if (ev.e === 'tide') this.queue.unshift(t('hints.tide'));
       // every sea event says what it is, ahead of any lesson waiting (sim/seaEvents.ts)

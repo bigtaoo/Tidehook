@@ -142,7 +142,10 @@ describe('shop', () => {
     const w = startGame(1);
     expect(price(w, 'grip')).toBe(20);
     w.lv.grip = 1;
-    expect(price(w, 'grip')).toBe(34);
+    expect(price(w, 'grip')).toBe(41);
+    expect(price(w, 'winch')).toBe(14);
+    w.lv.winch = 1;
+    expect(price(w, 'winch')).toBe(19);
   });
 
   it('buying a card applies its effect and charges for it', () => {

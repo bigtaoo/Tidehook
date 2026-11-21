@@ -172,7 +172,8 @@ describe('Guide', () => {
     expect(again.games).toBe(1);
     const s = new Session({ seed: 9, speed: 1, autoplay: null }, again);
     s.start();
-    run(s, 5000);
+    // short of NUDGE_MS: a player who stands idle in their first games is still nudged
+    run(s, 3000);
     expect(s.world.calm).toBe(0);
     expect(again.cue).toBeNull();
   });

@@ -1,11 +1,12 @@
-// The shop between waves: three upgrade cards, then repair, mine and new cards, then the next
+// The shop between waves: three or four upgrade cards (each with a picture of what it does), then repair, mine and new cards, then the next
 // wave, in the panel frame.ts places. Rebuilt whenever something it shows changes (a purchase).
 
 import { Container, Graphics } from 'pixi.js';
-import { t, type TextKey } from '../../i18n';
+import { decimal1, t, type TextKey } from '../../i18n';
 import { B } from '../../sim/balance';
-import { artSprite, aspect } from '../art';
-import { dealable, level, mineCost, pairedWith, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
+import { artSprite, aspect, type ArtName } from '../art';
+import { level, mineCost, pairedWith, price, repairCost, rerollCost, upgrade } from '../../sim/shop';
+import { catchWorth } from '../../sim/items';
 import type { World } from '../../sim/world';
 import type { ShopPick } from '../../game/guide/shopPick';
 import { Button } from '../kit/button';
@@ -28,6 +29,17 @@ export interface ShopActions {
   /** A press on something the player cannot buy. */
   denied?(): void;
 }
+
+/** Each card's picture: the lane's own sprite where it has one, a paper icon (tools/build_sprites.sh)
+ *  for the rest. */
+const ICON: Record<string, ArtName> = {
+  winch: 'winch',
+  barb: 'hook',
+  golden: 'fish_gold',
+  ...Object.fromEntries(
+    (['grip', 'heft', 'cast', 'pierce', 'blast', 'bait', 'swing', 'planks', 'multi', 'magnet', 'grounds', 'tar', 'salvage', 'scatter', 'keg', 'shanty', 'barnacle'] as const).map((id) => [id, `icon_${id}` as const]),
+  ),
+};
 
 const PAD = 28;
 const GAP = 20;
@@ -92,11 +104,21 @@ export class ShopPanel extends Container {
     // here was the same number twice, in two sizes. The head is the title's alone
     const titleW = inner - capW;
     const title = teach && mine ? label(t('shop.teach'), 36 * k, { wrap: titleW }) : label(mine ? done : t('shop.bot'), TYPE.title * k);
+    // under the title, what the catch pays on the wave ahead: the price of a card climbs, and
+    // players watched (2026-11-21) did not see that the fish and chests climb with it
+    const worth = teach && mine ? null : label(t('shop.worth', { x: decimal1(catchWorth(w, w.wave + 1) / 1000) }), TYPE.head * k, { fill: P.brass });
+    const titleH = worth ? HEAD * 0.62 : HEAD;
     if (teach && mine) fitWrap(title, titleW, HEAD);
-    else fitIn(title, titleW, HEAD);
+    else fitIn(title, titleW, titleH);
     title.anchor.set(0, 0.5);
-    title.position.set(r.x + PAD + capW, r.y + PAD + HEAD / 2);
+    title.position.set(r.x + PAD + capW, r.y + PAD + titleH / 2);
     this.addChild(title);
+    if (worth) {
+      fitIn(worth, titleW, HEAD - titleH);
+      worth.anchor.set(0, 0.5);
+      worth.position.set(r.x + PAD + capW, r.y + PAD + titleH + (HEAD - titleH) / 2);
+      this.addChild(worth);
+    }
 
     const cost = { repair: repairCost(w), mine: mineCost(w), reroll: rerollCost(w) };
     const mendable = w.hp < w.maxHp && w.coins >= cost.repair;
@@ -109,17 +131,6 @@ export class ShopPanel extends Container {
     const cardH = r.h - PAD * 2 - HEAD - 16 - ROW * (rowed ? 2 : 1) - GAP * (rowed ? 2 : 1);
     const n = Math.max(3, w.cards.length);
     const cardW = (inner - GAP * (n - 1)) / n;
-    // a captain who has bought every card there is gets an empty deal: say so where the cards
-    // would be, and say what the coins are for now (sim/meta.ts pearlsFromCoins), so the panel is
-    // not a blank wall with a reroll button that could only take the coins for nothing
-    const dry = !dealable(w).length;
-    if (dry) {
-      const note = label(t('shop.bought'), TYPE.head * k, { wrap: inner - PAD * 2, align: 'center' });
-      fitWrap(note, inner - PAD * 2, cardH);
-      note.anchor.set(0.5);
-      note.position.set(r.x + r.w / 2, cardsY + cardH / 2);
-      this.addChild(note);
-    }
     w.cards.forEach((_, i) => {
       const card = this.card(w, i, cardW, cardH, mine);
       const x = r.x + PAD + i * (cardW + GAP);
@@ -133,11 +144,11 @@ export class ShopPanel extends Container {
 
     const rowY = cardsY + cardH + GAP;
     const all = [
-      { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: mendable, onPress: () => this.act.repair() },
-      { text: t('shop.mine', { n: w.mines, max: B.mine.max }), price: cost.mine, ok: w.mines < B.mine.max && w.coins >= cost.mine, onPress: () => this.act.mine() },
-      free && !dry
+      { text: t('shop.repair', { n: B.shop.repairHp }), price: cost.repair, ok: mendable, onPress: () => this.act.repair(), icon: 'icon_repair' as const },
+      { text: t('shop.mine', { n: w.mines, max: B.mine.max }), price: cost.mine, ok: w.mines < B.mine.max && w.coins >= cost.mine, onPress: () => this.act.mine(), icon: 'mine' as const },
+      free
         ? { text: t('ads.reroll'), price: undefined, ok: true, onPress: () => this.act.freeReroll?.(), color: P.go, icon: 'play' as const }
-        : { text: t('shop.reroll'), price: cost.reroll, ok: !dry && w.coins >= cost.reroll, onPress: () => this.act.reroll() },
+        : { text: t('shop.reroll'), price: cost.reroll, ok: w.coins >= cost.reroll, onPress: () => this.act.reroll() },
     ];
     const small = !rowed ? [] : lean ? all.slice(0, 1) : all;
     // one size for the three: the reroll can carry a play mark, which leaves its words less room
@@ -147,7 +158,7 @@ export class ShopPanel extends Container {
       text: s.text,
       price: s.price,
       color: 'color' in s ? s.color : undefined,
-      icon: 'icon' in s ? s.icon : undefined,
+      icon: s.icon,
       enabled: mine && s.ok,
       onPress: s.onPress,
       onDenied: this.deny,
@@ -196,9 +207,10 @@ export class ShopPanel extends Container {
       line: u.rare ? P.brassDark : P.line,
       width: u.rare ? STROKE.mark : STROKE.card,
       name: t(`cards.${c.id}.name` as TextKey),
-      sub: pair ? t('shop.pairs', { name: t(`cards.${pair}.name` as TextKey) }) : t('shop.level', { n: level(w, c.id), max: u.max }),
+      sub: pair ? t('shop.pairs', { name: t(`cards.${pair}.name` as TextKey) }) : u.step ? t('shop.levelEndless', { n: level(w, c.id) }) : t('shop.level', { n: level(w, c.id), max: u.max }),
       subMark: !!pair,
       desc: t(`cards.${c.id}.desc` as TextKey),
+      icon: ICON[c.id],
       action: c.bought
         ? { text: t('shop.sold'), enabled: false, onPress: () => {} }
         : { text: '', price: cost, enabled: mine && w.coins >= cost, onPress: () => this.act.buy(i), onDenied: this.deny },

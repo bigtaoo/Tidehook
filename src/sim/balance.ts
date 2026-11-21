@@ -103,6 +103,9 @@ export interface UpgradeSpec {
   max: number;
   /** Price growth per level owned, permille. */
   growth: number;
+  /** An endless card's price rise per level owned, in coins: its price is the base plus this for
+   *  each level, and it has no cap (`max` is ENDLESS). 0 for a card priced by `growth`. */
+  step: number;
   /** One of the cards a shop always offers at least one of. */
   core: boolean;
   /** Shown as an ability rather than a stat. */
@@ -167,6 +170,7 @@ interface UpgradeJson {
   base: number;
   max: number;
   growth?: number;
+  step?: number;
   core?: boolean;
   ability?: boolean;
   card?: string;
@@ -177,12 +181,16 @@ interface UpgradeJson {
   effects: { stat: string; add?: number; mul?: number }[];
 }
 
+/** The cap of an endless card: none a game will reach. */
+export const ENDLESS = 999;
+
 function upgradeSpec(u: UpgradeJson): UpgradeSpec {
   return {
     id: u.id,
     base: u.base,
-    max: u.max,
+    max: u.step ? ENDLESS : u.max,
     growth: pm(u.growth ?? j.shop.priceGrowth),
+    step: u.step ?? 0,
     core: !!u.core,
     ability: !!u.ability,
     effects: u.effects.map((e): Effect => {
@@ -351,6 +359,7 @@ export const B = {
     repairHp: j.shop.repairHp,
     mineBase: j.shop.mineBase,
     minePerWave: j.shop.minePerWave,
+    moreFrom: j.shop.moreFrom,
   },
   grounds: { valueBonus: pm(j.grounds.valueBonus), restockBonus: j.grounds.restockBonus, capBonus: j.grounds.capBonus },
   /** Salvage level L leaves junk behind every (every - L)th monster sunk. */

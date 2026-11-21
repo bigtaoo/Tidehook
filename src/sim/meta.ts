@@ -6,7 +6,7 @@
 import { B, type UpgradeSpec } from './balance';
 import { muldiv } from './math/fixed';
 import { seaOf } from './seas';
-import { dealable, gain, level, priceAt, upgrade } from './shop';
+import { cappedLeft, gain, level, priceAt, upgrade } from './shop';
 import type { World } from './world';
 
 /** Harbour upgrade levels owned, by id; a missing id is level 0. */
@@ -55,12 +55,12 @@ export function applyMeta(w: World, lv: MetaLevels): void {
 }
 
 /** The pearls the coins still in the purse are worth, before the sea's scale, and only once the
- *  shop has nothing left to deal (shop.ts dealable): a deep game buys every card there is and then
- *  earns on, so what it cannot spend comes home instead of evaporating. While there is still a card
- *  to buy the coins are worth nothing here - they are worth the card - so this never pays a captain
+ *  every capped card is bought (shop.ts cappedLeft): a deep game buys those and then earns more
+ *  than the endless cards take, so what it does not spend comes home instead of evaporating. While
+ *  there is still a capped card to buy the coins are worth nothing here - they are worth the card - so this never pays a captain
  *  for hoarding, and the rate is poor besides: a wave cleared pays more than a wave's takings. */
 function coinPearls(w: World): number {
-  if (dealable(w).length) return 0;
+  if (cappedLeft(w)) return 0;
   return Math.floor(Math.max(0, w.coins) / B.meta.perCoin);
 }
 
