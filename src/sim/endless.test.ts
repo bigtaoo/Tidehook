@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { B, ENDLESS } from './balance';
 import { BF } from './balanceFun';
 import { ALL_PLANS } from './meta';
-import { cappedLeft, dealable, dealSize, priceAt, rollShop } from './shop';
+import { cappedLeft, dealable, dealSize, price, priceAt, rollShop } from './shop';
 import { startGame } from './step';
 
 const ENDLESS_IDS = ['grip', 'heft', 'barb', 'planks'];
@@ -57,5 +57,17 @@ describe('the endless shop', () => {
 
   it('keeps no capped card past a few hundred coins', () => {
     for (const u of B.upgrades) if (!u.step && !u.rare) expect(priceAt(u, u.max - 1), u.id).toBeLessThanOrEqual(120);
+  });
+
+  it('prices an endless card up with the wave late on, and a capped card not at all', () => {
+    const w = startGame(5);
+    const grip = B.upgrades.find((u) => u.id === 'grip')!;
+    const capped = B.upgrades.find((u) => !u.step && !u.rare)!;
+    w.wave = B.shop.endlessFrom;
+    expect(price(w, 'grip')).toBe(priceAt(grip, 0));
+    w.wave = B.shop.endlessFrom + 10;
+    const scale = 1000 + Math.floor((B.catch.valuePerWave * B.shop.endlessByWave) / 1000) * 10;
+    expect(price(w, 'grip')).toBe(Math.round((priceAt(grip, 0) * scale) / 1000));
+    expect(price(w, capped.id)).toBe(priceAt(capped, 0));
   });
 });

@@ -353,6 +353,8 @@ export const B = {
   shop: {
     cards: j.shop.cards,
     priceGrowth: pm(j.shop.priceGrowth),
+    endlessByWave: pm(j.shop.endlessByWave),
+    endlessFrom: j.shop.endlessFrom,
     rerollBase: j.shop.rerollBase,
     rerollPer: j.shop.rerollPer,
     repairBase: j.shop.repairBase,

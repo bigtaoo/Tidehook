@@ -129,6 +129,8 @@
     "cards": 3,
     "moreFrom": 10,
     "priceGrowth": 1.35,
+    "endlessByWave": 1,
+    "endlessFrom": 15,
     "rerollBase": 4,
     "rerollPer": 3,
     "repairBase": 6,

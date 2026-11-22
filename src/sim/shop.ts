@@ -4,7 +4,7 @@
 
 import { B, type Effect, type UpgradeSpec } from './balance';
 import { BF } from './balanceFun';
-import { roundDiv, times } from './math/fixed';
+import { muldiv, roundDiv, times } from './math/fixed';
 import type { World } from './world';
 
 const S = B.shop;
@@ -30,8 +30,20 @@ export function priceAt(u: UpgradeSpec, owned: number): number {
   return roundDiv(p, 1000);
 }
 
+/** How much dearer an endless card is on this wave than its level alone makes it, permille: from
+ *  `shop.endlessFrom` on it grows by `shop.endlessByWave` of the catch's own growth (items.ts
+ *  catchScale). The per-level step alone fell behind a purse that grows with the wave: late on a
+ *  player who fished well bought every card on offer each shop and still sat on over a thousand
+ *  coins. Before wave endlessFrom nothing changes, so the early game is as it was. */
+export function endlessScale(w: World): number {
+  return 1000 + muldiv(B.catch.valuePerWave, S.endlessByWave, 1000) * Math.max(0, w.wave - S.endlessFrom);
+}
+
+/** What a card costs in this shop: an endless card's price also grows with the wave (endlessScale). */
 export function price(w: World, id: string): number {
-  return priceAt(upgrade(id), level(w, id));
+  const u = upgrade(id);
+  const p = priceAt(u, level(w, id));
+  return u.step ? roundDiv(p * endlessScale(w), 1000) : p;
 }
 
 /** One level's worth of an effect, on the world. */
