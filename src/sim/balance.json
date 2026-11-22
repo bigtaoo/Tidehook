@@ -27,6 +27,7 @@
     "margin": 20,
     "behindDock": 30,
     "aimSlow": 0.15,
+    "aimWindow": 0.6,
     "stun": 0.6,
     "knock": 45,
     "blastBase": 50,

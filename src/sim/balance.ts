@@ -239,6 +239,7 @@ export const B = {
     margin: toFp(j.throw.margin),
     behindDock: toFp(j.throw.behindDock),
     aimSlow: pm(j.throw.aimSlow),
+    aimWindow: sec(j.throw.aimWindow),
     stun: sec(j.throw.stun),
     knock: toFp(j.throw.knock),
     blastBase: toFp(j.throw.blastBase),

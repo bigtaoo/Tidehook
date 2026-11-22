@@ -2,8 +2,9 @@
 // a tap casts it along the aim, where it grabs fish, junk and monsters light enough to lift (up
 // to 1 + multi of them), bounces off heavier ones (knocking a hermit's shell off as junk), and reels back slower the more it carries.
 // With junk in the crane's hand a tap throws it instead (throw.ts). The swing slows while a tap now
-// would land: a lot while a throw would hit a monster (at full speed a far one sat under the aim
-// for some 50 ms, gone before the player could react), a little while a cast would catch.
+// would land: while a throw would hit, each monster gets the same short window under the aim
+// (throw.aimWindow), near or far, so a far one is not gone before the player reacts and a near
+// one does not hold the aim while the next walks in; a little while a cast would catch.
 
 import { B } from './balance';
 import { BF } from './balanceFun';
@@ -14,7 +15,7 @@ import { emit } from './events';
 import { dropJunk, returnJunk } from './items';
 import { LANE_LEN_FP, LANE_WIDTH_FP } from './lane';
 import { dist, muldiv, times } from './math/fixed';
-import { cosB, normBrad, sinB } from './math/trig';
+import { BRAD_FULL, cosB, normBrad, sinB } from './math/trig';
 import { damage, kill, knock, liftable } from './monsters';
 import { throwFirst } from './lead';
 import { rayFirst } from './ray';
@@ -91,19 +92,47 @@ export function grabWeight(w: World, g: Grab): number {
 
 /** One tick of the swing. It moves in slow steps and stops at the first one where a tap would
  *  land, so the aim slows from the edge of a target, not from wherever a full step (some 3.7°,
- *  more than a far monster's whole width) happened to land in it. */
+ *  more than a far monster's whole width) happened to land in it. With junk in hand and the aim
+ *  already on a monster, the tick's length is aimPace's instead, still in slow steps so that it
+ *  stops on the edge of the next monster rather than skipping a narrow one. */
 function swing(w: World): void {
   const h = w.hook;
   const slow = Math.max(1, muldiv(H.swingRate, w.held ? T.aimSlow : H.aimSlow, 1000));
+  const on = w.held ? aimPace(w) : null;
+  const span = on ? on.step : H.swingRate;
   let moved = 0;
-  while (moved < H.swingRate) {
-    const s = Math.min(slow, H.swingRate - moved);
+  while (moved < span) {
+    const s = Math.min(slow, span - moved);
     moved += s;
     h.ph = normBrad(h.ph + s);
     h.ang = muldiv(w.up.swing, sinB(h.ph), 1000);
-    if (onTarget(w, h.ang)) break;
+    if (!on) {
+      if (onTarget(w, h.ang)) break;
+    } else if (moved < span) {
+      const next = throwFirst(w, h.ang);
+      if (next && next.m.id !== on.id) break;
+    }
   }
   h.rate = moved;
+}
+
+/** With junk in hand and a throw now hitting a monster: that monster and the swing's step for
+ *  this tick (brads of phase); null when a throw now would miss. A fixed slow-down kept the aim on
+ *  a near monster, wide to the eye, for up to two seconds (a crowd chained them into a sweep three
+ *  times as long) while a far one got 0.3 s. So the step is sized to cross the monster's hit band
+ *  (its radius plus the junk's, seen from where they meet) in `throw.aimWindow`, near or far, and
+ *  never faster than the free swing. */
+function aimPace(w: World): { id: number; step: number } | null {
+  const h = w.hook;
+  const hit = throwFirst(w, h.ang);
+  if (!hit) return null;
+  const band = B.monsters[hit.m.kind].radius + T.radius;
+  // the band's whole angle, brads: 2 * band / len radians, a full turn being 2 * pi
+  const width = muldiv(band, BRAD_FULL * 1000, Math.max(band, hit.len) * 3142);
+  // the aim's angle moves `swing * cos(ph)` per radian of phase, a radian being BRAD_FULL / 2pi
+  const turn = Math.abs(muldiv(w.up.swing, cosB(h.ph), 1000));
+  const step = turn === 0 ? H.swingRate : muldiv(width * BRAD_FULL, 1000, turn * T.aimWindow * 6283);
+  return { id: hit.m.id, step: Math.min(H.swingRate, Math.max(1, step)) };
 }
 
 /** Whether a tap along `ang` would land: a throw on a monster, or a cast on a fish, chest or piece

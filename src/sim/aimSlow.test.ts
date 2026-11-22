@@ -4,6 +4,7 @@ import { updateHook } from './hook';
 import { muldiv, toFp } from './math/fixed';
 import { BRAD_FULL, normBrad, sinB } from './math/trig';
 import { rayFirst } from './ray';
+import { throwFirst } from './lead';
 import { spawn } from './monsters';
 import { startGame } from './step';
 import type { World } from './world';
@@ -29,15 +30,31 @@ function lane(held: boolean): World {
 }
 
 describe('the swing slows while a tap would land', () => {
-  const slow = muldiv(B.hook.swingRate, B.throw.aimSlow, 1000);
 
   it('slows with junk in hand and a monster under the aim', () => {
     const w = lane(true);
     ahead(w, 600);
     updateHook(w);
-    expect(w.hook.rate).toBe(slow);
-    expect(w.hook.ph).toBe(slow);
     expect(w.hook.rate).toBeLessThan(B.hook.swingRate);
+    expect(w.hook.ph).toBe(w.hook.rate);
+  });
+
+  it('does not step over a far monster just past a near one', () => {
+    const w = lane(true);
+    ahead(w, 200);
+    // a far grunt a little to the side, its band beginning where the near one's ends
+    const far = spawn(w, 'grunt');
+    far.d = toFp(700);
+    far.w = B.crane.w + toFp(175);
+    w.hook.ph = (BRAD_FULL * 3) / 4;
+    const under = new Map<number, number>();
+    for (let i = 0; i < 400; i++) {
+      updateHook(w);
+      const hit = throwFirst(w, w.hook.ang);
+      if (hit) under.set(hit.m.id, (under.get(hit.m.id) ?? 0) + 1);
+      else if (under.size > 1) break;
+    }
+    expect(under.get(far.id) ?? 0).toBeGreaterThanOrEqual(B.throw.aimWindow - 2);
   });
 
   it('slows a little for a cast on a fish, not on a monster', () => {
@@ -60,6 +77,21 @@ describe('the swing slows while a tap would land', () => {
     const clear = lane(true);
     updateHook(clear);
     expect(clear.hook.rate).toBe(B.hook.swingRate);
+  });
+
+  it('gives a monster about aimWindow under the aim, near or far', () => {
+    for (const d of [200, 400, 700]) {
+      const w = lane(true);
+      ahead(w, d);
+      w.hook.ph = (BRAD_FULL * 3) / 4;
+      let n = 0;
+      for (let i = 0; i < 400; i++) {
+        updateHook(w);
+        if (throwFirst(w, w.hook.ang)) n++;
+        else if (n > 0) break;
+      }
+      expect(Math.abs(n - B.throw.aimWindow), `grunt ${d} out sat ${n} ticks`).toBeLessThanOrEqual(2);
+    }
   });
 
   it('gives a far monster several times as long under the aim', () => {
